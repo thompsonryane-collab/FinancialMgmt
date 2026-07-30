@@ -104,6 +104,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .hint{margin:7px 0 0;font-size:12.5px;color:var(--muted)}
 .hint--warn{color:var(--owe)}
 .cover .btn{width:100%;min-height:50px}
+#lockRow{display:grid;gap:8px}
+#lockRow[hidden]{display:none}
 .fineprint{margin:14px 0 0;font-size:12px;color:#6F856B;line-height:1.5}
 .cover__foot{display:flex;gap:14px;margin-top:14px;border-top:1px solid var(--rule);padding-top:12px}
 .cover__foot span{font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6B8168}
@@ -462,6 +464,14 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     </div>
 
     <button class="btn btn--primary" id="enterBtn" type="button">Open the ledger</button>
+    <div id="lockRow" style="margin-top:8px" hidden>
+      <button class="btn btn--ghost" id="lockEnroll" type="button" hidden>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        Lock with Face ID
+      </button>
+      <button class="btn btn--ghost" id="lockDisable" type="button" hidden>Turn off Face ID lock</button>
+      <button class="btn btn--ghost" id="lockReset" type="button" hidden style="color:var(--danger)">Can't unlock? Reset app data</button>
+    </div>
     <button class="btn btn--ghost" id="shareBtn" type="button" style="margin-top:8px">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
       Share with the family
@@ -1171,6 +1181,103 @@ const CATEGORIES = [
   { id:'income',    name:'Income',         color:'#9BC46B', note:'Payroll, interest, refunds' },
 ];
 
+
+/* ============================================================
+   FACE ID LOCK — WebAuthn passkey gate
+   Enrollment creates a passkey for this site; unlocking runs
+   iOS's native Face ID prompt. Where the authenticator supports
+   the PRF extension, its output derives an AES-GCM key and the
+   ledger is encrypted at rest; elsewhere the gate still holds
+   the door. The app never sees biometric data — only a yes/no
+   from the Secure Enclave.
+   ============================================================ */
+const LOCK_KEY = 'thompson:lock:v1';
+const lock = { meta:null, unlocked:false, cryptoKey:null };
+
+const b64u = {
+  enc: buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+  dec: str => Uint8Array.from(atob(str.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0)).buffer,
+};
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+
+async function webauthnAvailable(){
+  try {
+    return window.isSecureContext && window.PublicKeyCredential &&
+      await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch(_){ return false; }
+}
+
+async function deriveLedgerKey(prfOutput){
+  const raw = await crypto.subtle.importKey('raw', prfOutput, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name:'HKDF', hash:'SHA-256', salt:new TextEncoder().encode('thompson-ledger-v1'), info:new Uint8Array(0) },
+    raw, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+
+async function enrollFaceId(){
+  const prfSalt = rand(32);
+  const cred = await navigator.credentials.create({ publicKey:{
+    challenge: rand(32),
+    rp: { name:'Thompson Finances', id: location.hostname },
+    user: { id: rand(16), name:'thompson-household', displayName:'Thompson Finances' },
+    pubKeyCredParams: [{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection: { authenticatorAttachment:'platform', userVerification:'required', residentKey:'preferred' },
+    extensions: { prf: { eval: { first: prfSalt } } },
+    timeout: 60000,
+  }});
+  const ext = cred.getClientExtensionResults();
+  const prfEnabled = Boolean(ext.prf && (ext.prf.enabled || (ext.prf.results && ext.prf.results.first)));
+  lock.meta = { credId: b64u.enc(cred.rawId), prf: prfEnabled, salt: b64u.enc(prfSalt.buffer) };
+  await storeSet(LOCK_KEY, JSON.stringify(lock.meta));
+  lock.unlocked = true;
+  /* if PRF handed us key material right at creation, encrypt immediately */
+  if (prfEnabled && ext.prf.results && ext.prf.results.first){
+    lock.cryptoKey = await deriveLedgerKey(ext.prf.results.first);
+  }
+  await save();   /* re-persist the ledger, encrypted if a key exists */
+  return prfEnabled;
+}
+
+async function unlockFaceId(){
+  const pk = {
+    challenge: rand(32),
+    allowCredentials: [{ type:'public-key', id: b64u.dec(lock.meta.credId) }],
+    userVerification: 'required',
+    timeout: 60000,
+  };
+  if (lock.meta.prf) pk.extensions = { prf: { eval: { first: b64u.dec(lock.meta.salt) } } };
+  const assertion = await navigator.credentials.get({ publicKey: pk });
+  if (lock.meta.prf){
+    const out = assertion.getClientExtensionResults().prf;
+    if (out && out.results && out.results.first){
+      lock.cryptoKey = await deriveLedgerKey(out.results.first);
+    }
+  }
+  lock.unlocked = true;
+}
+
+async function disableFaceId(){
+  lock.meta = null; lock.cryptoKey = null; lock.unlocked = true;
+  await storeSet(LOCK_KEY, '');
+  await save();   /* ledger back to plaintext */
+}
+
+/* seal/open the ledger payload */
+async function sealLedger(json){
+  if (!lock.cryptoKey) return json;
+  const iv = rand(12);
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, lock.cryptoKey, new TextEncoder().encode(json));
+  return JSON.stringify({ __sealed:1, iv:b64u.enc(iv.buffer), ct:b64u.enc(ct) });
+}
+async function openLedger(raw){
+  let env = null;
+  try { env = JSON.parse(raw); } catch(_){ return null; }
+  if (!env || !env.__sealed) return raw;               /* plaintext ledger */
+  if (!lock.cryptoKey) throw new Error('locked');      /* sealed but no key yet */
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:new Uint8Array(b64u.dec(env.iv))}, lock.cryptoKey, b64u.dec(env.ct));
+  return new TextDecoder().decode(pt);
+}
+
 const STORE_KEY = 'thompson:ledger:v1';
 
 /* Storage adapter — works in three homes:
@@ -1195,17 +1302,19 @@ async function storeGet(key){
 
 async function save(){
   try {
-    await storeSet(STORE_KEY, JSON.stringify({
+    await storeSet(STORE_KEY, await sealLedger(JSON.stringify({
       rows: state.rows.map(r => ({...r, date: r.date.getTime()})),
       balances: state.balances,
       imports: state.imports,
       rules: state.rules,
-    }));
+    })));
   } catch(_){ /* storage is a bonus, not a requirement */ }
 }
 async function load(){
   try {
-    const value = await storeGet(STORE_KEY);
+    let value = await storeGet(STORE_KEY);
+    if (!value) return false;
+    value = await openLedger(value);
     if (!value) return false;
     const data = JSON.parse(value);
     state.rows = (data.rows || []).map(r => ({...r, date: new Date(r.date), desc: redactAccountNumbers(r.desc)})).sort((a,b) => b.date - a.date);
@@ -2112,17 +2221,44 @@ function setMode(mode){
   $('#modeHint').textContent = mode === 'api'
     ? 'ARIA sends a summary of your balances and recent lines to Claude to answer freely. Raw files never leave the phone.'
     : 'Everything runs on this phone. ARIA answers from your numbers alone.';
-  $('#enterBtn').textContent = mode === 'api' ? 'Connect and open the ledger' : 'Open the ledger';
+  $('#enterBtn').textContent = (typeof lock !== 'undefined' && lock.meta && !lock.unlocked)
+    ? 'Unlock with Face ID'
+    : (mode === 'api' ? 'Connect and open the ledger' : 'Open the ledger');
 }
+function renderLockRow(){
+  webauthnAvailable().then(ok => {
+    $('#lockRow').hidden = !ok && !lock.meta;
+    $('#lockEnroll').hidden = !ok || Boolean(lock.meta);
+    $('#lockDisable').hidden = !(lock.meta && lock.unlocked);
+    $('#lockReset').hidden = !(lock.meta && !lock.unlocked);
+    $('#enterBtn').textContent = lock.meta && !lock.unlocked
+      ? 'Unlock with Face ID'
+      : (state.mode === 'api' ? 'Connect and open the ledger' : 'Open the ledger');
+  });
+}
+
 let lastGreetMode = null;
 function goSplash(){
   if ($('#ariaDrawer').classList.contains('is-open')) closeDrawer();
   $('#app').hidden = true;
   $('#splash').hidden = false;
   setMode(state.mode);              /* splash reflects the current mode */
+  renderLockRow();
   $('#enterBtn').focus();
 }
-function enterApp(){
+async function enterApp(){
+  if (lock.meta && !lock.unlocked){
+    try {
+      await unlockFaceId();
+      const restored = await load();          /* sealed ledger opens only now */
+      if (restored){ applyRules(); logLine(`${state.rows.length} rows unlocked and restored`,'ok'); }
+    } catch(err){
+      toast(err && err.name === 'NotAllowedError' ? 'Face ID not verified' : 'Unlock failed — try again');
+      renderLockRow();
+      return;
+    }
+    renderLockRow();
+  }
   if (state.mode === 'api'){
     const key = $('#apiKey').value.trim();
     if (!key.startsWith('sk-ant-')){
@@ -2168,6 +2304,29 @@ function wire(){
   });
   $('#enterBtn').addEventListener('click', enterApp);
   $('#shareBtn').addEventListener('click', shareSite);
+  $('#lockEnroll').addEventListener('click', async () => {
+    try {
+      const prf = await enrollFaceId();
+      toast(prf ? 'Face ID lock on — ledger encrypted at rest' : 'Face ID lock on');
+    } catch(err){
+      toast(err && err.name === 'NotAllowedError' ? 'Face ID setup cancelled' : 'Face ID setup failed');
+    }
+    renderLockRow();
+  });
+  $('#lockDisable').addEventListener('click', async () => {
+    await disableFaceId();
+    toast('Face ID lock off');
+    renderLockRow();
+  });
+  $('#lockReset').addEventListener('click', async () => {
+    if (!confirm('This erases the ledger and removes the lock so the app can be used again. Erase everything?')) return;
+    state.rows = []; state.balances = {}; state.imports = []; state.rules = [];
+    lock.meta = null; lock.cryptoKey = null; lock.unlocked = true;
+    await storeSet(LOCK_KEY, '');
+    await storeSet(STORE_KEY, '');
+    toast('App reset — lock removed, ledger erased');
+    renderLockRow(); render();
+  });
   $('#apiKey').addEventListener('keydown', e => { if (e.key === 'Enter') enterApp(); });
 
   const drop = $('#drop'), input = $('#fileInput');
@@ -2222,9 +2381,13 @@ function wire(){
   renderCategories();
   initSchemaJump();
   initRuleForm();
-  const restored = await load();
-  if (restored) applyRules();
-  if (restored) logLine(`${state.rows.length} rows restored from your last session`,'ok');
+  try { const lm = await storeGet(LOCK_KEY); if (lm) lock.meta = JSON.parse(lm); } catch(_){}
+  if (!lock.meta){
+    const restored = await load();
+    if (restored) applyRules();
+    if (restored) logLine(`${state.rows.length} rows restored from your last session`,'ok');
+  }
+  renderLockRow();
   render();
 })();
 </script>
