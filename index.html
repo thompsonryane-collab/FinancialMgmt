@@ -185,8 +185,16 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .card__alias{font-family:var(--data);font-size:10.5px;letter-spacing:.12em;color:var(--muted)}
 .card__name{font-weight:600;font-size:15px;margin:2px 0 0}
 .card__meta{font-family:var(--data);font-size:11px;color:var(--muted);grid-column:1/2}
-.card__bal{grid-row:1/3;grid-column:2/3;text-align:right;font-family:var(--data);font-size:18px;font-weight:600;background:none;border:0;padding:6px;border-radius:8px;width:11ch;direction:ltr}
-.card__bal:focus{background:var(--ink);box-shadow:inset 0 0 0 1px var(--accent);outline:none}
+.card__bal{grid-row:1/3;grid-column:2/3;font-family:var(--data);font-size:18px;font-weight:600;
+  background:none;border:0;padding:8px 4px;margin:-8px -4px;border-radius:10px;cursor:pointer;
+  display:flex;align-items:center;justify-content:flex-end;gap:7px;min-height:44px;direction:ltr}
+.card__bal .pen{flex:none;opacity:.45;transition:opacity .16s}
+.card__bal:active{background:var(--ink)}
+.card__bal:active .pen{opacity:1}
+.card__bal .fig{border-bottom:1px dashed transparent;padding-bottom:1px}
+.card__bal--set .fig{border-bottom-color:currentColor;opacity:.95}
+.card__bal:focus-visible{background:var(--ink);box-shadow:inset 0 0 0 1px var(--accent);outline:none}
+.balhint{font-size:12.5px;color:var(--muted);margin:10px 2px 0}
 .card__spark{grid-column:1/3;margin-top:7px;height:24px}
 .card__spark svg{display:block;width:100%;height:24px;overflow:visible}
 
@@ -266,6 +274,63 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .acc[open] .acc__chev{transform:rotate(90deg)}
 .acc__body{border-top:1px solid var(--rule);padding:14px}
 .acc__body .empty{padding:14px 6px}
+
+/* Position — collapsible columns + the weekly budget block */
+.acc--col{background:transparent;background-image:none;border:0;border-radius:0;margin:16px 0 0;box-shadow:none;overflow:visible}
+.acc--col > summary{min-height:46px;padding:0 2px 7px;gap:9px;border-bottom:1px solid var(--rule);
+  font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
+.acc--col .acc__count{margin-left:auto}
+.acc--col .acc__total{font-family:var(--data);font-size:14px;font-weight:600}
+.acc--col .acc__body{border-top:0;padding:12px 0 0}
+
+.budget__num{font-family:var(--display);font-weight:800;font-size:clamp(30px,9.5vw,40px);
+  letter-spacing:-.03em;line-height:1;margin:0 0 5px}
+.budget__sub{font-family:var(--data);font-size:11.5px;color:var(--muted);margin:0}
+.wtd{margin:15px 0 4px}
+.wtd__row{display:flex;justify-content:space-between;gap:10px;font-family:var(--data);font-size:11.5px;color:var(--muted)}
+.wtd__bar{height:10px;border-radius:5px;background:var(--ink);border:1px solid var(--rule);
+  overflow:hidden;margin-top:7px;box-shadow:inset 0 1px 3px rgba(0,0,0,.45)}
+.wtd__fill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.22,1,.36,1);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%,rgba(0,0,0,.15))}
+
+.calc{display:grid;margin-top:14px}
+.calc__row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid rgba(49,70,47,.5)}
+.calc__row b{font-weight:500;font-size:13.5px}
+.calc__row .v{font-family:var(--data);font-size:14px;font-weight:600;white-space:nowrap}
+.calc__row .why{grid-column:1/3;font-family:var(--data);font-size:10.5px;color:var(--muted);line-height:1.5}
+.calc__row--sum{border-bottom:0;border-top:1px solid var(--rule);margin-top:3px;padding-top:11px}
+.calc__row--sum b{font-weight:600;font-size:14.5px}
+
+/* Calendar — month grid, day pips, due-date list */
+.cal__head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.cal__nav{background:var(--rise);border:1px solid var(--rule);border-radius:11px;width:40px;height:40px;
+  flex:none;cursor:pointer;color:var(--paper);font-size:17px;line-height:1}
+.cal__nav:active{background:#2A3D2C}
+.cal__month{flex:1;text-align:center;font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:-.01em}
+.cal__dow{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px}
+.cal__dow span{text-align:center;font-family:var(--data);font-size:10px;letter-spacing:.12em;color:var(--muted)}
+.cal__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal__day{position:relative;aspect-ratio:1/1;background:var(--ink);border:1px solid transparent;border-radius:10px;
+  display:flex;flex-direction:column;align-items:center;padding:5px 2px 0;cursor:pointer;
+  font-family:var(--data);font-size:12.5px;color:var(--paper);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.3)}
+.cal__day--out{opacity:.26}
+.cal__day--has{background:var(--rise)}
+.cal__day--today{border-color:rgba(157,190,143,.6)}
+.cal__day--sel{background:var(--accent);color:#101B10;border-color:var(--accent);font-weight:600}
+.cal__pips{display:flex;gap:2.5px;margin-top:auto;padding-bottom:6px;min-height:4px}
+.cal__pips i{width:4.5px;height:4.5px;border-radius:50%;display:block}
+.cal__day--sel .cal__pips i{box-shadow:0 0 0 1px rgba(16,27,16,.35)}
+
+.daylist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.bill{background:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:10px 10px 10px 13px;
+  display:grid;grid-template-columns:1fr auto auto;gap:2px 10px;align-items:center}
+.bill__name{font-weight:500;font-size:14.5px;grid-column:1/2}
+.bill__meta{font-family:var(--data);font-size:11px;color:var(--muted);grid-column:1/2}
+.bill__amt{grid-row:1/3;grid-column:2/3;font-family:var(--data);font-weight:600;font-size:15px;text-align:right;white-space:nowrap}
+.bill__del{grid-row:1/3;grid-column:3/4;background:none;border:1px solid var(--rule);border-radius:9px;
+  width:34px;height:34px;color:var(--muted);cursor:pointer;font-size:13px;flex:none}
 
 /* ============================================================
    ARIA DRAWER — right side, full width on phone
@@ -510,11 +575,37 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <div style="text-align:right"><span class="eyebrow tone-owe">Owed</span><br><b class="tone-owe num" id="totalOwed">$0</b></div>
       </div>
       <p class="asof" id="asOf">no data yet</p>
+      <p class="balhint">Tap any figure below to set that balance by hand — useful for accounts with no export yet.</p>
 
-      <div class="col__head"><h2>Assets</h2><span class="col__total num tone-asset" id="colAssets">$0</span></div>
-      <div class="cards" id="assetCards"></div>
-      <div class="col__head"><h2>Liabilities</h2><span class="col__total num tone-owe" id="colOwed">$0</span></div>
-      <div class="cards" id="liabCards"></div>
+      <details class="acc acc--col" id="assetBox" open>
+        <summary>
+          <span>Assets</span>
+          <span class="acc__count" id="colAssetsN"></span>
+          <span class="acc__total num tone-asset" id="colAssets">$0</span>
+          <span class="acc__chev" aria-hidden="true">▸</span>
+        </summary>
+        <div class="acc__body"><div class="cards" id="assetCards"></div></div>
+      </details>
+
+      <details class="acc acc--col" id="liabBox" open>
+        <summary>
+          <span>Liabilities</span>
+          <span class="acc__count" id="colOwedN"></span>
+          <span class="acc__total num tone-owe" id="colOwed">$0</span>
+          <span class="acc__chev" aria-hidden="true">▸</span>
+        </summary>
+        <div class="acc__body"><div class="cards" id="liabCards"></div></div>
+      </details>
+
+      <details class="acc acc--col" id="budgetBox" open>
+        <summary>
+          <span>Weekly budget</span>
+          <span class="acc__count" id="budgetTag">auto</span>
+          <span class="acc__total num" id="budgetChip">—</span>
+          <span class="acc__chev" aria-hidden="true">▸</span>
+        </summary>
+        <div class="acc__body" id="budgetBody"></div>
+      </details>
     </section>
 
     <!-- 2 · INTAKE -->
@@ -584,7 +675,65 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     </section>
 
 
-    <!-- 5 · THE FAMILY -->
+    <!-- 5 · CALENDAR -->
+    <section class="screen" id="scr-calendar" aria-label="Calendar" data-title="Calendar" tabindex="-1">
+      <p class="eyebrow">What lands, and when</p>
+      <h1>Calendar</h1>
+
+      <div class="panel">
+        <div class="cal__head">
+          <button class="cal__nav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button>
+          <div class="cal__month" id="calMonth">&mdash;</div>
+          <button class="cal__nav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button>
+        </div>
+        <div class="cal__dow" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+        <div class="cal__grid" id="calGrid"></div>
+        <div class="legend-row">
+          <span><i class="swatch" style="background:var(--owe)"></i>Due out</span>
+          <span><i class="swatch" style="background:var(--asset)"></i>Coming in</span>
+          <button class="btn btn--sm btn--ghost" id="calToday" type="button" style="margin-left:auto">Today</button>
+        </div>
+      </div>
+
+      <div class="kv">
+        <div class="panel"><p class="eyebrow">Due out</p><div class="bignum tone-owe" id="calOut">&mdash;</div></div>
+        <div class="panel"><p class="eyebrow">Coming in</p><div class="bignum tone-asset" id="calIn">&mdash;</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2 id="calDayTitle">Pick a day</h2><p class="eyebrow" id="calDayNote"></p></div>
+        <ul class="daylist" id="calDayList"></ul>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2>Next 30 days</h2><p class="eyebrow" id="calUpNote"></p></div>
+        <ul class="daylist" id="calUpcoming"></ul>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2>Add a due date</h2></div>
+        <div class="rule-form">
+          <input class="search" id="billName" type="text" placeholder="What is it? e.g. Mortgage" aria-label="Name" autocapitalize="words">
+          <fieldset style="margin:0">
+            <legend id="billKindLegend">Direction</legend>
+            <div class="seg" role="radiogroup" aria-labelledby="billKindLegend" id="billKind">
+              <button type="button" class="seg__opt" role="radio" aria-checked="true" tabindex="0" data-kind="expense">Expense</button>
+              <button type="button" class="seg__opt" role="radio" aria-checked="false" tabindex="-1" data-kind="income">Income</button>
+            </div>
+          </fieldset>
+          <div class="rule-form__row">
+            <input class="search" id="billAmount" type="text" inputmode="decimal" placeholder="Amount" aria-label="Amount">
+            <input class="search" id="billDate" type="date" aria-label="Due date">
+          </div>
+          <select class="select" id="billAcct" aria-label="Account"></select>
+          <label class="switch"><input type="checkbox" id="billRepeat" checked> Repeats on this day every month</label>
+          <button class="btn btn--primary" id="billAdd" type="button">Add to the calendar</button>
+        </div>
+      </div>
+      <p class="hint" style="padding:0 4px">Due dates live beside the ledger, not inside it — nothing here changes a balance until the real transaction imports.</p>
+    </section>
+
+    <!-- 6 · THE FAMILY -->
     <section class="screen" id="scr-family" aria-label="The Family" data-title="The Family" tabindex="-1">
       <p class="eyebrow">Who spent what</p>
       <h1>The Family</h1>
@@ -626,7 +775,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <p class="hint" style="padding:0 4px" id="famUnassigned"></p>
     </section>
 
-    <!-- 6 · LEDGER -->
+    <!-- 7 · LEDGER -->
     <section class="screen" id="scr-ledger" aria-label="Ledger" data-title="Ledger" tabindex="-1">
       <p class="eyebrow">Every line</p>
       <h1>Ledger <span class="eyebrow" id="shown" style="font-size:11px"></span></h1>
@@ -639,7 +788,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <button class="btn morebtn" id="moreBtn" type="button" hidden>Show more</button>
     </section>
 
-    <!-- 7 · CATEGORIES -->
+    <!-- 8 · CATEGORIES -->
     <section class="screen" id="scr-categories" aria-label="Categories" data-title="Categories" tabindex="-1">
       <p class="eyebrow">Sorting the outflows</p>
       <h1>Categories</h1>
@@ -691,6 +840,31 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <button class="btn" id="modalCancel" type="button">Skip file</button>
       <button class="btn btn--primary" id="modalConfirm" type="button">Import rows</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ SET BALANCE SHEET ============ -->
+<div class="modal" id="balModal" hidden role="dialog" aria-modal="true" aria-labelledby="balTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <p class="eyebrow" id="balSide">Balance</p>
+    <h2 id="balTitle">Set balance</h2>
+    <p class="file" id="balAcct"></p>
+    <div class="field" style="margin-top:16px">
+      <label for="balAmount">Balance</label>
+      <input class="input" id="balAmount" type="text" inputmode="decimal" placeholder="0.00"
+             autocomplete="off" autocorrect="off" spellcheck="false" aria-describedby="balHint">
+      <p class="hint" id="balHint"></p>
+    </div>
+    <div class="field">
+      <label for="balAsOf">As of</label>
+      <input class="input" id="balAsOf" type="date">
+    </div>
+    <div class="sheet__actions">
+      <button class="btn" id="balCancel" type="button">Cancel</button>
+      <button class="btn btn--primary" id="balSave" type="button">Save balance</button>
+    </div>
+    <button class="btn btn--ghost" id="balClear" type="button" style="width:100%;margin-top:10px">Use the figure derived from rows</button>
   </div>
 </div>
 
@@ -784,6 +958,8 @@ const state = {
   person:'',            // '' = All
   routeAcct:'',          // '' = auto-detect; else force imports to this account
   rules:[],              // ownership rules: {q, acct, person} — first match wins
+  bills:[],              // scheduled due dates: {id, name, date, acct, kind, amount, repeat}
+  cal:{ y:new Date().getFullYear(), m:new Date().getMonth(), sel:null },
   thread:[],             // {role, content}
 };
 
@@ -1307,6 +1483,7 @@ async function save(){
       balances: state.balances,
       imports: state.imports,
       rules: state.rules,
+      bills: state.bills,
     })));
   } catch(_){ /* storage is a bonus, not a requirement */ }
 }
@@ -1321,7 +1498,8 @@ async function load(){
     state.balances = data.balances || {};
     state.imports = data.imports || [];
     state.rules = data.rules || [];
-    return state.rows.length > 0;
+    state.bills = data.bills || [];
+    return state.rows.length > 0 || state.bills.length > 0;
   } catch(_){ return false; }
 }
 
@@ -1543,7 +1721,7 @@ function initPager(){
 
   /* left/right arrows pan too (external keyboards, accessibility) */
   document.addEventListener('keydown', e => {
-    if (e.target.closest('input,textarea,select') || !$('#modal').hidden || $('#ariaDrawer').classList.contains('is-open')) return;
+    if (e.target.closest('input,textarea,select') || !$('#modal').hidden || !$('#balModal').hidden || $('#ariaDrawer').classList.contains('is-open')) return;
     if (e.key === 'ArrowRight') goTo(activeScreen + 1);
     if (e.key === 'ArrowLeft')  goTo(activeScreen - 1);
   });
@@ -1586,31 +1764,110 @@ function renderCards(){
   ACCOUNTS.forEach(a => {
     const rs = rowsFor(a.id);
     const bal = balanceOf(a.id);
+    const held = state.balances[a.id];
+    const byHand = bal.source === 'manual';
     const last = rs.length ? rs.reduce((m,r) => r.date > m ? r.date : m, rs[0].date) : null;
-    const meta = rs.length ? `${a.kind} · ${rs.length} rows · thru ${fmtDate(last)}` : `${a.kind} · no statement yet`;
+    const stamp = byHand && held && held.at ? ` ${fmtDate(new Date(held.at))}` : '';
+    const src = byHand ? `set by hand${stamp}`
+      : bal.source === 'statement' ? 'from statement'
+      : bal.source === 'derived'   ? 'derived from rows' : '';
+    const base = rs.length ? `${a.kind} · ${rs.length} rows · thru ${fmtDate(last)}`
+      : byHand ? a.kind : `${a.kind} · no statement yet`;
+    const bare = !rs.length && !byHand && bal.source !== 'statement';
     groups[a.side].push(`
-      <article class="card${rs.length ? '' : ' card--empty'}">
+      <article class="card${bare ? ' card--empty' : ''}">
         <div><div class="card__alias">${esc(a.id)}</div><p class="card__name">${esc(a.name)}</p></div>
-        <input class="card__bal ${a.side==='asset'?'tone-asset':'tone-owe'}" data-acct="${a.id}" inputmode="decimal"
-               value="${moneyShort(bal.value)}" aria-label="${esc(a.name)} balance — edit to set it by hand">
-        <div class="card__meta">${esc(meta)}${bal.source==='derived'?' · derived':bal.source==='manual'?' · set by hand':''}</div>
+        <button type="button" class="card__bal ${a.side==='asset'?'tone-asset':'tone-owe'}${byHand?' card__bal--set':''}"
+                data-acct="${a.id}"
+                aria-label="Set the ${esc(a.name)} balance. Currently ${esc(money(bal.value))}">
+          <svg class="pen" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+          </svg>
+          <span class="fig">${moneyShort(bal.value)}</span>
+        </button>
+        <div class="card__meta">${esc(base)}${src ? ' · ' + esc(src) : ''}</div>
         <div class="card__spark">${sparkline(rs)}</div>
       </article>`);
   });
   $('#assetCards').innerHTML = groups.asset.join('');
   $('#liabCards').innerHTML = groups.liability.join('');
-  $$('.card__bal').forEach(inp => {
-    inp.addEventListener('focus', () => { inp.value = balanceOf(inp.dataset.acct).value.toFixed(2); inp.select(); });
-    inp.addEventListener('blur', () => commitBalance(inp));
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
-  });
+  $$('.card__bal').forEach(b => b.addEventListener('click', () => openBalance(b.dataset.acct)));
 }
 
-function commitBalance(inp){
-  const n = toNumber(inp.value);
-  if (n == null){ render(); return; }
-  state.balances[inp.dataset.acct] = { value: Math.abs(n) * (ACCT[inp.dataset.acct].side === 'asset' ? Math.sign(n) || 1 : 1), source:'manual' };
+/* ============================================================
+   SET A BALANCE BY HAND
+   Statements are the best source, but an account without an
+   export still belongs on the balance sheet. Tapping a figure
+   opens this sheet: type what the account holds or what you
+   still owe, stamp it with a date, and it counts toward the net
+   position until a statement lands. "Use derived" hands the
+   figure back to the rows on file.
+   ============================================================ */
+let balTarget = null, balReturnFocus = null;
+const isoDay = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+function openBalance(id){
+  const a = ACCT[id];
+  const bal = balanceOf(id);
+  const held = state.balances[id];
+  balTarget = id;
+  balReturnFocus = document.activeElement;
+
+  $('#balSide').textContent = a.side === 'liability' ? 'Amount owed' : 'Amount held';
+  $('#balTitle').textContent = a.name;
+  $('#balAcct').textContent = `${a.id} · ${a.kind} · now ${money(bal.value)}` + (
+    bal.source === 'manual'    ? ', set by hand' :
+    bal.source === 'statement' ? ', from a statement' :
+    bal.source === 'derived'   ? ', derived from the rows on file' : ', nothing on file yet');
+
+  $('#balAmount').value = bal.source === 'empty' ? '' : Math.abs(bal.value).toFixed(2);
+  $('#balHint').textContent = a.side === 'liability'
+    ? 'Enter what you still owe as a positive number — it counts against the net position.'
+    : 'Enter what the account holds. A minus sign marks it overdrawn.';
+  $('#balAsOf').value = isoDay(held && held.at ? new Date(held.at) : (state.rows.length ? state.rows[0].date : new Date()));
+  $('#balClear').hidden = bal.source !== 'manual';
+
+  $('#balModal').hidden = false;
+  document.addEventListener('keydown', balKeys);
+  setTimeout(() => { const f = $('#balAmount'); f.focus(); f.select(); }, 60);
+}
+
+function balKeys(e){
+  if (e.key === 'Escape'){ e.preventDefault(); closeBalance(); }
+  if (e.key === 'Enter' && e.target.id === 'balAmount'){ e.preventDefault(); saveBalance(); }
+}
+
+function closeBalance(){
+  $('#balModal').hidden = true;
+  document.removeEventListener('keydown', balKeys);
+  balTarget = null;
+  if (balReturnFocus && balReturnFocus.focus) balReturnFocus.focus();
+}
+
+function saveBalance(){
+  const a = ACCT[balTarget];
+  const n = toNumber($('#balAmount').value);
+  if (n == null){
+    $('#balHint').textContent = 'That is not a number the ledger can read. Try something like 1842.66.';
+    $('#balAmount').focus();
+    return;
+  }
+  const at = toDate($('#balAsOf').value) || new Date();
+  const value = a.side === 'liability' ? Math.abs(n) : n;
+  state.balances[a.id] = { value, source:'manual', at: at.getTime() };
+  const label = a.id;
+  closeBalance();
   save(); render();
+  toast(`${label} set to ${money(Math.abs(value))}${a.side === 'liability' ? ' owed' : ''}`);
+}
+
+function clearBalance(){
+  const a = ACCT[balTarget];
+  delete state.balances[a.id];
+  closeBalance();
+  save(); render();
+  toast(`${a.id} back to the figure its rows imply`);
 }
 
 function renderBeam(){
@@ -1621,6 +1878,9 @@ function renderBeam(){
   $('#totalOwed').textContent = money(t.owed);
   $('#colAssets').textContent = money(t.assets);
   $('#colOwed').textContent = money(t.owed);
+  const nA = ACCOUNTS.filter(a => a.side === 'asset').length, nL = ACCOUNTS.length - nA;
+  $('#colAssetsN').textContent = `${nA} accounts`;
+  $('#colOwedN').textContent = `${nL} accounts`;
   const span = t.assets + t.owed;
   const a = span ? (t.assets / span) * 100 : 50;
   $('#beamAsset').style.width = a + '%';
@@ -1628,6 +1888,134 @@ function renderBeam(){
   const last = state.rows.length ? state.rows[0].date : null;
   $('#asOf').textContent = last ? `as of ${fmtDate(last)} · ${state.rows.length.toLocaleString()} rows on file` : 'no data yet';
   $('#rowCount').textContent = `${state.rows.length.toLocaleString()} rows`;
+}
+
+/* ============================================================
+   WEEKLY BUDGET — v1
+   The figure is derived, never typed. Four moves, in order:
+
+     1. Income      what actually arrives in a month. Scheduled
+                    deposits on the calendar win over the ledger
+                    average, because they are declared, not inferred.
+     2. Commitments every expense due in the next 30 days.
+     3. Cushion     hold one month of commitments in cash. Short of
+                    that, rebuild the gap over six months.
+     4. Debt        while anything is owed, 20% of what survives
+                    steps 1–3 goes at the balance.
+
+   What is left is discretionary; divide by the weeks in a month
+   and that is the week's allowance. Every line is shown on screen
+   so the arithmetic can be argued with. Levers to expose next:
+   the cushion multiple, the rebuild window, and the debt share.
+   ============================================================ */
+const WEEKS_PER_MONTH = 365 / 84;      /* 4.345 — a month is not four weeks */
+const CUSHION_MONTHS  = 1;
+const REBUILD_MONTHS  = 6;
+const DEBT_SHARE      = 0.20;
+
+/** Monday-based start of the week containing d. */
+function weekStart(d = new Date()){
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+
+function budgetPlan(){
+  const t = totals();
+  const months = byMonth();
+  const ahead = billsAhead(30);
+  const dueOut = ahead.filter(o => o.bill.kind !== 'income');
+  const dueIn  = ahead.filter(o => o.bill.kind === 'income');
+
+  const committed = dueOut.reduce((s,o) => s + Math.abs(o.bill.amount), 0);
+  const scheduled = dueIn.reduce((s,o) => s + Math.abs(o.bill.amount), 0);
+  const ledgerIn = months.length ? months.reduce((s,x) => s + x.in, 0) / months.length : 0;
+
+  const income = scheduled > 0 ? scheduled : ledgerIn;
+  const basis = scheduled > 0
+    ? `${dueIn.length} scheduled deposit${dueIn.length === 1 ? '' : 's'} in the next 30 days`
+    : months.length ? `ledger average across ${months.length} month${months.length === 1 ? '' : 's'}`
+    : 'nothing on file';
+
+  if (income <= 0 && committed <= 0) return null;
+
+  const cushion = committed * CUSHION_MONTHS;
+  const short = Math.max(0, cushion - t.assets);
+  const rebuild = short / REBUILD_MONTHS;
+  const afterFixed = Math.max(0, income - committed - rebuild);
+  const debt = t.owed > 0 ? afterFixed * DEBT_SHARE : 0;
+  const spendable = Math.max(0, afterFixed - debt);
+
+  return { income, basis, committed, billCount: dueOut.length, cushion, short, rebuild,
+           debt, spendable, weekly: spendable / WEEKS_PER_MONTH,
+           assets: t.assets, owed: t.owed, thin: income > 0 && spendable === 0 };
+}
+
+function renderBudget(){
+  const body = $('#budgetBody');
+  const p = budgetPlan();
+
+  if (!p){
+    $('#budgetChip').textContent = '—';
+    $('#budgetTag').textContent = 'waiting';
+    body.innerHTML = `<div class="empty">Nothing to work from yet. Set a balance on any account above, or put a
+      payday and a bill on the Calendar — the weekly figure builds itself from those.</div>`;
+    return;
+  }
+
+  const ws = weekStart();
+  const we = new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + 6);
+  const spent = state.rows.filter(r => r.amount < 0 && r.date >= ws).reduce((s,r) => s - r.amount, 0);
+  const pct = p.weekly > 0 ? Math.min(100, (spent / p.weekly) * 100) : (spent > 0 ? 100 : 0);
+  const over = p.weekly > 0 && spent > p.weekly;
+  const left = p.weekly - spent;
+
+  $('#budgetChip').textContent = moneyShort(p.weekly);
+  $('#budgetChip').className = 'acc__total num ' + (p.weekly > 0 ? 'tone-asset' : 'tone-owe');
+  $('#budgetTag').textContent = 'auto';
+
+  const row = (label, why, value, tone, cls = '') => `
+    <div class="calc__row ${cls}"><b>${esc(label)}</b>
+      <span class="v${tone ? ' ' + tone : ''}">${value}</span>
+      ${why ? `<span class="why">${esc(why)}</span>` : ''}</div>`;
+
+  body.innerHTML = `
+    <p class="eyebrow">Discretionary, per week</p>
+    <div class="budget__num ${p.weekly > 0 ? 'tone-asset' : 'tone-owe'} num">${money(p.weekly)}</div>
+    <p class="budget__sub">${p.thin ? 'commitments swallow the month — nothing left to allocate'
+      : `${money(p.spendable)} across the month, after everything already promised`}</p>
+
+    <div class="wtd">
+      <div class="wtd__row">
+        <span>${ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${we.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+        <span>${money(spent)} spent${p.weekly > 0 ? ` of ${money(p.weekly)}` : ''}</span>
+      </div>
+      <div class="wtd__bar" role="img" aria-label="${Math.round(pct)}% of this week's budget used">
+        <div class="wtd__fill" style="width:${pct.toFixed(1)}%;background-color:${over ? 'var(--danger)' : 'var(--accent)'}"></div>
+      </div>
+      <div class="wtd__row" style="margin-top:6px">
+        <span>${over ? 'over by ' + money(-left) : money(left) + ' left this week'}</span>
+        <span>every outflow line counts, transfers included</span>
+      </div>
+    </div>
+
+    <p class="eyebrow" style="margin-top:18px">How the figure was reached</p>
+    <div class="calc">
+      ${row('Income', p.basis, '+' + money(p.income), 'tone-asset')}
+      ${row('Committed bills', `${p.billCount} due in the next 30 days`, '−' + money(p.committed), 'tone-owe')}
+      ${row('Cushion rebuild', p.short > 0
+          ? `${money(p.assets)} on hand against a ${money(p.cushion)} target — closing the gap over ${REBUILD_MONTHS} months`
+          : `${money(p.assets)} on hand already covers the ${money(p.cushion)} target`,
+        '−' + money(p.rebuild), p.rebuild > 0 ? 'tone-owe' : '')}
+      ${row('Toward debt', p.owed > 0
+          ? `${Math.round(DEBT_SHARE * 100)}% of what remains, against ${moneyShort(p.owed)} owed`
+          : 'nothing owed',
+        '−' + money(p.debt), p.debt > 0 ? 'tone-owe' : '')}
+      ${row('Left for the month', `÷ ${WEEKS_PER_MONTH.toFixed(2)} weeks`, money(p.spendable), '', 'calc__row--sum')}
+    </div>
+
+    <p class="hint" style="margin:14px 0 0">A first pass: the cushion target, the rebuild window and the debt
+    share are fixed for now. Add bills and paydays on the Calendar and this figure sharpens.</p>`;
 }
 
 /* ============================================================
@@ -1901,6 +2289,208 @@ function renderFamily(){
 }
 
 
+/* ============================================================
+   CALENDAR
+   A due date is a promise, not a transaction: it sits beside
+   the ledger and never touches a balance. One-off dates land on
+   their day; monthly ones repeat on the same day of every month
+   after they start, clamped so the 31st still shows in February.
+   ============================================================ */
+const isoOf = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const startOfToday = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+
+/** Every occurrence falling inside one calendar month. */
+function billOccurrences(y, m){
+  const dim = new Date(y, m+1, 0).getDate();
+  const out = [];
+  state.bills.forEach(b => {
+    const d0 = toDate(b.date);
+    if (!d0) return;
+    if (b.repeat === 'monthly'){
+      if (y < d0.getFullYear() || (y === d0.getFullYear() && m < d0.getMonth())) return;
+      out.push({ bill:b, date:new Date(y, m, Math.min(d0.getDate(), dim)) });
+    } else if (d0.getFullYear() === y && d0.getMonth() === m){
+      out.push({ bill:b, date:d0 });
+    }
+  });
+  return out.sort((a,b) => a.date - b.date || String(a.bill.name).localeCompare(String(b.bill.name)));
+}
+
+/** A rolling window from today forward, walked month by month. */
+function billsAhead(days = 30){
+  const from = startOfToday();
+  const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
+  const out = [];
+  let y = from.getFullYear(), m = from.getMonth();
+  while (new Date(y, m, 1) <= to){
+    billOccurrences(y, m).forEach(o => { if (o.date >= from && o.date <= to) out.push(o); });
+    m++; if (m > 11){ m = 0; y++; }
+  }
+  return out.sort((a,b) => a.date - b.date);
+}
+
+const billSigned = b => b.kind === 'income' ? Math.abs(b.amount) : -Math.abs(b.amount);
+
+function billRow(o, showDate){
+  const b = o.bill;
+  const income = b.kind === 'income';
+  const when = showDate ? fmtDate(o.date) + ' · ' : '';
+  const rep = b.repeat === 'monthly' ? ' · monthly' : '';
+  return `<li class="bill">
+    <span class="bill__name">${esc(b.name)}</span>
+    <span class="bill__amt" style="color:${income ? 'var(--asset)' : 'var(--owe)'}">${income ? '+' : '−'}${money(Math.abs(b.amount))}</span>
+    <button class="bill__del" type="button" data-bill="${esc(b.id)}" aria-label="Remove ${esc(b.name)} from the calendar">✕</button>
+    <span class="bill__meta">${when}${esc(b.acct)}${rep}</span>
+  </li>`;
+}
+
+function wireBillDeletes(){
+  $$('.bill__del').forEach(btn => btn.addEventListener('click', () => {
+    const b = state.bills.find(x => x.id === btn.dataset.bill);
+    state.bills = state.bills.filter(x => x.id !== btn.dataset.bill);
+    save(); renderCalendar(); renderBudget();
+    toast(b ? `${b.name} removed from the calendar` : 'Removed from the calendar');
+  }));
+}
+
+function renderCalendar(){
+  const { y, m } = state.cal;
+  const occ = billOccurrences(y, m);
+  const today = startOfToday();
+  const todayIso = isoOf(today);
+
+  $('#calMonth').textContent = new Date(y, m, 1).toLocaleDateString('en-US',{month:'long', year:'numeric'});
+
+  /* the grid */
+  const dim = new Date(y, m+1, 0).getDate();
+  const lead = new Date(y, m, 1).getDay();
+  const cells = Math.ceil((lead + dim) / 7) * 7;
+  const byDay = new Map();
+  occ.forEach(o => { const k = isoOf(o.date); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(o); });
+
+  let html = '';
+  for (let i = 0; i < cells; i++){
+    const d = new Date(y, m, i - lead + 1);
+    const iso = isoOf(d);
+    const inMonth = d.getMonth() === m;
+    const items = byDay.get(iso) || [];
+    const pips = items.slice(0,3).map(o =>
+      `<i style="background:${o.bill.kind === 'income' ? 'var(--asset)' : 'var(--owe)'}"></i>`).join('');
+    const cls = ['cal__day'];
+    if (!inMonth) cls.push('cal__day--out');
+    if (items.length && inMonth) cls.push('cal__day--has');
+    if (iso === todayIso) cls.push('cal__day--today');
+    if (iso === state.cal.sel) cls.push('cal__day--sel');
+    html += `<button type="button" class="${cls.join(' ')}" data-day="${iso}"
+      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${items.length ? `, ${items.length} due` : ''}">
+      <span>${d.getDate()}</span><span class="cal__pips">${pips}</span></button>`;
+  }
+  $('#calGrid').innerHTML = html;
+  $$('#calGrid .cal__day').forEach(btn => btn.addEventListener('click', () => {
+    const d = toDate(btn.dataset.day);
+    if (d.getMonth() !== m || d.getFullYear() !== y){ state.cal.y = d.getFullYear(); state.cal.m = d.getMonth(); }
+    state.cal.sel = btn.dataset.day;
+    renderCalendar();
+  }));
+
+  /* month totals */
+  const out = occ.filter(o => o.bill.kind !== 'income').reduce((s,o) => s + Math.abs(o.bill.amount), 0);
+  const inn = occ.filter(o => o.bill.kind === 'income').reduce((s,o) => s + Math.abs(o.bill.amount), 0);
+  $('#calOut').textContent = occ.length ? moneyShort(out) : '—';
+  $('#calIn').textContent  = occ.length ? moneyShort(inn) : '—';
+
+  /* the selected day */
+  const sel = state.cal.sel ? toDate(state.cal.sel) : null;
+  const dayItems = state.cal.sel ? (byDay.get(state.cal.sel) || []) : [];
+  $('#calDayTitle').textContent = sel
+    ? sel.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'})
+    : 'Pick a day';
+  const dayNet = dayItems.reduce((s,o) => s + billSigned(o.bill), 0);
+  $('#calDayNote').textContent = dayItems.length
+    ? `${dayItems.length} item${dayItems.length===1?'':'s'} · net ${dayNet >= 0 ? '+' : '−'}${moneyShort(Math.abs(dayNet))}`
+    : '';
+  $('#calDayList').innerHTML = dayItems.length
+    ? dayItems.map(o => billRow(o, false)).join('')
+    : `<li class="empty" style="padding:14px 6px">${sel ? 'Nothing due on this day.' : 'Tap a date above to see what lands on it.'}</li>`;
+
+  /* the rolling window */
+  const ahead = billsAhead(30);
+  const aheadOut = ahead.filter(o => o.bill.kind !== 'income').reduce((s,o) => s + Math.abs(o.bill.amount), 0);
+  $('#calUpNote').textContent = ahead.length ? `${moneyShort(aheadOut)} going out` : '';
+  $('#calUpcoming').innerHTML = ahead.length
+    ? ahead.slice(0,12).map(o => billRow(o, true)).join('')
+    : '<li class="empty" style="padding:14px 6px">Nothing scheduled yet. Add a due date below and it will show up here.</li>';
+
+  wireBillDeletes();
+}
+
+function initCalendar(){
+  state.cal.sel = isoOf(startOfToday());
+
+  $('#billAcct').innerHTML = ACCOUNTS.map(a =>
+    `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+  $('#billDate').value = isoOf(startOfToday());
+
+  let billKind = 'expense';
+  const setKind = k => {
+    billKind = k;
+    $$('#billKind .seg__opt').forEach(b => {
+      const on = b.dataset.kind === k;
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+  };
+  $$('#billKind .seg__opt').forEach(b => {
+    b.addEventListener('click', () => setKind(b.dataset.kind));
+    b.addEventListener('keydown', e => {
+      if (!['ArrowRight','ArrowLeft'].includes(e.key)) return;
+      e.preventDefault();
+      const opts = $$('#billKind .seg__opt');
+      const nextEl = opts[(opts.indexOf(b) + 1) % opts.length];
+      setKind(nextEl.dataset.kind); nextEl.focus();
+    });
+  });
+
+  const shiftMonth = step => {
+    const d = new Date(state.cal.y, state.cal.m + step, 1);
+    state.cal.y = d.getFullYear(); state.cal.m = d.getMonth();
+    state.cal.sel = isoOf(d);
+    renderCalendar();
+  };
+  $('#calPrev').addEventListener('click', () => shiftMonth(-1));
+  $('#calNext').addEventListener('click', () => shiftMonth(1));
+  $('#calToday').addEventListener('click', () => {
+    const t = startOfToday();
+    state.cal.y = t.getFullYear(); state.cal.m = t.getMonth(); state.cal.sel = isoOf(t);
+    renderCalendar();
+  });
+
+  $('#billAdd').addEventListener('click', () => {
+    const name = $('#billName').value.trim();
+    const amount = toNumber($('#billAmount').value);
+    const date = toDate($('#billDate').value);
+    if (!name){ toast('Give it a name so you know what is landing'); $('#billName').focus(); return; }
+    if (amount == null || amount === 0){ toast('Enter an amount, like 2240'); $('#billAmount').focus(); return; }
+    if (!date){ toast('Pick a due date'); $('#billDate').focus(); return; }
+    state.bills.push({
+      id: `B-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      name, amount: Math.abs(amount), date: isoOf(date),
+      acct: $('#billAcct').value, kind: billKind,
+      repeat: $('#billRepeat').checked ? 'monthly' : 'once',
+    });
+    state.cal.y = date.getFullYear(); state.cal.m = date.getMonth(); state.cal.sel = isoOf(date);
+    $('#billName').value = ''; $('#billAmount').value = '';
+    save(); renderCalendar(); renderBudget();
+    toast(`${name} added — ${$('#billRepeat').checked ? 'every' : ''} ${date.toLocaleDateString('en-US',{month:'short', day:'numeric'})}`.replace(/\s+/g,' '));
+  });
+
+  ['#billName','#billAmount'].forEach(sel => $(sel).addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); $('#billAdd').click(); }
+  }));
+
+  renderCalendar();
+}
+
 function renderRules(){
   const counts = ruleCounts();
   $('#ruleList').innerHTML = state.rules.map((r,i) => {
@@ -1995,7 +2585,7 @@ function initSchemaJump(){
   renderSchemaDetail();
 }
 
-function render(){ renderBeam(); renderCards(); renderFlow(); renderProjections(); renderFamily(); renderTable(); }
+function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderFamily(); renderTable(); }
 
 /* ---------- log + toast ---------- */
 function logLine(text, kind='ok'){
@@ -2320,7 +2910,7 @@ function wire(){
   });
   $('#lockReset').addEventListener('click', async () => {
     if (!confirm('This erases the ledger and removes the lock so the app can be used again. Erase everything?')) return;
-    state.rows = []; state.balances = {}; state.imports = []; state.rules = [];
+    state.rows = []; state.balances = {}; state.imports = []; state.rules = []; state.bills = [];
     lock.meta = null; lock.cryptoKey = null; lock.unlocked = true;
     await storeSet(LOCK_KEY, '');
     await storeSet(STORE_KEY, '');
@@ -2337,6 +2927,11 @@ function wire(){
   ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('is-over'); }));
   ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('is-over'); }));
   drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+  $('#balSave').addEventListener('click', saveBalance);
+  $('#balClear').addEventListener('click', clearBalance);
+  $('#balCancel').addEventListener('click', closeBalance);
+  $('#balModal').addEventListener('click', e => { if (e.target === $('#balModal')) closeBalance(); });
 
   $('#modalConfirm').addEventListener('click', confirmImport);
   $('#modalCancel').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
@@ -2381,6 +2976,7 @@ function wire(){
   renderCategories();
   initSchemaJump();
   initRuleForm();
+  initCalendar();
   try { const lm = await storeGet(LOCK_KEY); if (lm) lock.meta = JSON.parse(lm); } catch(_){}
   if (!lock.meta){
     const restored = await load();
