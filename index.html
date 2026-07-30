@@ -575,9 +575,9 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <div style="text-align:right"><span class="eyebrow tone-owe">Owed</span><br><b class="tone-owe num" id="totalOwed">$0</b></div>
       </div>
       <p class="asof" id="asOf">no data yet</p>
-      <p class="balhint">Tap any figure below to set that balance by hand — useful for accounts with no export yet.</p>
+      <p class="balhint">Open a section to see the accounts inside. Tap any figure to set that balance by hand.</p>
 
-      <details class="acc acc--col" id="assetBox" open>
+      <details class="acc acc--col" id="assetBox">
         <summary>
           <span>Assets</span>
           <span class="acc__count" id="colAssetsN"></span>
@@ -587,7 +587,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <div class="acc__body"><div class="cards" id="assetCards"></div></div>
       </details>
 
-      <details class="acc acc--col" id="liabBox" open>
+      <details class="acc acc--col" id="liabBox">
         <summary>
           <span>Liabilities</span>
           <span class="acc__count" id="colOwedN"></span>
@@ -597,7 +597,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <div class="acc__body"><div class="cards" id="liabCards"></div></div>
       </details>
 
-      <details class="acc acc--col" id="budgetBox" open>
+      <details class="acc acc--col" id="budgetBox">
         <summary>
           <span>Weekly budget</span>
           <span class="acc__count" id="budgetTag">auto</span>
