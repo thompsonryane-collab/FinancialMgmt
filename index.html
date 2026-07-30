@@ -67,7 +67,10 @@ input,select,textarea{font-size:16px}
 .crest{display:block}
 .crest use{color:var(--accent)}
 .crest--hero{width:96px;height:108px;margin:0 auto 16px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.5))}
-.crest--bar{width:28px;height:31.5px;flex:none}
+.crest--bar{width:28px;height:31.5px;flex:none;display:block}
+.crest-btn{background:none;border:0;padding:6px;margin:-6px 0 -6px -6px;cursor:pointer;
+  border-radius:10px;flex:none;transition:transform .14s ease}
+.crest-btn:active{transform:scale(.92)}
 
 /* ============================================================
    SPLASH
@@ -322,6 +325,82 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:var(--shadow);max-width:88vw;text-align:center}
 .toast.is-on{opacity:1;transform:translate(-50%,0)}
 
+
+/* ============================================================
+   GLOSS — light falls from above
+   ============================================================ */
+.panel,.card,.acc,.cover,.sheet,.drawer__head,.seg,.rules li{
+  background-image:linear-gradient(180deg,
+    rgba(255,255,255,.065) 0%, rgba(255,255,255,.02) 34%,
+    rgba(0,0,0,0) 55%, rgba(0,0,0,.14) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),
+             inset 0 -1px 0 rgba(0,0,0,.28),
+             0 14px 30px -20px rgba(0,0,0,.75);
+}
+.cover{box-shadow:inset 0 1px 0 rgba(255,255,255,.09),
+       inset 0 -1px 0 rgba(0,0,0,.3), var(--shadow)}
+.card{transition:box-shadow .16s ease}
+.card:active{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),
+             inset 0 2px 8px rgba(0,0,0,.3)}
+
+.btn{
+  background-image:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.02) 46%,rgba(0,0,0,.1));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.3),
+             0 3px 8px -4px rgba(0,0,0,.5);
+}
+.btn--ghost{background-image:none;box-shadow:none}
+.btn--primary{
+  background-image:linear-gradient(180deg,#B8D6A8 0%,var(--accent) 42%,#84A574 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(0,0,0,.28),
+             0 6px 16px -6px rgba(157,190,143,.45);
+}
+.btn--primary:active{background-image:linear-gradient(180deg,#8FB07F,#7E9E6F);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.3)}
+
+/* the beam reads like glass tubing */
+.beam__bar{position:relative;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.5), inset 0 -1px 0 rgba(255,255,255,.05)}
+.beam__bar::after{content:'';position:absolute;left:2px;right:2px;top:2px;height:42%;
+  border-radius:6px 6px 10px 10px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.32),rgba(255,255,255,0))}
+.beam__fill--asset{background:linear-gradient(180deg,#93D6AA 0%,var(--asset) 45%,#4F9A6E 100%)}
+.beam__fill--owe{background:linear-gradient(180deg,#E0BA83 0%,var(--owe) 45%,#B08145 100%)}
+.bars .row .fill{background-image:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%,rgba(0,0,0,.15));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.bars .row .track{box-shadow:inset 0 1px 2px rgba(0,0,0,.45)}
+
+/* controls: dropdowns, inputs, chips */
+.select,.search,.input,.screen-jump,.composer textarea{
+  background-image:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,0) 42%,rgba(255,255,255,.03));
+  box-shadow:inset 0 1.5px 3px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.05);
+}
+.screen-jump{background-image:
+  linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 50%,rgba(0,0,0,.12)),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2393A98F' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat,no-repeat;
+  background-position:0 0,right 12px center;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.3);
+}
+.chip{background-image:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.1));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.seg__opt[aria-checked="true"]{
+  background-image:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 55%,rgba(0,0,0,.12));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 0 1px var(--rule), 0 2px 6px -2px rgba(0,0,0,.5);
+}
+.dots button[aria-current="true"] i{box-shadow:0 0 8px rgba(157,190,143,.55),
+  inset 0 1px 0 rgba(255,255,255,.35)}
+
+/* message bubbles + drop zone */
+.msg--aria,.msg--you{box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 4px 10px -6px rgba(0,0,0,.5)}
+.msg--aria{background-image:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.08))}
+.drop{box-shadow:inset 0 2px 8px rgba(0,0,0,.28)}
+.toast{background-image:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.1));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1), var(--shadow)}
+
+/* ambient: a soft ceiling light on every screen */
+.screen{background:radial-gradient(120% 55% at 50% -12%, rgba(157,190,143,.05), rgba(0,0,0,0) 58%)}
+.topbar{box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 8px 24px -16px rgba(0,0,0,.7)}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
   .pager{scroll-behavior:auto!important}
@@ -350,6 +429,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <path d="M40 32 V80" stroke-width="7"/>
         <path d="M69 41 C69 32.5 61.5 30.5 57 34 M63 36.5 V78 M55 52 H71" stroke-width="5.6" stroke="var(--accent)"/>
       </g>
+      <!-- gloss sweep -->
+      <path d="M14 17 L48 6.5 L82 17 V30 C58 42 32 40 14 28 Z" fill="rgba(255,255,255,.075)"/>
       <!-- base seam -->
       <path d="M38 88 L48 92 L58 88" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
     </symbol>
@@ -381,6 +462,10 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     </div>
 
     <button class="btn btn--primary" id="enterBtn" type="button">Open the ledger</button>
+    <button class="btn btn--ghost" id="shareBtn" type="button" style="margin-top:8px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+      Share with the family
+    </button>
     <p class="fineprint">Tap the intake screen to pull USAA, AMEX, PenFed and Wells Fargo exports (.xlsx, .xls, .csv, .pdf) from the Files app. Thompson Finances maps the columns to the right account and keeps the running position.</p>
     <div class="cover__foot">
       <span>7 accounts</span><span>7 screens</span><span>swipe to pan</span>
@@ -391,7 +476,9 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 <!-- ============ APP ============ -->
 <div class="app" id="app" hidden>
   <header class="topbar">
-    <svg class="crest crest--bar" role="img" aria-label="Thompson Finances"><use href="#tf-crest"/></svg>
+    <button class="crest-btn" id="crestHome" type="button" aria-label="Back to the splash screen">
+      <svg class="crest crest--bar" aria-hidden="true"><use href="#tf-crest"/></svg>
+    </button>
     <label class="sr-only" for="screenJump">Go to screen</label>
     <select class="screen-jump" id="screenJump"></select>
     <span class="chip" id="modeChip">Guest</span>
@@ -1987,6 +2074,30 @@ function closeDrawer(){
   $('#ariaToggle').focus();
 }
 
+
+/* ============================================================
+   SHARE — hands the site URL to Contacts/Messages via the
+   native iOS share sheet. Only the link travels: the app ships
+   empty, and each phone keeps its own ledger.
+   ============================================================ */
+async function shareSite(){
+  const url = location.href.split('#')[0];
+  const payload = {
+    title: 'Thompson Finances',
+    text: 'The Thompson household ledger — accounts, spending, and projections. Your data stays on your phone.',
+    url,
+  };
+  if (navigator.share){
+    try { await navigator.share(payload); return; }
+    catch(err){ if (err && err.name === 'AbortError') return; /* user closed the sheet */ }
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    try { await navigator.clipboard.writeText(url); toast('Link copied — paste it to anyone in Contacts'); return; }
+    catch(_){}
+  }
+  toast(url);  /* last resort: show the address itself */
+}
+
 /* ============================================================
    SPLASH
    ============================================================ */
@@ -2002,6 +2113,14 @@ function setMode(mode){
     ? 'ARIA sends a summary of your balances and recent lines to Claude to answer freely. Raw files never leave the phone.'
     : 'Everything runs on this phone. ARIA answers from your numbers alone.';
   $('#enterBtn').textContent = mode === 'api' ? 'Connect and open the ledger' : 'Open the ledger';
+}
+let lastGreetMode = null;
+function goSplash(){
+  if ($('#ariaDrawer').classList.contains('is-open')) closeDrawer();
+  $('#app').hidden = true;
+  $('#splash').hidden = false;
+  setMode(state.mode);              /* splash reflects the current mode */
+  $('#enterBtn').focus();
 }
 function enterApp(){
   if (state.mode === 'api'){
@@ -2022,9 +2141,12 @@ function enterApp(){
   $('#modeChip').className = 'chip' + (live ? ' chip--live' : '');
   $('#ariaChip').textContent = live ? 'Claude' : 'Local';
   $('#ariaChip').className = 'chip' + (live ? ' chip--live' : '');
-  bubble('assistant', live
-    ? 'ARIA is connected to Claude. Ask anything about the ledger — I read your balances, monthly totals and recent lines.'
-    : 'ARIA is running locally. I answer from the figures on screen: balances, monthly in and out, biggest outflows. Add an API key at the splash screen for open-ended questions.');
+  if (lastGreetMode !== state.mode){
+    bubble('assistant', live
+      ? 'ARIA is connected to Claude. Ask anything about the ledger — I read your balances, monthly totals and recent lines.'
+      : 'ARIA is running locally. I answer from the figures on screen: balances, monthly in and out, biggest outflows. Add an API key at the splash screen for open-ended questions.');
+    lastGreetMode = state.mode;
+  }
   render();
   goTo(0);
 }
@@ -2045,6 +2167,7 @@ function wire(){
     });
   });
   $('#enterBtn').addEventListener('click', enterApp);
+  $('#shareBtn').addEventListener('click', shareSite);
   $('#apiKey').addEventListener('keydown', e => { if (e.key === 'Enter') enterApp(); });
 
   const drop = $('#drop'), input = $('#fileInput');
@@ -2076,6 +2199,7 @@ function wire(){
     save(); render(); logLine('Ledger cleared','warn'); toast('Ledger cleared');
   });
 
+  $('#crestHome').addEventListener('click', goSplash);
   $('#ariaToggle').addEventListener('click', openDrawer);
   $('#ariaClose').addEventListener('click', closeDrawer);
   $('#scrim').addEventListener('click', closeDrawer);
