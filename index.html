@@ -1,0 +1,2108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#111A13">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<title>Thompson Finances — household balance sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ============================================================
+   THOMPSON FINANCES · iPhone 14+ build
+   ink #111A13 · slab #18241B · rise #213024 · rule #31462F
+   paper #EAF0E8 · muted #93A98F
+   asset #7FC79A · owe #CFA05F · accent #9DBE8F
+   ============================================================ */
+:root{
+  --ink:#111A13; --slab:#18241B; --rise:#213024; --rule:#31462F;
+  --paper:#EAF0E8; --muted:#93A98F;
+  --asset:#7FC79A; --owe:#CFA05F; --accent:#9DBE8F; --danger:#D97B72;
+  --display:"Bricolage Grotesque","Inter Tight",system-ui,sans-serif;
+  --body:"Inter Tight",system-ui,-apple-system,sans-serif;
+  --data:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:12px;
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+  --topbar:52px; --dots:38px;
+  --shadow:0 18px 48px -24px rgba(0,0,0,.85);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--ink); color:var(--paper);
+  font-family:var(--body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+  touch-action:manipulation;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+/* iOS zooms any focused control under 16px — keep form text at 16 */
+input,select,textarea{font-size:16px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.num{font-family:var(--data);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.eyebrow{font-family:var(--data);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.tone-asset{color:var(--asset)} .tone-owe{color:var(--owe)}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--rise);border:1px solid var(--rule);color:var(--paper);
+  min-height:44px;padding:10px 16px;border-radius:var(--r);cursor:pointer;
+  font-size:15px;font-weight:500;transition:background .16s,border-color .16s;
+}
+.btn:active{background:#2A3D2C}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#101B10;font-weight:600}
+.btn--sm{min-height:38px;padding:7px 12px;font-size:13.5px;border-radius:10px}
+.btn--ghost{background:transparent}
+.btn[disabled]{opacity:.45}
+
+.crest{display:block}
+.crest use{color:var(--accent)}
+.crest--hero{width:96px;height:108px;margin:0 auto 16px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.5))}
+.crest--bar{width:28px;height:31.5px;flex:none}
+
+/* ============================================================
+   SPLASH
+   ============================================================ */
+.splash{
+  position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;
+  padding:calc(var(--sat) + 16px) 16px calc(var(--sab) + 16px);
+  background:radial-gradient(130% 80% at 50% -8%, #1E2E20 0%, var(--ink) 60%);
+  overflow:auto;
+}
+.splash[hidden]{display:none}
+.splash__ledger{position:absolute;inset:0;pointer-events:none;opacity:.45;
+  background-image:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(49,70,47,.55) 31px 32px);
+  mask-image:linear-gradient(to bottom,transparent,#000 20%,#000 68%,transparent);}
+.cover{
+  position:relative;width:100%;max-width:430px;margin:auto 0 0;
+  background:rgba(24,36,27,.86);backdrop-filter:blur(8px);
+  border:1px solid var(--rule);border-radius:20px;padding:26px 22px 20px;box-shadow:var(--shadow);
+}
+.lede{color:var(--muted);margin:4px 0 20px;font-size:15px;text-align:center}
+fieldset{border:0;padding:0;margin:0 0 16px}
+legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--ink);border:1px solid var(--rule);border-radius:14px;padding:4px}
+.seg__opt{background:transparent;border:0;border-radius:11px;min-height:46px;padding:10px 8px;cursor:pointer;font-size:15px;font-weight:500;color:var(--muted);transition:background .16s,color .16s}
+.seg__opt[aria-checked="true"]{background:var(--rise);color:var(--paper);box-shadow:inset 0 0 0 1px var(--rule)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13.5px;font-weight:500;margin-bottom:6px}
+.input{width:100%;background:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:12px;font-family:var(--data)}
+.input::placeholder{color:#6B8168}
+.input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(157,190,143,.20)}
+.hint{margin:7px 0 0;font-size:12.5px;color:var(--muted)}
+.hint--warn{color:var(--owe)}
+.cover .btn{width:100%;min-height:50px}
+.fineprint{margin:14px 0 0;font-size:12px;color:#6F856B;line-height:1.5}
+.cover__foot{display:flex;gap:14px;margin-top:14px;border-top:1px solid var(--rule);padding-top:12px}
+.cover__foot span{font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6B8168}
+
+/* ============================================================
+   APP SHELL — fixed top bar, horizontal pager, page dots
+   ============================================================ */
+.app{position:fixed;inset:0;display:flex;flex-direction:column}
+.app[hidden]{display:none}
+.topbar{
+  flex:none;display:flex;align-items:center;gap:10px;
+  padding:calc(var(--sat) + 8px) 14px 8px;min-height:calc(var(--topbar) + var(--sat));
+  background:rgba(17,26,19,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule);
+}
+.screen-jump{
+  flex:1;min-width:0;appearance:none;-webkit-appearance:none;
+  background:var(--slab) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2393A98F' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  border:1px solid var(--rule);border-radius:11px;min-height:40px;padding:6px 32px 6px 12px;
+  font-family:var(--data);font-size:13px;letter-spacing:.04em;color:var(--paper);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.chip{font-family:var(--data);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.chip--live{color:var(--accent);border-color:rgba(157,190,143,.55)}
+
+/* ---------- the pager (signature interaction) ---------- */
+.pager{
+  flex:1;display:flex;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.pager::-webkit-scrollbar{display:none}
+.screen{
+  flex:0 0 100%;width:100%;scroll-snap-align:start;scroll-snap-stop:always;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:16px 16px calc(var(--dots) + var(--sab) + 18px);
+  overscroll-behavior-y:contain;
+}
+.screen > .eyebrow{margin-bottom:4px}
+.screen h1{font-family:var(--display);font-size:24px;font-weight:800;letter-spacing:-.03em;margin:0 0 14px}
+
+.dots{
+  position:absolute;left:0;right:0;bottom:0;z-index:20;
+  display:flex;gap:14px;align-items:center;justify-content:center;
+  padding:8px 0 calc(var(--sab) + 8px);
+  background:linear-gradient(to top,rgba(17,26,19,.94) 55%,transparent);
+  pointer-events:none;
+}
+.dots button{
+  pointer-events:auto;width:26px;height:26px;border:0;background:none;cursor:pointer;
+  display:grid;place-items:center;padding:0;
+}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--rule);transition:all .2s;display:block}
+.dots button[aria-current="true"] i{background:var(--accent);width:20px;border-radius:4px}
+
+/* ---------- shared blocks ---------- */
+.panel{background:var(--slab);border:1px solid var(--rule);border-radius:16px;padding:16px;margin-bottom:14px}
+.panel__head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.panel__head h2{font-family:var(--display);font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
+.panel__head .eyebrow{margin-left:auto;letter-spacing:.12em}
+
+/* Position screen */
+.beam__net{font-family:var(--display);font-weight:800;font-size:clamp(34px,11vw,46px);letter-spacing:-.03em;line-height:1;margin:2px 0 12px}
+.beam__bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--ink);border:1px solid var(--rule)}
+.beam__fill{transition:width .5s cubic-bezier(.22,1,.36,1)}
+.beam__fill--asset{background:linear-gradient(90deg,#4F9A6E,var(--asset))}
+.beam__fill--owe{background:linear-gradient(90deg,var(--owe),#B08145)}
+.beam__legend{display:flex;justify-content:space-between;margin-top:10px;gap:10px}
+.beam__legend b{font-family:var(--data);font-weight:600;font-size:15px}
+.asof{font-family:var(--data);font-size:11px;color:var(--muted);margin-top:8px}
+
+.col__head{display:flex;align-items:baseline;gap:8px;margin:18px 2px 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.col__head h2{font-family:var(--display);font-size:15px;font-weight:600;margin:0}
+.col__total{margin-left:auto;font-family:var(--data);font-size:14px;font-weight:600}
+.cards{display:grid;gap:10px}
+.card{background:var(--slab);border:1px solid var(--rule);border-radius:14px;padding:13px 14px;display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:center}
+.card--empty{opacity:.6;border-style:dashed}
+.card__alias{font-family:var(--data);font-size:10.5px;letter-spacing:.12em;color:var(--muted)}
+.card__name{font-weight:600;font-size:15px;margin:2px 0 0}
+.card__meta{font-family:var(--data);font-size:11px;color:var(--muted);grid-column:1/2}
+.card__bal{grid-row:1/3;grid-column:2/3;text-align:right;font-family:var(--data);font-size:18px;font-weight:600;background:none;border:0;padding:6px;border-radius:8px;width:11ch;direction:ltr}
+.card__bal:focus{background:var(--ink);box-shadow:inset 0 0 0 1px var(--accent);outline:none}
+.card__spark{grid-column:1/3;margin-top:7px;height:24px}
+.card__spark svg{display:block;width:100%;height:24px;overflow:visible}
+
+/* Intake */
+.drop{border:1.5px dashed var(--rule);border-radius:14px;padding:34px 18px;text-align:center;
+  background:repeating-linear-gradient(45deg,transparent 0 12px,rgba(49,70,47,.14) 12px 24px);cursor:pointer}
+.drop:active{border-color:var(--accent);background-color:rgba(157,190,143,.08)}
+.drop.is-over{border-color:var(--accent);background-color:rgba(157,190,143,.1)}
+.drop__title{font-family:var(--display);font-size:17px;font-weight:600;margin:0 0 6px}
+.drop__sub{margin:0;color:var(--muted);font-size:13.5px}
+.log{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+.log li{display:flex;gap:9px;align-items:baseline;font-family:var(--data);font-size:11.5px;color:var(--muted);border-left:2px solid var(--rule);padding-left:9px}
+.log li.ok{border-color:var(--asset)} .log li.warn{border-color:var(--owe)} .log li.err{border-color:var(--danger)}
+.log time{color:#6B8168}
+.schema{display:grid;gap:10px}
+.schema__id{display:flex;align-items:baseline;gap:10px}
+.schema__id .alias{font-family:var(--data);font-size:11px;letter-spacing:.12em;color:var(--muted)}
+.schema__id .name{font-weight:600;font-size:15px}
+.schema__id .badge{margin-left:auto;font-family:var(--data);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid var(--rule);border-radius:999px;padding:3px 9px;color:var(--muted)}
+.schema__fields{display:grid;gap:7px}
+.schema__fields .f{display:grid;grid-template-columns:96px 1fr;gap:10px;font-size:12.5px;align-items:baseline}
+.schema__fields .f b{font-family:var(--data);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper);font-weight:600}
+.schema__fields .f span{font-family:var(--data);font-size:11.5px;color:var(--muted);line-height:1.6}
+.rules{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
+.rules:empty{margin:0}
+.rules li{display:flex;align-items:center;gap:10px;background:var(--ink);border:1px solid var(--rule);
+  border-radius:12px;padding:9px 10px 9px 13px;font-size:13px}
+.rules .r-dot{width:9px;height:9px;border-radius:3px;flex:none}
+.rules .r-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rules .r-text b{font-family:var(--data);font-size:12px}
+.rules .r-count{font-family:var(--data);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.rules .r-del{background:none;border:1px solid var(--rule);border-radius:9px;width:34px;height:34px;
+  color:var(--muted);cursor:pointer;flex:none;font-size:13px}
+.rule-form{display:grid;gap:8px}
+.rule-form__row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.schema__note{font-size:12.5px;color:var(--muted);border-left:2px solid var(--accent);padding-left:10px;margin:2px 0 0}
+
+/* Charts */
+.chart{width:100%}
+.chart svg{width:100%;display:block}
+.chart text{font-family:var(--data);font-size:9.5px;fill:var(--muted)}
+.legend-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-family:var(--data);font-size:11px;color:var(--muted)}
+.swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+.bars{display:grid;gap:8px;margin-top:4px}
+.bars .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:baseline;font-size:13px}
+.bars .row .track{grid-column:1/3;height:8px;border-radius:4px;background:var(--ink);border:1px solid var(--rule);overflow:hidden}
+.bars .row .fill{height:100%;background:linear-gradient(90deg,var(--owe),#B08145);border-radius:4px}
+.bars .row .amt{font-family:var(--data);color:var(--owe)}
+.bignum{font-family:var(--data);font-weight:600;font-size:22px;letter-spacing:-.02em}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kv .panel{margin:0}
+.kv .eyebrow{margin-bottom:6px}
+.empty{padding:26px 14px;text-align:center;color:var(--muted);font-size:13.5px}
+
+/* Ledger — card rows, not a table */
+.filters{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px}
+.select,.search{background:var(--slab);border:1px solid var(--rule);border-radius:12px;min-height:44px;padding:8px 12px;width:100%}
+.search{font-family:var(--data);font-size:14px}
+.txn{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.txn li{background:var(--slab);border:1px solid var(--rule);border-radius:12px;padding:11px 13px;display:grid;grid-template-columns:1fr auto;gap:2px 10px}
+.txn .desc{font-weight:500;font-size:14.5px;grid-column:1/2}
+.txn .amt{grid-row:1/3;grid-column:2/3;align-self:center;font-family:var(--data);font-weight:600;font-size:15.5px;white-space:nowrap}
+.txn .meta{font-family:var(--data);font-size:11px;color:var(--muted)}
+.morebtn{width:100%;margin-top:10px}
+
+/* Categories — accordion dropdowns */
+.acc{border:1px solid var(--rule);border-radius:14px;background:var(--slab);margin-bottom:10px;overflow:hidden}
+.acc > summary{
+  list-style:none;display:flex;align-items:center;gap:12px;min-height:54px;padding:10px 14px;cursor:pointer;
+  font-weight:600;font-size:15px;
+}
+.acc > summary::-webkit-details-marker{display:none}
+.acc__dot{width:10px;height:10px;border-radius:3px;flex:none}
+.acc__count{margin-left:auto;font-family:var(--data);font-size:11px;color:var(--muted);letter-spacing:.08em}
+.acc__chev{color:var(--muted);transition:transform .2s;font-size:12px}
+.acc[open] .acc__chev{transform:rotate(90deg)}
+.acc__body{border-top:1px solid var(--rule);padding:14px}
+.acc__body .empty{padding:14px 6px}
+
+/* ============================================================
+   ARIA DRAWER — right side, full width on phone
+   ============================================================ */
+.scrim{position:fixed;inset:0;background:rgba(8,13,9,.6);z-index:40;opacity:0;transition:opacity .22s}
+.scrim[hidden]{display:none}
+.scrim.is-open{opacity:1}
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:100%;z-index:50;
+  background:var(--slab);display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.22,1,.36,1);
+  padding-top:var(--sat);box-shadow:var(--shadow);
+}
+.drawer.is-open{transform:translateX(0)}
+.drawer__head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.drawer__title{font-family:var(--display);font-weight:700;font-size:16px;margin:0;letter-spacing:-.02em}
+.drawer__title b{color:var(--accent);font-weight:800}
+.drawer__close{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:10px;width:38px;height:38px;cursor:pointer;color:var(--muted);font-size:15px}
+.thread{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;gap:11px}
+.msg{max-width:92%;padding:11px 13px;border-radius:14px;font-size:14.5px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
+.msg--aria{background:var(--rise);border:1px solid var(--rule);border-top-left-radius:4px;align-self:flex-start}
+.msg--you{background:rgba(157,190,143,.16);border:1px solid rgba(157,190,143,.45);border-top-right-radius:4px;align-self:flex-end}
+.prompts{display:flex;gap:6px;padding:0 14px 10px;overflow-x:auto;scrollbar-width:none}
+.prompts::-webkit-scrollbar{display:none}
+.prompts button{flex:none;background:var(--ink);border:1px solid var(--rule);color:var(--muted);border-radius:999px;min-height:36px;padding:6px 13px;font-size:13px;cursor:pointer}
+.composer{border-top:1px solid var(--rule);padding:10px 12px calc(var(--sab) + 10px);display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;resize:none;background:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:11px 12px;max-height:110px;min-height:46px}
+.composer textarea:focus{border-color:var(--accent);outline:none}
+.dots-typing span{display:inline-block;width:5px;height:5px;margin-right:3px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.dots-typing span:nth-child(2){animation-delay:.2s}.dots-typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+/* ============================================================
+   REVIEW SHEET — bottom sheet on phone
+   ============================================================ */
+.modal{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-end;background:rgba(8,13,9,.72)}
+.modal[hidden]{display:none}
+.sheet{
+  width:100%;max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch;
+  background:var(--slab);border:1px solid var(--rule);border-bottom:0;
+  border-radius:20px 20px 0 0;padding:18px 18px calc(var(--sab) + 18px);
+}
+.sheet__grab{width:38px;height:4px;border-radius:2px;background:var(--rule);margin:0 auto 14px}
+.sheet h2{font-family:var(--display);font-size:19px;margin:6px 0 4px;letter-spacing:-.02em}
+.sheet .file{font-family:var(--data);font-size:12px;color:var(--muted);word-break:break-all}
+.maprows{display:grid;grid-template-columns:1fr;gap:10px;margin:14px 0}
+.maprows label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.preview{border:1px solid var(--rule);border-radius:12px;overflow:hidden;margin-top:6px}
+.preview table{width:100%;border-collapse:collapse;font-size:12.5px}
+.preview td{padding:8px 10px;border-bottom:1px solid rgba(49,70,47,.5)}
+.preview .dt{font-family:var(--data);color:var(--muted);white-space:nowrap}
+.preview .amt{text-align:right;font-family:var(--data);white-space:nowrap}
+.sheet__actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.switch{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);margin-top:4px;min-height:44px}
+.switch input{width:18px;height:18px;accent-color:var(--accent)}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--sab) + 52px);transform:translate(-50%,16px);z-index:80;
+  background:var(--rise);border:1px solid var(--rule);border-radius:12px;padding:10px 16px;font-size:13.5px;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:var(--shadow);max-width:88vw;text-align:center}
+.toast.is-on{opacity:1;transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+  .pager{scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="tf-crest" viewBox="0 0 96 108">
+      <!-- shield -->
+      <path d="M48 4 L86 16 V56 C86 82 68 98 48 104 C28 98 10 82 10 56 V16 Z"
+            fill="var(--slab)" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M48 12 L78 21.5 V55 C78 76 63 89.5 48 95 C33 89.5 18 76 18 55 V21.5 Z"
+            fill="none" stroke="var(--rule)" stroke-width="1.6" stroke-linejoin="round"/>
+      <!-- ledger rules on the field -->
+      <g stroke="var(--rule)" stroke-width="1.1" opacity=".55">
+        <line x1="24" y1="40" x2="72" y2="40"/>
+        <line x1="24" y1="52" x2="72" y2="52"/>
+        <line x1="24" y1="64" x2="72" y2="64"/>
+        <line x1="24" y1="76" x2="66" y2="76"/>
+      </g>
+      <!-- monogram: T carries f on its shoulder -->
+      <g stroke="var(--paper)" stroke-linecap="round" fill="none">
+        <path d="M26 32 H54" stroke-width="7"/>
+        <path d="M40 32 V80" stroke-width="7"/>
+        <path d="M69 41 C69 32.5 61.5 30.5 57 34 M63 36.5 V78 M55 52 H71" stroke-width="5.6" stroke="var(--accent)"/>
+      </g>
+      <!-- base seam -->
+      <path d="M38 88 L48 92 L58 88" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============ SPLASH ============ -->
+<div class="splash" id="splash">
+  <div class="splash__ledger" aria-hidden="true"></div>
+  <section class="cover" aria-labelledby="coverTitle">
+    <svg class="crest crest--hero" role="img" aria-labelledby="coverTitle"><use href="#tf-crest"/></svg>
+    <h1 class="sr-only" id="coverTitle">Thompson Finances</h1>
+    <p class="eyebrow" style="text-align:center">Household balance sheet</p>
+    <p class="lede">The Thompson household ledger. Seven accounts, one number.</p>
+
+    <fieldset>
+      <legend id="modeLegend">Choose how to work</legend>
+      <div class="seg" role="radiogroup" aria-labelledby="modeLegend" id="modeGroup">
+        <button type="button" class="seg__opt" role="radio" aria-checked="true" tabindex="0" data-mode="guest">Guest</button>
+        <button type="button" class="seg__opt" role="radio" aria-checked="false" tabindex="-1" data-mode="api">API key</button>
+      </div>
+      <p class="hint" id="modeHint">Everything runs on this phone. ARIA answers from your numbers alone.</p>
+    </fieldset>
+
+    <div class="field" id="keyField" hidden>
+      <label for="apiKey">Anthropic API key</label>
+      <input class="input" id="apiKey" type="password" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="keyHint">
+      <p class="hint" id="keyHint">Held in memory for this session only — never saved, never written to storage.</p>
+    </div>
+
+    <button class="btn btn--primary" id="enterBtn" type="button">Open the ledger</button>
+    <p class="fineprint">Tap the intake screen to pull USAA, AMEX, PenFed and Wells Fargo exports (.xlsx, .xls, .csv, .pdf) from the Files app. Thompson Finances maps the columns to the right account and keeps the running position.</p>
+    <div class="cover__foot">
+      <span>7 accounts</span><span>7 screens</span><span>swipe to pan</span>
+    </div>
+  </section>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="app" id="app" hidden>
+  <header class="topbar">
+    <svg class="crest crest--bar" role="img" aria-label="Thompson Finances"><use href="#tf-crest"/></svg>
+    <label class="sr-only" for="screenJump">Go to screen</label>
+    <select class="screen-jump" id="screenJump"></select>
+    <span class="chip" id="modeChip">Guest</span>
+    <button class="btn btn--sm" id="ariaToggle" type="button" aria-expanded="false" aria-controls="ariaDrawer">ARIA</button>
+  </header>
+
+  <div class="pager" id="pager">
+
+    <!-- 1 · POSITION -->
+    <section class="screen" id="scr-position" aria-label="Position" data-title="Position" tabindex="-1">
+      <p class="eyebrow">Net position</p>
+      <div class="beam__net num" id="netWorth">$0</div>
+      <div class="beam__bar" role="img" aria-label="Assets versus liabilities in proportion">
+        <div class="beam__fill beam__fill--asset" id="beamAsset" style="width:50%"></div>
+        <div class="beam__fill beam__fill--owe" id="beamOwe" style="width:50%"></div>
+      </div>
+      <div class="beam__legend">
+        <div><span class="eyebrow tone-asset">Owned</span><br><b class="tone-asset num" id="totalAssets">$0</b></div>
+        <div style="text-align:right"><span class="eyebrow tone-owe">Owed</span><br><b class="tone-owe num" id="totalOwed">$0</b></div>
+      </div>
+      <p class="asof" id="asOf">no data yet</p>
+
+      <div class="col__head"><h2>Assets</h2><span class="col__total num tone-asset" id="colAssets">$0</span></div>
+      <div class="cards" id="assetCards"></div>
+      <div class="col__head"><h2>Liabilities</h2><span class="col__total num tone-owe" id="colOwed">$0</span></div>
+      <div class="cards" id="liabCards"></div>
+    </section>
+
+    <!-- 2 · INTAKE -->
+    <section class="screen" id="scr-intake" aria-label="Intake" data-title="Intake" tabindex="-1">
+      <p class="eyebrow">Statements in</p>
+      <h1>Intake</h1>
+      <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
+        <p class="drop__title">Tap to add statement exports</p>
+        <p class="drop__sub" id="dropHelp">.xlsx, .xls, .csv or .pdf from the Files app. Files are read on this phone only, account numbers are scrubbed before anything is stored, and you confirm the mapping before rows land.</p>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf" multiple class="sr-only">
+      <ul class="log" id="log" aria-live="polite" aria-label="Import log"></ul>
+      <div class="panel" style="margin-top:14px">
+        <div class="panel__head"><h2>Account schema</h2><p class="eyebrow" id="rowCount">0 rows</p></div>
+        <label class="sr-only" for="schemaJump">Choose an account to view its schema and route imports</label>
+        <select class="select" id="schemaJump" style="margin-bottom:12px"></select>
+        <div id="schemaDetail"></div>
+      </div>
+      <button class="btn btn--ghost morebtn" id="sampleBtn" type="button">Load sample ledger</button>
+      <button class="btn btn--ghost morebtn" id="clearBtn" type="button">Clear all data</button>
+    </section>
+
+    <!-- 3 · FLOW -->
+    <section class="screen" id="scr-flow" aria-label="Flow" data-title="Flow" tabindex="-1">
+      <p class="eyebrow">Money in, money out</p>
+      <h1>Flow</h1>
+      <div class="panel">
+        <div class="panel__head"><h2>By month</h2><p class="eyebrow" id="flowNote"></p></div>
+        <div class="chart" id="flowChart"></div>
+        <div class="legend-row">
+          <span><i class="swatch" style="background:var(--asset)"></i>In</span>
+          <span><i class="swatch" style="background:var(--owe)"></i>Out</span>
+        </div>
+      </div>
+      <div class="kv">
+        <div class="panel"><p class="eyebrow">Avg monthly in</p><div class="bignum tone-asset" id="avgIn">—</div></div>
+        <div class="panel"><p class="eyebrow">Avg monthly out</p><div class="bignum tone-owe" id="avgOut">—</div></div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <div class="panel__head"><h2>Biggest outflows</h2></div>
+        <div class="bars" id="topSpend"></div>
+      </div>
+    </section>
+
+    <!-- 4 · PROJECTIONS -->
+    <section class="screen" id="scr-project" aria-label="Projections" data-title="Projections" tabindex="-1">
+      <p class="eyebrow">If the pattern holds</p>
+      <h1>Projections</h1>
+      <div class="panel">
+        <div class="panel__head"><h2>Net position, 12 months out</h2></div>
+        <div class="chart" id="projChart"></div>
+        <div class="legend-row">
+          <span><i class="swatch" style="background:var(--accent)"></i>On file</span>
+          <span><i class="swatch" style="background:transparent;border:1px dashed var(--accent)"></i>Projected</span>
+          <span id="projNote"></span>
+        </div>
+      </div>
+      <div class="kv">
+        <div class="panel"><p class="eyebrow">Avg net / month</p><div class="bignum" id="avgNet">—</div></div>
+        <div class="panel"><p class="eyebrow">In 12 months</p><div class="bignum" id="proj12">—</div></div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <div class="panel__head"><h2>Debt runway</h2><p class="eyebrow">at current pace</p></div>
+        <div class="bars" id="payoff"></div>
+      </div>
+      <p class="hint" style="padding:0 4px">Straight-line reading of the months on file — a sketch of direction, not advice.</p>
+    </section>
+
+
+    <!-- 5 · THE FAMILY -->
+    <section class="screen" id="scr-family" aria-label="The Family" data-title="The Family" tabindex="-1">
+      <p class="eyebrow">Who spent what</p>
+      <h1>The Family</h1>
+      <label class="sr-only" for="personJump">Show spending for</label>
+      <select class="select" id="personJump" style="margin-bottom:14px"></select>
+
+      <div class="kv">
+        <div class="panel"><p class="eyebrow">Outflow, all months</p><div class="bignum tone-owe" id="famTotal">—</div></div>
+        <div class="panel"><p class="eyebrow">Share of household</p><div class="bignum" id="famShare">—</div></div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <div class="panel__head"><h2>By month</h2><p class="eyebrow" id="famNote"></p></div>
+        <div class="chart" id="famChart"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2>By account</h2></div>
+        <div class="bars" id="famAccounts"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2>By category</h2></div>
+        <div class="bars" id="famCats"></div>
+      </div>
+      <div class="panel">
+        <div class="panel__head"><h2>Ownership rules</h2><p class="eyebrow" id="ruleNote">first match wins</p></div>
+        <ul class="rules" id="ruleList"></ul>
+        <div class="rule-form">
+          <input class="search" id="ruleQ" type="text" placeholder="Description contains… (e.g. NETFLIX)"
+                 aria-label="Description keyword" autocapitalize="characters">
+          <div class="rule-form__row">
+            <select class="select" id="ruleAcct" aria-label="Limit to account"></select>
+            <select class="select" id="rulePerson" aria-label="Belongs to"></select>
+          </div>
+          <button class="btn" id="ruleAdd" type="button">Add rule</button>
+        </div>
+      </div>
+      <p class="hint" style="padding:0 4px" id="famUnassigned"></p>
+    </section>
+
+    <!-- 6 · LEDGER -->
+    <section class="screen" id="scr-ledger" aria-label="Ledger" data-title="Ledger" tabindex="-1">
+      <p class="eyebrow">Every line</p>
+      <h1>Ledger <span class="eyebrow" id="shown" style="font-size:11px"></span></h1>
+      <div class="filters">
+        <select class="select" id="acctFilter" aria-label="Filter by account"><option value="">All accounts</option></select>
+        <input class="search" id="search" type="search" placeholder="Search description" aria-label="Search descriptions">
+      </div>
+      <ul class="txn" id="txnList"></ul>
+      <div class="empty" id="tableEmpty">Nothing imported yet. Swipe to Intake and add a statement, or load the sample ledger.</div>
+      <button class="btn morebtn" id="moreBtn" type="button" hidden>Show more</button>
+    </section>
+
+    <!-- 7 · CATEGORIES -->
+    <section class="screen" id="scr-categories" aria-label="Categories" data-title="Categories" tabindex="-1">
+      <p class="eyebrow">Sorting the outflows</p>
+      <h1>Categories</h1>
+      <p class="hint" style="margin:-6px 4px 14px">Six groups, ready to take rules and budgets. Open any one — they're empty for now; we'll fill them together next.</p>
+      <div id="catList"></div>
+    </section>
+
+  </div>
+
+  <nav class="dots" id="dots" aria-label="Screens"></nav>
+</div>
+
+<!-- ============ ARIA DRAWER ============ -->
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="ariaDrawer" role="complementary" aria-labelledby="ariaTitle" aria-hidden="true" inert>
+  <div class="drawer__head">
+    <h2 class="drawer__title" id="ariaTitle"><b>ARIA</b> · ledger assistant</h2>
+    <span class="chip" id="ariaChip">Local</span>
+    <button class="drawer__close" id="ariaClose" type="button" aria-label="Close ARIA">✕</button>
+  </div>
+  <div class="thread" id="thread" role="log" aria-live="polite" aria-relevant="additions"></div>
+  <div class="prompts" id="prompts"></div>
+  <form class="composer" id="composer">
+    <label class="sr-only" for="ask">Ask ARIA about your ledger</label>
+    <textarea id="ask" rows="1" placeholder="Ask about balances, months, payoff…"></textarea>
+    <button class="btn btn--primary btn--sm" type="submit" id="sendBtn" style="min-height:46px">Send</button>
+  </form>
+</aside>
+
+<!-- ============ REVIEW SHEET ============ -->
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <p class="eyebrow">Confirm import</p>
+    <h2 id="modalTitle">Check the mapping</h2>
+    <p class="file" id="modalFile"></p>
+    <div class="maprows">
+      <div><label for="mapAccount">Account</label><select class="select" id="mapAccount"></select></div>
+      <div><label for="mapDate">Date column</label><select class="select" id="mapDate"></select></div>
+      <div><label for="mapDesc">Description column</label><select class="select" id="mapDesc"></select></div>
+      <div><label for="mapAmount">Amount column</label><select class="select" id="mapAmount"></select></div>
+      <div><label for="mapCategory">Category column</label><select class="select" id="mapCategory"></select></div>
+      <div><label for="mapBalance">Balance column</label><select class="select" id="mapBalance"></select></div>
+    </div>
+    <label class="switch"><input type="checkbox" id="mapFlip"> Charges arrive as positive numbers — flip the sign</label>
+    <p class="eyebrow" style="margin-top:14px">Preview</p>
+    <div class="preview"><table><tbody id="previewBody"></tbody></table></div>
+    <div class="sheet__actions">
+      <button class="btn" id="modalCancel" type="button">Skip file</button>
+      <button class="btn btn--primary" id="modalConfirm" type="button">Import rows</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   1. ACCOUNT REGISTRY
+   Each account owns: which side of the balance sheet it sits on,
+   how its export is recognised, and how its amounts are signed.
+   Sign convention across the whole app: negative = money leaves
+   your pocket, positive = money arrives or debt is paid down.
+   ============================================================ */
+const ACCOUNTS = [
+  { id:'USAAC', name:'USAA Checking', inst:'USAA', side:'asset', kind:'Checking',
+    schema:'bank', flip:false,
+    match:[{re:/usaa/i,w:3},{re:/check|chk|usaac/i,w:4}] },
+
+  { id:'USAAS', name:'USAA Savings', inst:'USAA', side:'asset', kind:'Savings',
+    schema:'bank', flip:false,
+    match:[{re:/usaa/i,w:3},{re:/sav|usaas/i,w:4}] },
+
+  { id:'AMEX', name:'American Express', inst:'AMEX', side:'liability', kind:'Credit card',
+    schema:'card', flip:true,
+    match:[{re:/amex|american.?express/i,w:6}] },
+
+  { id:'PenFed', name:'PenFed Card', inst:'PenFed', side:'liability', kind:'Credit card',
+    schema:'card', flip:true,
+    match:[{re:/pen ?fed/i,w:4},{re:/card|credit|\bcc\b/i,w:3}] },
+
+  { id:'PenFedCL', name:'PenFed Car Loan', inst:'PenFed', side:'liability', kind:'Auto loan',
+    schema:'loan', flip:false,
+    match:[{re:/pen ?fed/i,w:4},{re:/penfedcl/i,w:6},{re:/\bcar\b|\bauto\b|\bloan\b|\bcl\b|vehicle/i,w:5}] },
+
+  { id:'WellsFargo', name:'Wells Fargo Mortgage', inst:'Wells Fargo', side:'liability', kind:'Mortgage',
+    schema:'loan', flip:false,
+    match:[{re:/wells|\bwf\b/i,w:4},{re:/mortgage|mtg|home.?loan/i,w:4}] },
+
+  { id:'WellsFargoHELOC', name:'Wells Fargo HELOC', inst:'Wells Fargo', side:'liability', kind:'Home equity line',
+    schema:'loan', flip:false,
+    match:[{re:/wells|\bwf\b/i,w:4},{re:/heloc|equity|\bline\b/i,w:6}] },
+];
+const ACCT = Object.fromEntries(ACCOUNTS.map(a => [a.id, a]));
+
+/* ============================================================
+   2. SCHEMAS
+   Column aliases seen in real exports from these institutions.
+   A schema is a set of preferred header names per field, plus
+   a couple of header fingerprints used to identify the source.
+   ============================================================ */
+const FIELDS = {
+  date:     ['date','transaction date','trans date','post date','posted date','posting date','effective date','payment date','activity date','date posted'],
+  desc:     ['description','original description','payee','merchant','memo','transaction description','details','extended details','narrative','name','reference'],
+  amount:   ['amount','transaction amount','amount usd','payment amount','total amount','value','total'],
+  debit:    ['debit','withdrawal','withdrawals','charges','money out','paid out'],
+  credit:   ['credit','deposit','deposits','money in','paid in'],
+  category: ['category','type','transaction type','classification','sub category','subcategory','merchant category'],
+  balance:  ['balance','running balance','ending balance','current balance','principal balance','remaining balance','balance after','unpaid principal'],
+  principal:['principal','principal paid','principal portion','principal amount'],
+  interest: ['interest','interest paid','interest portion','interest amount'],
+  escrow:   ['escrow','escrow paid','escrow portion','escrow amount'],
+};
+
+const SCHEMAS = {
+  bank: { label:'Bank export', use:['date','desc','amount','debit','credit','category','balance'],
+          fingerprint:[/original description/i,/running balance/i],
+          example:{ headers:['Date','Description','Amount','Balance'],
+                    row:['07/12/2026','PUBLIX #1204','-142.18','8,412.55'] } },
+  card: { label:'Card export',  use:['date','desc','amount','debit','credit','category'],
+          fingerprint:[/card member/i,/extended details/i,/appears on your statement/i],
+          example:{ headers:['Date','Description','Amount','Category'],
+                    row:['07/09/2026','DELTA AIR LINES','412.00','Travel'] } },
+  loan: { label:'Loan export',  use:['date','desc','amount','principal','interest','escrow','balance'],
+          fingerprint:[/principal/i,/escrow/i,/unpaid principal/i],
+          example:{ headers:['Date','Description','Principal','Interest','Balance'],
+                    row:['07/01/2026','PAYMENT','830.00','1,310.00','312,500.00'] } },
+};
+
+/* ============================================================
+   3. STATE
+   ============================================================ */
+const state = {
+  mode:'guest',          // 'guest' | 'api'
+  apiKey:'',             // memory only, never persisted
+  rows:[],               // normalised transactions
+  balances:{},           // acctId -> number (assets positive, debts positive)
+  imports:[],            // {file, acct, count, at}
+  sort:{key:'date', dir:-1},
+  filter:{acct:'', q:''},
+  person:'',            // '' = All
+  routeAcct:'',          // '' = auto-detect; else force imports to this account
+  rules:[],              // ownership rules: {q, acct, person} — first match wins
+  thread:[],             // {role, content}
+};
+
+/* ============================================================
+   4. HELPERS
+   ============================================================ */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+const usd0 = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+const usd2 = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+const money = n => usd2.format(n || 0);
+const moneyShort = n => Math.abs(n) >= 10000 ? usd0.format(n) : usd2.format(n || 0);
+const fmtDate = d => d instanceof Date && !isNaN(d)
+  ? d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'2-digit'}) : '—';
+const monthKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+const monthLabel = k => {
+  const [y,m] = k.split('-');
+  return new Date(+y, +m-1, 1).toLocaleDateString('en-US',{month:'short'}) + (m === '01' ? ` ’${y.slice(2)}` : '');
+};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+
+/** Parse anything a bank might call a number. */
+function toNumber(v){
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  let s = String(v).trim();
+  if (!s) return null;
+  let neg = /^\(.*\)$/.test(s) || /(^|\s)(dr|debit)$/i.test(s);
+  s = s.replace(/[()]/g,'').replace(/\b(cr|dr|usd)\b/gi,'').replace(/[$,\s]/g,'');
+  if (s.startsWith('-')) { neg = true; s = s.slice(1); }
+  if (s.endsWith('-'))   { neg = true; s = s.slice(0,-1); }
+  const n = parseFloat(s);
+  if (!isFinite(n)) return null;
+  return neg ? -Math.abs(n) : n;
+}
+
+/** Parse anything a bank might call a date, including Excel serials. */
+function toDate(v){
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  if (typeof v === 'number' && v > 20000 && v < 60000){
+    const ms = Math.round((v - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    return isNaN(d) ? null : new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+  const mdy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (mdy){
+    let [,a,b,y] = mdy;
+    y = y.length === 2 ? 2000 + (+y) : +y;
+    return new Date(y, (+a)-1, +b);
+  }
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(+iso[1], (+iso[2])-1, +iso[3]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+
+
+/* ============================================================
+   ACCOUNT-NUMBER SCRUB
+   Runs on every row at import time, before anything is stored,
+   charted, or summarized. Whatever looks like an account, card,
+   or member number — full, partial, or "ending in 1234" — is
+   replaced with ▓▓▓▓. Privacy-first: an occasional phone number
+   or reference code is an acceptable casualty.
+   ============================================================ */
+const REDACTIONS = [
+  /* "account/acct/card/loan/member (number|no|#): 12345678" — labeled numbers, any length */
+  [/\b(account|acct|card|loan|member|customer)\s*(number|num|no\.?|#)?\s*[:#]?\s*[x*•·]{0,12}[- ]?\d[\d -]{1,22}\d\b/gi, '$1 ▓▓▓▓'],
+  /* masked prefixes carrying the tail digits: ****1234, xxxx-1234, ••••1234, x1234 */
+  [/(^|[^\w])[x*•·▪]{1,12}[- ]?\d{2,6}\b/gi, '$1▓▓▓▓'],
+  /* "ending in 1234" / "ends 1234" / "last 4: 1234" */
+  [/\b(ending|ends|last\s*(4|four))\s*(in|with|digits?)?\s*[:#]?\s*\d{2,6}\b/gi, '$1 ▓▓▓▓'],
+  /* bare long digit runs: card PANs and account numbers (8+ digits, with or without spaces/dashes) */
+  [/\b\d(?:[ -]?\d){7,18}\b/g, '▓▓▓▓'],
+];
+let scrubTally = 0;
+function redactAccountNumbers(text){
+  let out = String(text ?? '');
+  REDACTIONS.forEach(([re, sub]) => {
+    out = out.replace(re, m => { scrubTally++; return typeof sub === 'string' ? m.replace(re, sub) : sub; });
+  });
+  return out.replace(/\s{2,}/g,' ').trim();
+}
+
+/* ============================================================
+   PDF INTAKE
+   Statement PDFs carry no spreadsheet grid, so Reckon rebuilds
+   one: pdf.js extracts positioned text, items are grouped into
+   visual lines, and each line that reads like a transaction —
+   a date up front, money at the end — becomes a row. The result
+   flows into the same confirm-the-mapping sheet as a workbook.
+   pdf.js loads lazily on the first PDF so startup stays light.
+   ============================================================ */
+const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let pdfjsReady = null;
+function loadPdfjs(){
+  if (pdfjsReady) return pdfjsReady;
+  pdfjsReady = new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = PDFJS_URL;
+    el.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      resolve(window.pdfjsLib);
+    };
+    el.onerror = () => { pdfjsReady = null; reject(new Error('needs the PDF reader, which failed to load — check the connection and retry')); };
+    document.head.appendChild(el);
+  });
+  return pdfjsReady;
+}
+
+/** Group a page's positioned text items into reading-order lines. */
+function pdfPageLines(content){
+  const rows = [];
+  content.items.forEach(it => {
+    if (!it.str || !it.str.trim()) return;
+    const y = it.transform[5], x = it.transform[4];
+    let row = rows.find(r => Math.abs(r.y - y) < 3.5);
+    if (!row){ row = {y, items:[]}; rows.push(row); }
+    row.items.push({x, str: it.str});
+  });
+  return rows.sort((a,b) => b.y - a.y).map(r =>
+    r.items.sort((a,b) => a.x - b.x).map(i => i.str).join(' ').replace(/\s+/g,' ').trim());
+}
+
+const MONEY_RE = /\(?-?\$?\d{1,3}(?:,\d{3})*\.\d{2}\)?-?(?:\s?(?:CR|DR))?/gi;
+const DATE_HEAD_RE = /^(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? \d{1,2},? ?\d{0,4})\b/i;
+
+/** One text line -> [date, description, amount, balance?] or null. */
+function parsePdfLine(line, fallbackYear){
+  const dm = line.match(DATE_HEAD_RE);
+  if (!dm) return null;
+  let dateStr = dm[1];
+  const rest = line.slice(dm[0].length).trim();
+  const monies = rest.match(MONEY_RE);
+  if (!monies || !monies.length) return null;
+  /* last money token is the rightmost column; two tokens usually mean amount + running balance */
+  const amount = monies.length >= 2 ? monies[monies.length-2] : monies[monies.length-1];
+  const balance = monies.length >= 2 ? monies[monies.length-1] : '';
+  /* description = text before the first money token */
+  const firstMoneyAt = rest.indexOf(monies[0]);
+  const desc = rest.slice(0, firstMoneyAt).trim().replace(/\s{2,}/g,' ');
+  if (!desc || desc.length < 2) return null;
+  /* MM/DD with no year: borrow the statement's year */
+  if (/^\d{1,2}\/\d{1,2}$/.test(dateStr)) dateStr += '/' + fallbackYear;
+  const d = toDate(dateStr);
+  if (!d) return null;
+  return [dateStr, desc, amount, balance];
+}
+
+async function parsePdfFile(file){
+  const lib = await loadPdfjs();
+  const buf = await file.arrayBuffer();
+  const doc = await lib.getDocument({data: buf}).promise;
+  const lines = [];
+  const pageLimit = Math.min(doc.numPages, 30);
+  for (let i = 1; i <= pageLimit; i++){
+    const page = await doc.getPage(i);
+    lines.push(...pdfPageLines(await page.getTextContent()));
+  }
+  if (!lines.length) throw new Error('has no text layer — a scanned statement needs OCR before import');
+  /* the statement's year: first plausible one in the document text */
+  const yearHit = lines.join(' ').match(/\b(20[12]\d)\b/);
+  const fallbackYear = yearHit ? yearHit[1] : String(new Date().getFullYear());
+  const body = [];
+  lines.forEach(line => {
+    const row = parsePdfLine(line, fallbackYear);
+    if (row) body.push(row);
+  });
+  if (!body.length) throw new Error('has a text layer but no lines that read like transactions (date … amount)');
+  const headers = ['Date','Description','Amount','Balance'];
+  const guess = detectAccount(file.name + ' ' + lines.slice(0, 12).join(' '), headers);
+  const acct = guess.acct || ACCOUNTS[0];
+  return {
+    file: file.name,
+    sheet: `PDF · ${doc.numPages} page${doc.numPages===1?'':'s'}`,
+    headers, body,
+    acctId: acct.id,
+    confident: guess.confident,
+    map: { date:0, desc:1, amount:2, category:-1, balance:3,
+           debit:-1, credit:-1, principal:-1, interest:-1, escrow:-1 },
+    flip: acct.flip,
+  };
+}
+
+/* ============================================================
+   5. INTAKE — read workbook, find the header row, map columns
+   ============================================================ */
+function readWorkbook(file){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('could not be read'));
+    fr.onload = e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:true});
+        resolve(wb);
+      } catch(err){ reject(new Error('is not a workbook Thompson Finances can open')); }
+    };
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+/** Pick the sheet with the most rows. */
+function bestSheet(wb){
+  let best = null, bestLen = -1;
+  wb.SheetNames.forEach(name => {
+    const grid = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, blankrows:false, defval:''});
+    if (grid.length > bestLen){ bestLen = grid.length; best = {name, grid}; }
+  });
+  return best;
+}
+
+/** Statement exports often carry preamble junk. Find the real header row. */
+function findHeaderRow(grid){
+  const known = new Set(Object.values(FIELDS).flat());
+  let bestIdx = 0, bestScore = -1;
+  const limit = Math.min(grid.length, 25);
+  for (let i = 0; i < limit; i++){
+    const row = grid[i] || [];
+    const cells = row.map(norm).filter(Boolean);
+    if (cells.length < 2) continue;
+    let score = cells.length * 0.35;
+    cells.forEach(c => { if (known.has(c)) score += 3; else if ([...known].some(k => c.includes(k))) score += 1; });
+    if (row.some(c => c instanceof Date)) score -= 4;   // a data row, not a header
+    if (score > bestScore){ bestScore = score; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+/** Match a header list against a field's aliases; return the index or -1. */
+function findColumn(headers, field){
+  const aliases = FIELDS[field] || [];
+  const n = headers.map(norm);
+  for (const a of aliases){ const i = n.indexOf(a); if (i > -1) return i; }
+  for (const a of aliases){ const i = n.findIndex(h => h && h.includes(a)); if (i > -1) return i; }
+  return -1;
+}
+
+/** Score every account against filename + headers; return the best guess. */
+function detectAccount(filename, headers){
+  // underscores and dashes are word characters, so flatten them before matching
+  const hay = (filename + ' ' + headers.join(' ')).replace(/[_\-.]+/g,' ');
+  let best = null, bestScore = 0;
+  ACCOUNTS.forEach(a => {
+    let score = a.match.reduce((s, m) => s + (m.re.test(hay) ? m.w : 0), 0);
+    const fp = SCHEMAS[a.schema].fingerprint || [];
+    if (score > 0) score += fp.reduce((s, re) => s + (re.test(headers.join(' ')) ? 1.5 : 0), 0);
+    if (score > bestScore){ bestScore = score; best = a; }
+  });
+  return { acct: best, confident: bestScore >= 5 };
+}
+
+/** Build the draft mapping a file will be imported with. */
+function planImport(file, wb){
+  const sheet = bestSheet(wb);
+  if (!sheet || !sheet.grid.length) throw new Error('has no rows');
+  const hIdx = findHeaderRow(sheet.grid);
+  const headers = (sheet.grid[hIdx] || []).map(h => String(h ?? '').trim());
+  const body = sheet.grid.slice(hIdx + 1).filter(r => r.some(c => c !== '' && c != null));
+  const guess = detectAccount(file.name, headers);
+  const acct = guess.acct || ACCOUNTS[0];
+  return {
+    file: file.name,
+    sheet: sheet.name,
+    headers, body,
+    acctId: acct.id,
+    confident: guess.confident,
+    map: {
+      date:     findColumn(headers,'date'),
+      desc:     findColumn(headers,'desc'),
+      amount:   findColumn(headers,'amount'),
+      debit:    findColumn(headers,'debit'),
+      credit:   findColumn(headers,'credit'),
+      category: findColumn(headers,'category'),
+      balance:  findColumn(headers,'balance'),
+      principal:findColumn(headers,'principal'),
+      interest: findColumn(headers,'interest'),
+      escrow:   findColumn(headers,'escrow'),
+    },
+    flip: acct.flip,
+  };
+}
+
+/** Turn a planned import into normalised rows. */
+function normalize(plan){
+  const acct = ACCT[plan.acctId];
+  const out = [];
+  let lastBalance = null;
+  plan.body.forEach((r, i) => {
+    const get = k => plan.map[k] > -1 ? r[plan.map[k]] : null;
+    const date = toDate(get('date'));
+    if (!date) return;                                  // no date, no row
+
+    let amount = toNumber(get('amount'));
+    if (amount == null){                                // debit/credit pair
+      const d = toNumber(get('debit')), c = toNumber(get('credit'));
+      if (d != null || c != null) amount = (c || 0) - Math.abs(d || 0);
+    }
+    if (amount == null) return;
+    if (plan.flip) amount = -amount;
+
+    const bal = toNumber(get('balance'));
+    if (bal != null) lastBalance = { date, value: bal };
+
+    out.push({
+      id: `${plan.acctId}-${date.getTime()}-${i}-${Math.round(amount*100)}`,
+      acct: plan.acctId,
+      side: acct.side,
+      date, amount,
+      desc: redactAccountNumbers(String(get('desc') ?? '').replace(/\s+/g,' ').trim()) || '—',
+      person: null,
+      category: String(get('category') ?? '').trim(),
+      principal: toNumber(get('principal')),
+      interest: toNumber(get('interest')),
+      balance: bal,
+    });
+  });
+  return { rows: out, lastBalance };
+}
+
+/** Drop rows we already hold, so re-importing an overlapping export is safe. */
+function mergeRows(incoming){
+  const seen = new Set(state.rows.map(r => r.id));
+  const fresh = incoming.filter(r => !seen.has(r.id));
+  state.rows = state.rows.concat(fresh).sort((a,b) => b.date - a.date);
+  return fresh.length;
+}
+
+/* ============================================================
+   6. DERIVED FIGURES
+   ============================================================ */
+function rowsFor(id){ return state.rows.filter(r => r.acct === id); }
+
+function balanceOf(id){
+  const b = state.balances[id];
+  if (b && typeof b.value === 'number') return b;
+  const rs = rowsFor(id);
+  if (!rs.length) return { value:0, source:'empty' };
+  const sum = rs.reduce((s,r) => s + r.amount, 0);
+  const acct = ACCT[id];
+  return { value: acct.side === 'liability' ? Math.abs(Math.min(sum,0)) : sum, source:'derived' };
+}
+
+function totals(){
+  let assets = 0, owed = 0;
+  ACCOUNTS.forEach(a => {
+    const v = balanceOf(a.id).value;
+    if (a.side === 'asset') assets += v; else owed += Math.abs(v);
+  });
+  return { assets, owed, net: assets - owed };
+}
+
+function byMonth(){
+  const m = new Map();
+  state.rows.forEach(r => {
+    const k = monthKey(r.date);
+    if (!m.has(k)) m.set(k, {k, in:0, out:0});
+    const b = m.get(k);
+    if (r.amount >= 0) b.in += r.amount; else b.out += -r.amount;
+  });
+  return Array.from(m.values()).sort((a,b) => a.k.localeCompare(b.k)).slice(-12);
+}
+
+function topSpend(limit = 6, acctId = ''){
+  const m = new Map();
+  state.rows.filter(r => r.amount < 0 && (!acctId || r.acct === acctId)).forEach(r => {
+    const key = (r.category || r.desc.split(/[\s*#]/).slice(0,3).join(' ')).toUpperCase();
+    m.set(key, (m.get(key) || 0) + -r.amount);
+  });
+  return Array.from(m, ([label, total]) => ({label, total})).sort((a,b) => b.total - a.total).slice(0, limit);
+}
+
+
+/* the household */
+const FAMILY = [
+  { id:'Ryan',    color:'#9DBE8F' },
+  { id:'Vanessa', color:'#CFA05F' },
+  { id:'Vivian',  color:'#B98FB6' },
+  { id:'Cooper',  color:'#7FA6B8' },
+];
+const PERSON = Object.fromEntries(FAMILY.map(f => [f.id, f]));
+
+/* categories: six empty groups, ready for rules and budgets later */
+const CATEGORIES = [
+  { id:'housing',   name:'Housing',        color:'#9DBE8F', note:'Mortgage, HELOC, repairs, insurance' },
+  { id:'transport', name:'Transportation', color:'#4FC3B0', note:'Car loan, fuel, maintenance, tolls' },
+  { id:'food',      name:'Food',           color:'#E0A458', note:'Groceries and dining' },
+  { id:'utilities', name:'Utilities',      color:'#7FA6B8', note:'Power, water, phone, internet' },
+  { id:'subs',      name:'Subscriptions',  color:'#B98FB6', note:'Streaming, memberships, software' },
+  { id:'income',    name:'Income',         color:'#9BC46B', note:'Payroll, interest, refunds' },
+];
+
+const STORE_KEY = 'thompson:ledger:v1';
+
+/* Storage adapter — works in three homes:
+   1. Claude artifact preview: window.storage (durable there)
+   2. Deployed site (GitHub Pages / Netlify / …): localStorage
+   3. Anywhere neither exists: session memory, silently */
+const memStore = {};
+async function storeSet(key, value){
+  if (window.storage){
+    try { await window.storage.set(key, value, false); return; } catch(_){}
+  }
+  try { localStorage.setItem(key, value); return; } catch(_){}
+  memStore[key] = value;
+}
+async function storeGet(key){
+  if (window.storage){
+    try { const r = await window.storage.get(key, false); if (r && r.value != null) return r.value; } catch(_){}
+  }
+  try { const v = localStorage.getItem(key); if (v != null) return v; } catch(_){}
+  return memStore[key] ?? null;
+}
+
+async function save(){
+  try {
+    await storeSet(STORE_KEY, JSON.stringify({
+      rows: state.rows.map(r => ({...r, date: r.date.getTime()})),
+      balances: state.balances,
+      imports: state.imports,
+      rules: state.rules,
+    }));
+  } catch(_){ /* storage is a bonus, not a requirement */ }
+}
+async function load(){
+  try {
+    const value = await storeGet(STORE_KEY);
+    if (!value) return false;
+    const data = JSON.parse(value);
+    state.rows = (data.rows || []).map(r => ({...r, date: new Date(r.date), desc: redactAccountNumbers(r.desc)})).sort((a,b) => b.date - a.date);
+    state.balances = data.balances || {};
+    state.imports = data.imports || [];
+    state.rules = data.rules || [];
+    return state.rows.length > 0;
+  } catch(_){ return false; }
+}
+
+function sampleLedger(){
+  const merchants = {
+    USAAC: [['PUBLIX #1204','Groceries',-142],['SHELL OIL','Fuel',-58],['DUKE ENERGY','Utilities',-186],
+            ['PAYROLL DEPOSIT','Income',4180],['WELLS FARGO MTG PMT','Mortgage',-2240],['CITY WATER','Utilities',-74],
+            ['TRANSFER TO SAVINGS','Transfer',-600],['AMEX EPAYMENT','Card payment',-940]],
+    USAAS: [['TRANSFER FROM CHECKING','Transfer',600],['INTEREST PAID','Interest',18]],
+    AMEX:  [['AMAZON MKTPLACE','Shopping',-96],['DELTA AIR LINES','Travel',-412],['WHOLE FOODS','Groceries',-118],
+            ['NETFLIX','Subscriptions',-23],['PAYMENT RECEIVED','Payment',940],['CHIPOTLE','Dining',-31]],
+    PenFed:[['HOME DEPOT','Home',-208],['COSTCO WHSE','Groceries',-176],['PAYMENT THANK YOU','Payment',420],['SHELL OIL','Fuel',-62]],
+    PenFedCL:[['AUTO LOAN PAYMENT','Loan',486]],
+    WellsFargo:[['MORTGAGE PAYMENT','Loan',2140],['INTEREST CHARGED','Interest',-1310]],
+    WellsFargoHELOC:[['HELOC DRAW','Draw',-3500],['HELOC PAYMENT','Loan',310]],
+  };
+  const WHO = {
+    'PAYROLL DEPOSIT':'Ryan', 'WELLS FARGO MTG PMT':'Ryan', 'MORTGAGE PAYMENT':'Ryan',
+    'INTEREST CHARGED':'Ryan', 'AUTO LOAN PAYMENT':'Ryan', 'SHELL OIL':'Ryan',
+    'DUKE ENERGY':'Vanessa', 'CITY WATER':'Vanessa', 'PUBLIX #1204':'Vanessa',
+    'WHOLE FOODS':'Vanessa', 'COSTCO WHSE':'Vanessa', 'TRANSFER TO SAVINGS':'Vanessa',
+    'TRANSFER FROM CHECKING':'Vanessa', 'AMEX EPAYMENT':'Ryan', 'PAYMENT RECEIVED':'Ryan',
+    'PAYMENT THANK YOU':'Vanessa', 'INTEREST PAID':'Vanessa',
+    'DELTA AIR LINES':'Vivian', 'NETFLIX':'Vivian', 'CHIPOTLE':'Vivian',
+    'AMAZON MKTPLACE':'Cooper', 'HOME DEPOT':'Cooper',
+    'HELOC DRAW':'Ryan', 'HELOC PAYMENT':'Ryan',
+  };
+  const rows = [];
+  const today = new Date();
+  for (let m = 7; m >= 0; m--){
+    const base = new Date(today.getFullYear(), today.getMonth() - m, 1);
+    Object.entries(merchants).forEach(([acct, list]) => {
+      list.forEach(([desc, cat, amt], i) => {
+        if (acct === 'WellsFargoHELOC' && desc === 'HELOC DRAW' && m !== 5) return;
+        const day = 2 + ((i * 5 + m * 3) % 25);
+        const jitter = cat === 'Income' || cat === 'Loan' ? 1 : 0.75 + ((m * 7 + i * 13) % 50) / 100;
+        const date = new Date(base.getFullYear(), base.getMonth(), day);
+        const amount = Math.round(amt * jitter * 100) / 100;
+        rows.push({ id:`S-${acct}-${m}-${i}`, acct, side: ACCT[acct].side, date, amount,
+                    desc, category: cat, person: WHO[desc] || 'Ryan',
+                    principal:null, interest:null, balance:null });
+      });
+    });
+  }
+  state.rows = rows.sort((a,b) => b.date - a.date);
+  state.balances = {
+    USAAC:{value:8412.55,source:'statement'}, USAAS:{value:21980.10,source:'statement'},
+    AMEX:{value:1842.66,source:'statement'}, PenFed:{value:963.20,source:'statement'},
+    PenFedCL:{value:18420.00,source:'statement'}, WellsFargo:{value:312500.00,source:'statement'},
+    WellsFargoHELOC:{value:41250.00,source:'statement'},
+  };
+  logLine('Sample ledger loaded — 8 months across all seven accounts', 'ok');
+  save(); render();
+}
+
+function ledgerSummary(){
+  const t = totals();
+  return {
+    as_of: state.rows.length ? state.rows[0].date.toISOString().slice(0,10) : null,
+    net_worth: +t.net.toFixed(2), assets: +t.assets.toFixed(2), liabilities: +t.owed.toFixed(2),
+    accounts: ACCOUNTS.map(a => ({
+      alias:a.id, name:a.name, side:a.side, kind:a.kind,
+      balance:+balanceOf(a.id).value.toFixed(2), transactions: rowsFor(a.id).length,
+    })),
+    monthly: byMonth().map(m => ({month:m.k, money_in:+m.in.toFixed(2), money_out:+m.out.toFixed(2)})),
+    top_outflows: topSpend(8).map(s => ({label:s.label, total:+s.total.toFixed(2)})),
+    by_person: FAMILY.map(f => ({
+      name: f.id,
+      outflow: +state.rows.filter(r => r.amount < 0 && r.person === f.id)
+        .reduce((x,r) => x - r.amount, 0).toFixed(2),
+    })),
+    recent: state.rows.slice(0,40).map(r => ({
+      date:r.date.toISOString().slice(0,10), account:r.acct,
+      description:redactAccountNumbers(r.desc).slice(0,48), amount:+r.amount.toFixed(2)
+    })),
+  };
+}
+
+const SYSTEM_PROMPT = `You are ARIA, the assistant inside Thompson Finances, the Thompson household's balance-sheet dashboard.
+You answer questions about one household's ledger using only the JSON summary provided.
+Rules: cite real figures from the data, format money as $1,234.56, keep answers to a few sentences
+unless asked for detail, and say plainly when the data does not cover something. Negative amounts
+mean money left the household; positive means money arrived or debt was paid down. Never invent
+transactions, and do not give regulated investment, tax, or legal advice — point out what the numbers
+show and let the person decide.`;
+
+/* ---------- local answer engine (guest mode) ---------- */
+function answerLocally(q){
+  const s = q.toLowerCase();
+  const t = totals();
+  if (!state.rows.length && !Object.keys(state.balances).length)
+    return 'Nothing is imported yet. Drop a statement on the intake panel, or load the sample ledger from the top bar, and I can work from there.';
+
+  // longest alias first, so "penfedcl" doesn't resolve to PenFed
+  const who = FAMILY.find(f => s.includes(f.id.toLowerCase()));
+  if (who){
+    const prs = state.rows.filter(r => r.amount < 0 && r.person === who.id);
+    if (!prs.length) return `No outflows on file for ${who.id} yet.`;
+    const total = prs.reduce((x,r) => x - r.amount, 0);
+    const household = state.rows.filter(r => r.amount < 0).reduce((x,r) => x - r.amount, 0);
+    const cats = new Map();
+    prs.forEach(r => { const c = r.category || 'Uncategorized'; cats.set(c, (cats.get(c)||0) - r.amount); });
+    const top = Array.from(cats, ([c,v]) => ({c,v})).sort((a,b) => b.v - a.v).slice(0,3);
+    return `${who.id}: ${money(total)} out (${(total/household*100).toFixed(0)}% of household), mostly ` +
+      top.map(t => `${t.c} ${money(t.v)}`).join(', ') + '.';
+  }
+  const hit = ACCOUNTS.slice().sort((a,b) => b.id.length - a.id.length)
+    .find(a => s.includes(a.id.toLowerCase()) || s.includes(a.name.toLowerCase()))
+    || ACCOUNTS.find(a => a.inst && s.includes(a.inst.toLowerCase()));
+  if (hit && /balance|owe|have|much/.test(s) && !/pay ?off|how long|runway/.test(s)){
+    const b = balanceOf(hit.id), rs = rowsFor(hit.id);
+    return `${hit.name} (${hit.id}) sits at ${money(b.value)}${hit.side==='liability'?' owed':''}, ${b.source==='statement'?'straight from the statement':b.source==='manual'?'as you set it':'derived from the rows on file'}. ${rs.length} transactions loaded.`;
+  }
+  if (/pay ?off|payoff|how long.*(loan|debt|owe)|debt free|runway/.test(s)){
+    const months = new Set(byMonth().map(x=>x.k)).size || 1;
+    const target = hit && hit.side === 'liability' ? [hit] : ACCOUNTS.filter(a => a.side === 'liability');
+    const lines = target.map(a => {
+      const bal = balanceOf(a.id).value;
+      if (bal <= 0) return `${a.id}: paid off`;
+      const paid = rowsFor(a.id).filter(r=>r.amount>0).reduce((x,r)=>x+r.amount,0);
+      const spent = rowsFor(a.id).filter(r=>r.amount<0).reduce((x,r)=>x-r.amount,0);
+      const down = (paid - spent) / months;
+      if (down <= 0) return `${a.id}: ${money(bal)} — balance is holding or growing at the current pace`;
+      const mo = bal / down;
+      return `${a.id}: ${money(bal)} at ${money(down)}/mo → ${mo > 24 ? '≈ ' + (mo/12).toFixed(1) + ' years' : '≈ ' + Math.ceil(mo) + ' months'}`;
+    });
+    return 'Straight-line runway from the months on file:\n' + lines.join('\n');
+  }
+  if (/net worth|net position|overall|total picture/.test(s))
+    return `Net position is ${money(t.net)} — ${money(t.assets)} owned against ${money(t.owed)} owed.`;
+  if (/owe|debt|liabilit/.test(s)){
+    const list = ACCOUNTS.filter(a => a.side==='liability')
+      .map(a => `${a.id} ${money(balanceOf(a.id).value)}`).join(', ');
+    return `Total owed is ${money(t.owed)}: ${list}.`;
+  }
+  if (/asset|cash|saving|checking|liquid/.test(s)){
+    const list = ACCOUNTS.filter(a => a.side==='asset').map(a => `${a.id} ${money(balanceOf(a.id).value)}`).join(', ');
+    return `Cash on hand is ${money(t.assets)} — ${list}.`;
+  }
+  if (/spend|spent|outflow|expense|where.*go/.test(s)){
+    const top = topSpend(5);
+    if (!top.length) return 'No outflows in the rows on file yet.';
+    return 'Biggest outflows on file:\n' + top.map((x,i) => `${i+1}. ${x.label} — ${money(x.total)}`).join('\n');
+  }
+  if (/month|trend|in and out|cash ?flow/.test(s)){
+    const m = byMonth();
+    if (!m.length) return 'No dated rows yet, so there is no monthly trend to show.';
+    const last = m[m.length-1];
+    const avgOut = m.reduce((a,b) => a + b.out, 0) / m.length;
+    return `${monthLabel(last.k)}: ${money(last.in)} in, ${money(last.out)} out. Across ${m.length} months the average outflow is ${money(avgOut)}.`;
+  }
+  if (/largest|biggest|top transaction/.test(s)){
+    const big = state.rows.slice().sort((a,b) => Math.abs(b.amount) - Math.abs(a.amount))[0];
+    return big ? `Largest single line: ${big.desc} on ${fmtDate(big.date)}, ${money(big.amount)} in ${big.acct}.` : 'No transactions on file.';
+  }
+  if (/how many|count|rows|transactions/.test(s))
+    return `${state.rows.length.toLocaleString()} transactions across ${new Set(state.rows.map(r=>r.acct)).size} accounts.`;
+  return `Working locally, so I answer from the figures on screen. I can cover: net position, any account balance by alias (${ACCOUNTS.map(a=>a.id).join(', ')}), monthly in and out, biggest outflows, and the largest single line. Switch on an API key at the splash screen for open-ended questions.`;
+}
+
+const MODEL = 'claude-sonnet-4-6';   // swap this one line to point ARIA at another model
+
+async function askClaude(q){
+  const body = {
+    model: MODEL,
+    max_tokens: 1000,
+    system: SYSTEM_PROMPT + '\n\nLedger summary:\n' + JSON.stringify(ledgerSummary()),
+    messages: state.thread.concat([{role:'user', content:q}]).slice(-12),
+  };
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key': state.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok){
+    const detail = await res.text().catch(() => '');
+    throw new Error(res.status === 401 ? 'The API key was rejected. Reopen the splash screen to enter another.'
+      : `Claude returned ${res.status}. ${detail.slice(0,140)}`);
+  }
+  const data = await res.json();
+  return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
+    || 'Claude returned an empty reply.';
+}
+
+
+/* ============================================================
+   PAGER — swipe to pan, dropdown to jump, dots to track
+   ============================================================ */
+const SCREENS = [];
+let activeScreen = 0;
+
+function initPager(){
+  const pager = $('#pager');
+  $$('.screen', pager).forEach((el, i) => SCREENS.push({el, id:el.id, title:el.dataset.title}));
+
+  $('#screenJump').innerHTML = SCREENS.map((s,i) =>
+    `<option value="${i}">${esc(s.title)}</option>`).join('');
+  $('#screenJump').addEventListener('change', e => goTo(+e.target.value));
+
+  $('#dots').innerHTML = SCREENS.map((s,i) =>
+    `<button type="button" data-i="${i}" aria-label="${esc(s.title)}" aria-current="${i===0}"><i></i></button>`).join('');
+  $$('#dots button').forEach(b => b.addEventListener('click', () => goTo(+b.dataset.i)));
+
+  /* track which screen is in view as the user pans */
+  let raf = null;
+  pager.addEventListener('scroll', () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = null;
+      const i = Math.round(pager.scrollLeft / pager.clientWidth);
+      if (i !== activeScreen) setActive(i);
+    });
+  }, {passive:true});
+
+  /* left/right arrows pan too (external keyboards, accessibility) */
+  document.addEventListener('keydown', e => {
+    if (e.target.closest('input,textarea,select') || !$('#modal').hidden || $('#ariaDrawer').classList.contains('is-open')) return;
+    if (e.key === 'ArrowRight') goTo(activeScreen + 1);
+    if (e.key === 'ArrowLeft')  goTo(activeScreen - 1);
+  });
+
+  window.addEventListener('resize', () => {
+    pager.scrollTo({left: activeScreen * pager.clientWidth});
+  });
+}
+
+function setActive(i){
+  activeScreen = Math.max(0, Math.min(SCREENS.length - 1, i));
+  $('#screenJump').value = String(activeScreen);
+  $$('#dots button').forEach((b,j) => b.setAttribute('aria-current', String(j === activeScreen)));
+}
+
+function goTo(i){
+  i = Math.max(0, Math.min(SCREENS.length - 1, i));
+  setActive(i);
+  $('#pager').scrollTo({left: i * $('#pager').clientWidth, behavior:'smooth'});
+}
+
+/* ============================================================
+   RENDER — position
+   ============================================================ */
+function sparkline(rs){
+  if (rs.length < 2) return '';
+  const pts = rs.slice().sort((a,b) => a.date - b.date);
+  let run = 0;
+  const vals = pts.map(r => (run += r.amount)).slice(-48);
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const w = 100, h = 24;
+  const d = vals.map((v,i) => `${(i/(vals.length-1))*w},${h - ((v-min)/span)*(h-4) - 2}`).join(' ');
+  const c = vals[vals.length-1] >= vals[0] ? 'var(--asset)' : 'var(--owe)';
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="${d}" fill="none" stroke="${c}" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function renderCards(){
+  const groups = {asset:[], liability:[]};
+  ACCOUNTS.forEach(a => {
+    const rs = rowsFor(a.id);
+    const bal = balanceOf(a.id);
+    const last = rs.length ? rs.reduce((m,r) => r.date > m ? r.date : m, rs[0].date) : null;
+    const meta = rs.length ? `${a.kind} · ${rs.length} rows · thru ${fmtDate(last)}` : `${a.kind} · no statement yet`;
+    groups[a.side].push(`
+      <article class="card${rs.length ? '' : ' card--empty'}">
+        <div><div class="card__alias">${esc(a.id)}</div><p class="card__name">${esc(a.name)}</p></div>
+        <input class="card__bal ${a.side==='asset'?'tone-asset':'tone-owe'}" data-acct="${a.id}" inputmode="decimal"
+               value="${moneyShort(bal.value)}" aria-label="${esc(a.name)} balance — edit to set it by hand">
+        <div class="card__meta">${esc(meta)}${bal.source==='derived'?' · derived':bal.source==='manual'?' · set by hand':''}</div>
+        <div class="card__spark">${sparkline(rs)}</div>
+      </article>`);
+  });
+  $('#assetCards').innerHTML = groups.asset.join('');
+  $('#liabCards').innerHTML = groups.liability.join('');
+  $$('.card__bal').forEach(inp => {
+    inp.addEventListener('focus', () => { inp.value = balanceOf(inp.dataset.acct).value.toFixed(2); inp.select(); });
+    inp.addEventListener('blur', () => commitBalance(inp));
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
+  });
+}
+
+function commitBalance(inp){
+  const n = toNumber(inp.value);
+  if (n == null){ render(); return; }
+  state.balances[inp.dataset.acct] = { value: Math.abs(n) * (ACCT[inp.dataset.acct].side === 'asset' ? Math.sign(n) || 1 : 1), source:'manual' };
+  save(); render();
+}
+
+function renderBeam(){
+  const t = totals();
+  $('#netWorth').textContent = money(t.net);
+  $('#netWorth').className = 'beam__net num ' + (t.net >= 0 ? 'tone-asset' : 'tone-owe');
+  $('#totalAssets').textContent = money(t.assets);
+  $('#totalOwed').textContent = money(t.owed);
+  $('#colAssets').textContent = money(t.assets);
+  $('#colOwed').textContent = money(t.owed);
+  const span = t.assets + t.owed;
+  const a = span ? (t.assets / span) * 100 : 50;
+  $('#beamAsset').style.width = a + '%';
+  $('#beamOwe').style.width = (100 - a) + '%';
+  const last = state.rows.length ? state.rows[0].date : null;
+  $('#asOf').textContent = last ? `as of ${fmtDate(last)} · ${state.rows.length.toLocaleString()} rows on file` : 'no data yet';
+  $('#rowCount').textContent = `${state.rows.length.toLocaleString()} rows`;
+}
+
+/* ============================================================
+   RENDER — flow graphics
+   ============================================================ */
+function renderFlow(){
+  const data = byMonth();
+  const host = $('#flowChart');
+  if (!data.length){
+    host.innerHTML = '<p class="empty">Monthly totals appear once a statement lands.</p>';
+    $('#flowNote').textContent = ''; $('#avgIn').textContent = '—'; $('#avgOut').textContent = '—';
+    $('#topSpend').innerHTML = '<p class="empty">No outflows yet.</p>';
+    return;
+  }
+  const W = 360, H = 180, padB = 20, padT = 8, padL = 4;
+  const max = Math.max(...data.flatMap(d => [d.in, d.out])) || 1;
+  const slot = (W - padL*2) / data.length;
+  const bw = Math.min(15, slot/2.6);
+  const bars = data.map((d,i) => {
+    const x = padL + i*slot + slot/2;
+    const hIn = ((H-padB-padT)*d.in)/max, hOut = ((H-padB-padT)*d.out)/max;
+    return `<rect x="${x-bw-1.2}" y="${H-padB-hIn}" width="${bw}" height="${hIn}" rx="2" fill="var(--asset)"/>
+      <rect x="${x+1.2}" y="${H-padB-hOut}" width="${bw}" height="${hOut}" rx="2" fill="var(--owe)"/>
+      <text x="${x}" y="${H-6}" text-anchor="middle">${monthLabel(d.k)}</text>`;
+  }).join('');
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Money in and out by month">
+    <line x1="${padL}" y1="${H-padB}" x2="${W-padL}" y2="${H-padB}" stroke="var(--rule)"/>${bars}</svg>`;
+  const avgIn = data.reduce((a,b)=>a+b.in,0)/data.length;
+  const avgOut = data.reduce((a,b)=>a+b.out,0)/data.length;
+  $('#flowNote').textContent = `${data.length} mo · peak ${moneyShort(max)}`;
+  $('#avgIn').textContent = moneyShort(avgIn);
+  $('#avgOut').textContent = moneyShort(avgOut);
+
+  const top = topSpend(6);
+  const tmax = top.length ? top[0].total : 1;
+  $('#topSpend').innerHTML = top.length ? top.map(x => `
+    <div class="row"><span>${esc(x.label)}</span><span class="amt">${moneyShort(x.total)}</span>
+      <div class="track"><div class="fill" style="width:${(x.total/tmax*100).toFixed(1)}%"></div></div>
+    </div>`).join('') : '<p class="empty">No outflows yet.</p>';
+}
+
+/* ============================================================
+   RENDER — projections
+   Straight-line: average monthly net flow carried 12 months out.
+   Debt runway: average monthly reduction per liability account.
+   ============================================================ */
+function projectionSeries(){
+  const m = byMonth();
+  if (m.length < 2) return null;
+  const t = totals();
+  const nets = m.map(x => x.in - x.out);
+  const avgNet = nets.reduce((a,b)=>a+b,0) / nets.length;
+  /* walk history backwards from today's net position */
+  const hist = [];
+  let v = t.net;
+  for (let i = m.length - 1; i >= 0; i--){ hist.unshift({k:m[i].k, v}); v -= nets[i]; }
+  const fut = [];
+  let f = t.net;
+  const [ly, lm] = m[m.length-1].k.split('-').map(Number);
+  for (let i = 1; i <= 12; i++){
+    f += avgNet;
+    const d = new Date(ly, lm - 1 + i, 1);
+    fut.push({k: monthKey(d), v: f});
+  }
+  return {hist, fut, avgNet, end: f};
+}
+
+function renderProjections(){
+  const host = $('#projChart');
+  const p = projectionSeries();
+  if (!p){
+    host.innerHTML = '<p class="empty">Two months of data unlock the projection. Import a statement or load the sample ledger.</p>';
+    $('#projNote').textContent = ''; $('#avgNet').textContent = '—'; $('#proj12').textContent = '—';
+    $('#payoff').innerHTML = '<p class="empty">Debt runway appears with payment history.</p>';
+    return;
+  }
+  const all = p.hist.concat(p.fut);
+  const min = Math.min(...all.map(x=>x.v), 0), max = Math.max(...all.map(x=>x.v));
+  const span = (max - min) || 1;
+  const W = 360, H = 180, padB = 18, padT = 8;
+  const X = i => (i/(all.length-1)) * (W-8) + 4;
+  const Y = v => H - padB - ((v-min)/span)*(H-padB-padT);
+  const histPts = p.hist.map((x,i) => `${X(i)},${Y(x.v)}`).join(' ');
+  const futPts = [ `${X(p.hist.length-1)},${Y(p.hist[p.hist.length-1].v)}` ]
+    .concat(p.fut.map((x,i) => `${X(p.hist.length+i)},${Y(x.v)}`)).join(' ');
+  const zero = min < 0 ? `<line x1="4" y1="${Y(0)}" x2="${W-4}" y2="${Y(0)}" stroke="var(--rule)" stroke-dasharray="2 4"/>` : '';
+  const marks = [0, p.hist.length-1, all.length-1].map(i =>
+    `<text x="${X(i)}" y="${H-4}" text-anchor="${i===0?'start':i===all.length-1?'end':'middle'}">${monthLabel(all[i].k)}</text>`).join('');
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Net position, history and 12-month projection">
+    ${zero}
+    <polyline points="${histPts}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <polyline points="${futPts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 5" opacity=".8"/>
+    <circle cx="${X(p.hist.length-1)}" cy="${Y(p.hist[p.hist.length-1].v)}" r="3.5" fill="var(--accent)"/>
+    ${marks}</svg>`;
+  $('#projNote').textContent = `from ${p.hist.length} months on file`;
+  $('#avgNet').innerHTML = `<span class="${p.avgNet>=0?'tone-asset':'tone-owe'}">${p.avgNet>=0?'+':''}${moneyShort(p.avgNet)}</span>`;
+  $('#proj12').innerHTML = `<span class="${p.end>=0?'tone-asset':'tone-owe'}">${moneyShort(p.end)}</span>`;
+
+  /* debt runway */
+  const liabs = ACCOUNTS.filter(a => a.side === 'liability');
+  const months = new Set(byMonth().map(x=>x.k)).size || 1;
+  const rows = liabs.map(a => {
+    const bal = balanceOf(a.id).value;
+    if (bal <= 0) return null;
+    const paid = rowsFor(a.id).filter(r => r.amount > 0).reduce((s,r) => s + r.amount, 0);
+    const spent = rowsFor(a.id).filter(r => r.amount < 0).reduce((s,r) => s - r.amount, 0);
+    const netDown = (paid - spent) / months;
+    const mo = netDown > 0 ? bal / netDown : null;
+    return {a, bal, mo};
+  }).filter(Boolean);
+  const maxMo = Math.max(...rows.map(r => r.mo || 0), 1);
+  $('#payoff').innerHTML = rows.length ? rows.map(r => {
+    const label = r.mo == null ? 'balance holding or growing'
+      : r.mo > 360 ? `≈ ${(r.mo/12).toFixed(0)} yrs at this pace`
+      : r.mo >= 24 ? `≈ ${(r.mo/12).toFixed(1)} yrs` : `≈ ${Math.ceil(r.mo)} mo`;
+    return `<div class="row"><span>${esc(r.a.id)} · ${moneyShort(r.bal)}</span><span class="amt">${label}</span>
+      <div class="track"><div class="fill" style="width:${r.mo?Math.min(100, r.mo/maxMo*100).toFixed(1):100}%;${r.mo?'':'background:var(--rule)'}"></div></div></div>`;
+  }).join('') : '<p class="empty">No open balances to project.</p>';
+}
+
+/* ============================================================
+   RENDER — ledger (card rows) + categories
+   ============================================================ */
+let shownCount = 40;
+function visibleRows(){
+  const q = state.filter.q.toLowerCase();
+  return state.rows.filter(r =>
+    (!state.filter.acct || r.acct === state.filter.acct) &&
+    (!q || r.desc.toLowerCase().includes(q) || r.category.toLowerCase().includes(q)));
+}
+function renderTable(){
+  const rs = visibleRows();
+  $('#tableEmpty').hidden = rs.length > 0;
+  $('#shown').textContent = rs.length ? `· ${rs.length.toLocaleString()} lines` : '';
+  $('#txnList').innerHTML = rs.slice(0, shownCount).map(r => `
+    <li><span class="desc">${esc(r.desc)}</span>
+      <span class="amt" style="color:${r.amount<0?'var(--owe)':'var(--asset)'}">${money(r.amount)}</span>
+      <span class="meta">${fmtDate(r.date)} · ${esc(r.acct)}${r.category?' · '+esc(r.category):''}</span></li>`).join('');
+  $('#moreBtn').hidden = rs.length <= shownCount;
+}
+
+function renderCategories(){
+  $('#catList').innerHTML = CATEGORIES.map(c => `
+    <details class="acc" id="cat-${c.id}">
+      <summary>
+        <span class="acc__dot" style="background:${c.color}"></span>
+        ${esc(c.name)}
+        <span class="acc__count">empty</span>
+        <span class="acc__chev" aria-hidden="true">▸</span>
+      </summary>
+      <div class="acc__body">
+        <p class="hint" style="margin:0 0 8px">${esc(c.note)}</p>
+        <div class="empty">No rules or budget set yet — this group is waiting to be filled.</div>
+      </div>
+    </details>`).join('');
+}
+
+
+
+/* ============================================================
+   OWNERSHIP RULES
+   A rule reads: "when the description contains Q (and/or the row
+   is on account A), it belongs to P." First matching rule wins.
+   Rules only claim rows that arrived unowned; the sample ledger's
+   built-in owners are left alone. Deleting a rule releases its rows.
+   ============================================================ */
+function ruleMatches(rule, r){
+  if (rule.acct && r.acct !== rule.acct) return false;
+  if (rule.q && !r.desc.toLowerCase().includes(rule.q.toLowerCase())) return false;
+  return Boolean(rule.q || rule.acct);
+}
+function applyRules(){
+  let claimed = 0;
+  state.rows.forEach(r => {
+    if (r.person && !r.ruled) return;          // sample-owned rows stay put
+    const rule = state.rules.find(x => ruleMatches(x, r));
+    const next = rule ? rule.person : null;
+    if (next !== r.person){ r.person = next; }
+    r.ruled = Boolean(rule);
+    if (rule) claimed++;
+  });
+  return claimed;
+}
+function ruleCounts(){
+  const counts = state.rules.map(() => 0);
+  state.rows.forEach(r => {
+    if (r.person && !r.ruled) return;
+    const i = state.rules.findIndex(x => ruleMatches(x, r));
+    if (i > -1) counts[i]++;
+  });
+  return counts;
+}
+/* ============================================================
+   RENDER — the family
+   Outflows only (amount < 0), filtered to one person or All,
+   broken out by month, by account, and by category.
+   ============================================================ */
+function familyRows(){
+  return state.rows.filter(r => r.amount < 0 &&
+    (!state.person || r.person === state.person));
+}
+function renderFamily(){
+  const sel = $('#personJump');
+  if (!sel.options.length){
+    sel.innerHTML = '<option value="">All — whole household</option>' +
+      FAMILY.map(f => `<option value="${f.id}">${esc(f.id)}</option>`).join('');
+    sel.addEventListener('change', e => { state.person = e.target.value; renderFamily(); });
+  }
+  sel.value = state.person;
+
+  const rs = familyRows();
+  const total = rs.reduce((s,r) => s - r.amount, 0);
+  const household = state.rows.filter(r => r.amount < 0).reduce((s,r) => s - r.amount, 0);
+  $('#famTotal').textContent = total ? moneyShort(total) : '—';
+  $('#famShare').textContent = state.person
+    ? (household ? (total/household*100).toFixed(0) + '%' : '—')
+    : '100%';
+
+  /* by month — one bar series, tinted by person */
+  const tint = state.person ? PERSON[state.person].color : 'var(--owe)';
+  const mm = new Map();
+  rs.forEach(r => { const k = monthKey(r.date); mm.set(k, (mm.get(k)||0) - r.amount); });
+  const data = Array.from(mm, ([k,v]) => ({k,v})).sort((a,b) => a.k.localeCompare(b.k)).slice(-12);
+  const host = $('#famChart');
+  if (!data.length){
+    host.innerHTML = '<p class="empty">No outflows for this view yet.</p>';
+    $('#famNote').textContent = '';
+  } else {
+    const W = 360, H = 150, padB = 20, padT = 8, padL = 4;
+    const max = Math.max(...data.map(d => d.v)) || 1;
+    const slot = (W - padL*2) / data.length;
+    const bw = Math.min(20, slot*0.55);
+    host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly outflow for ${esc(state.person || 'the household')}">
+      <line x1="${padL}" y1="${H-padB}" x2="${W-padL}" y2="${H-padB}" stroke="var(--rule)"/>
+      ${data.map((d,i) => {
+        const x = padL + i*slot + slot/2;
+        const h = ((H-padB-padT)*d.v)/max;
+        return `<rect x="${x-bw/2}" y="${H-padB-h}" width="${bw}" height="${h}" rx="2" fill="${tint}"/>
+          <text x="${x}" y="${H-6}" text-anchor="middle">${monthLabel(d.k)}</text>`;
+      }).join('')}</svg>`;
+    $('#famNote').textContent = `${data.length} mo · peak ${moneyShort(max)}`;
+  }
+
+  /* by account */
+  const byAcct = new Map();
+  rs.forEach(r => byAcct.set(r.acct, (byAcct.get(r.acct)||0) - r.amount));
+  const accts = Array.from(byAcct, ([id,v]) => ({id,v})).sort((a,b) => b.v - a.v);
+  const amax = accts.length ? accts[0].v : 1;
+  $('#famAccounts').innerHTML = accts.length ? accts.map(a => `
+    <div class="row"><span>${esc(a.id)} · ${esc(ACCT[a.id].kind)}</span><span class="amt">${moneyShort(a.v)}</span>
+      <div class="track"><div class="fill" style="width:${(a.v/amax*100).toFixed(1)}%;background:${tint}"></div></div>
+    </div>`).join('') : '<p class="empty">No outflows for this view yet.</p>';
+
+  /* by category */
+  const byCat = new Map();
+  rs.forEach(r => { const c = r.category || 'Uncategorized'; byCat.set(c, (byCat.get(c)||0) - r.amount); });
+  const cats = Array.from(byCat, ([c,v]) => ({c,v})).sort((a,b) => b.v - a.v).slice(0,8);
+  const cmax = cats.length ? cats[0].v : 1;
+  $('#famCats').innerHTML = cats.length ? cats.map(x => `
+    <div class="row"><span>${esc(x.c)}</span><span class="amt">${moneyShort(x.v)}</span>
+      <div class="track"><div class="fill" style="width:${(x.v/cmax*100).toFixed(1)}%;background:${tint}"></div></div>
+    </div>`).join('') : '<p class="empty">No outflows for this view yet.</p>';
+
+  renderRules();
+
+  /* imported rows carry no owner yet */
+  const un = state.rows.filter(r => r.amount < 0 && !r.person).length;
+  $('#famUnassigned').textContent = un
+    ? `${un} imported line${un===1?'':'s'} still unowned — add a rule below and they'll show under a name.`
+    : '';
+}
+
+
+function renderRules(){
+  const counts = ruleCounts();
+  $('#ruleList').innerHTML = state.rules.map((r,i) => {
+    const scope = [r.q ? `"${esc(r.q)}"` : '', r.acct ? `on ${esc(r.acct)}` : ''].filter(Boolean).join(' ');
+    return `<li>
+      <span class="r-dot" style="background:${PERSON[r.person].color}"></span>
+      <span class="r-text">${scope} → <b>${esc(r.person)}</b></span>
+      <span class="r-count">${counts[i]} line${counts[i]===1?'':'s'}</span>
+      <button class="r-del" type="button" data-i="${i}" aria-label="Delete rule ${scope} for ${esc(r.person)}">✕</button>
+    </li>`;
+  }).join('');
+  $$('#ruleList .r-del').forEach(b => b.addEventListener('click', () => {
+    state.rules.splice(+b.dataset.i, 1);
+    applyRules(); save(); renderFamily();
+    toast('Rule deleted — its lines are unowned again');
+  }));
+  $('#ruleNote').textContent = state.rules.length
+    ? `${state.rules.length} rule${state.rules.length===1?'':'s'} · first match wins`
+    : 'no rules yet';
+}
+function initRuleForm(){
+  $('#ruleAcct').innerHTML = '<option value="">Any account</option>' +
+    ACCOUNTS.map(a => `<option value="${a.id}">${esc(a.id)}</option>`).join('');
+  $('#rulePerson').innerHTML = FAMILY.map(f => `<option value="${f.id}">${esc(f.id)}</option>`).join('');
+  $('#ruleAdd').addEventListener('click', () => {
+    const q = $('#ruleQ').value.trim();
+    const acct = $('#ruleAcct').value;
+    const person = $('#rulePerson').value;
+    if (!q && !acct){ toast('Give the rule a keyword, an account, or both'); $('#ruleQ').focus(); return; }
+    state.rules.push({q, acct, person});
+    $('#ruleQ').value = '';
+    const claimed = applyRules();
+    save(); renderFamily();
+    toast(`Rule added — ${claimed} unowned line${claimed===1?'':'s'} now matched by rules`);
+  });
+  $('#ruleQ').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#ruleAdd').click(); } });
+}
+/* ============================================================
+   INTAKE — schema selector
+   Pick an account to read its export schema; the choice also
+   routes the next files straight to that account, skipping
+   auto-detection. "Auto-detect" restores filename matching.
+   ============================================================ */
+function schemaFieldLabel(f){
+  return {date:'Date', desc:'Description', amount:'Amount', debit:'Debit', credit:'Credit',
+    category:'Category', balance:'Balance', principal:'Principal', interest:'Interest', escrow:'Escrow'}[f] || f;
+}
+function renderSchemaDetail(){
+  const host = $('#schemaDetail');
+  if (!state.routeAcct){
+    host.innerHTML = `<div class="schema">
+      <p class="schema__note">Auto-detect is on: each file is matched to an account by its
+      filename and column headers, and you confirm the mapping before anything lands.
+      Pick an account above to see its schema — that also routes the next imports straight to it.</p>
+      <div class="schema__fields">${ACCOUNTS.map(a =>
+        `<div class="f"><b>${esc(a.id)}</b><span>${esc(a.name)} — ${SCHEMAS[a.schema].label.toLowerCase()}${a.flip?', sign flipped':''}</span></div>`).join('')}
+      </div></div>`;
+    return;
+  }
+  const a = ACCT[state.routeAcct];
+  const sch = SCHEMAS[a.schema];
+  const fields = sch.use.map(f => `<div class="f"><b>${schemaFieldLabel(f)}</b>
+    <span>${FIELDS[f].slice(0,4).map(esc).join(' · ')}</span></div>`).join('');
+  host.innerHTML = `<div class="schema">
+    <div class="schema__id">
+      <span class="alias">${esc(a.id)}</span><span class="name">${esc(a.name)}</span>
+      <span class="badge">${esc(sch.label)}</span>
+    </div>
+    <div class="schema__fields">${fields}</div>
+    <p class="eyebrow" style="margin-top:4px">What a row looks like</p>
+    <div class="preview"><table>
+      <tr>${sch.example.headers.map(h => `<td class="dt">${esc(h)}</td>`).join('')}</tr>
+      <tr>${sch.example.row.map(v => `<td class="amt" style="text-align:left">${esc(v)}</td>`).join('')}</tr>
+    </table></div>
+    <p class="schema__note">${a.flip
+      ? 'Sign is flipped on import: this issuer exports charges as positive numbers, so they land as outflows.'
+      : a.side === 'liability'
+        ? 'Payments land positive (debt paid down); draws and charges land negative.'
+        : 'Deposits land positive; withdrawals land negative.'}
+      Files added now go straight to ${esc(a.id)} — the mapping sheet still opens for confirmation.</p>
+  </div>`;
+}
+function initSchemaJump(){
+  const sel = $('#schemaJump');
+  sel.innerHTML = '<option value="">Auto-detect from the file</option>' +
+    ACCOUNTS.map(a => `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+  sel.addEventListener('change', e => {
+    state.routeAcct = e.target.value;
+    renderSchemaDetail();
+    toast(state.routeAcct ? `Imports routed to ${state.routeAcct}` : 'Auto-detect restored');
+  });
+  renderSchemaDetail();
+}
+
+function render(){ renderBeam(); renderCards(); renderFlow(); renderProjections(); renderFamily(); renderTable(); }
+
+/* ---------- log + toast ---------- */
+function logLine(text, kind='ok'){
+  const li = document.createElement('li');
+  li.className = kind;
+  li.innerHTML = `<time>${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</time><span>${esc(text)}</span>`;
+  $('#log').prepend(li);
+  while ($('#log').children.length > 6) $('#log').lastElementChild.remove();
+}
+let toastTimer;
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('is-on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('is-on'), 2600);
+}
+
+/* ============================================================
+   REVIEW SHEET
+   ============================================================ */
+const queue = [];
+let current = null;
+let lastFocus = null;
+
+function columnOptions(headers, chosen){
+  return ['<option value="-1">— none —</option>'].concat(
+    headers.map((h,i) => `<option value="${i}"${i===chosen?' selected':''}>${esc(h || `column ${i+1}`)}</option>`)).join('');
+}
+function openReview(plan){
+  current = plan;
+  lastFocus = document.activeElement;
+  $('#modalFile').textContent = `${plan.file} · sheet “${plan.sheet}” · ${plan.body.length} data rows`;
+  $('#mapAccount').innerHTML = ACCOUNTS.map(a =>
+    `<option value="${a.id}"${a.id===plan.acctId?' selected':''}>${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+  ['date','desc','amount','category','balance'].forEach(f => {
+    $('#map'+f[0].toUpperCase()+f.slice(1)).innerHTML = columnOptions(plan.headers, plan.map[f]);
+  });
+  $('#mapFlip').checked = plan.flip;
+  $('#modal').hidden = false;
+  refreshPreview();
+  $('#mapAccount').focus();
+  document.addEventListener('keydown', modalKeys);
+}
+function readModal(){
+  current.acctId = $('#mapAccount').value;
+  current.map.date = +$('#mapDate').value;
+  current.map.desc = +$('#mapDesc').value;
+  current.map.amount = +$('#mapAmount').value;
+  current.map.category = +$('#mapCategory').value;
+  current.map.balance = +$('#mapBalance').value;
+  current.flip = $('#mapFlip').checked;
+}
+function refreshPreview(){
+  readModal();
+  const { rows } = normalize({ ...current, body: current.body.slice(0, 40) });
+  $('#previewBody').innerHTML = rows.length
+    ? rows.slice(0,5).map(r => `<tr><td class="dt">${fmtDate(r.date)}</td>
+        <td>${esc(r.desc.slice(0,34))}</td>
+        <td class="amt" style="color:${r.amount<0?'var(--owe)':'var(--asset)'}">${money(r.amount)}</td></tr>`).join('')
+    : '<tr><td class="empty">No rows read with this mapping. Check the date and amount columns.</td></tr>';
+  $('#modalConfirm').disabled = rows.length === 0;
+}
+function closeReview(){
+  $('#modal').hidden = true;
+  document.removeEventListener('keydown', modalKeys);
+  current = null;
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+  next();
+}
+function modalKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); logLine(`${current.file} skipped`,'warn'); closeReview(); } }
+function confirmImport(){
+  readModal();
+  scrubTally = 0;
+  const { rows, lastBalance } = normalize(current);
+  const scrubbed = scrubTally;
+  const added = mergeRows(rows);
+  const acct = ACCT[current.acctId];
+  if (lastBalance){
+    state.balances[acct.id] = { value: acct.side==='liability' ? Math.abs(lastBalance.value) : lastBalance.value, source:'statement' };
+  }
+  state.imports.push({ file:current.file, acct:acct.id, count:added, at:Date.now() });
+  const claimed = applyRules();
+  if (claimed) logLine(`${claimed} lines matched by ownership rules`,'ok');
+  if (scrubbed) logLine(`${scrubbed} account-number fragment${scrubbed===1?'':'s'} scrubbed before storing`,'ok');
+  logLine(`${acct.id}: ${added} new rows from ${current.file}${added<rows.length?` (${rows.length-added} already held)`:''}`,'ok');
+  toast(`${added} rows added to ${acct.id}`);
+  closeReview();
+  save(); render();
+}
+function next(){
+  if (current || !queue.length) return;
+  openReview(queue.shift());
+}
+async function handleFiles(files){
+  for (const file of Array.from(files)){
+    try {
+      let plan;
+      if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf'){
+        logLine(`${file.name}: reading PDF text…`,'ok');
+        plan = await parsePdfFile(file);
+        logLine(`${file.name}: ${plan.body.length} transaction lines found`,'ok');
+      } else {
+        const wb = await readWorkbook(file);
+        plan = planImport(file, wb);
+      }
+      if (state.routeAcct){
+        plan.acctId = state.routeAcct;
+        plan.flip = ACCT[state.routeAcct].flip;
+        plan.confident = true;
+        logLine(`${file.name}: routed to ${state.routeAcct} by the schema selector`,'ok');
+      } else if (!plan.confident){
+        logLine(`${file.name}: account guessed — confirm it in the sheet`,'warn');
+      }
+      queue.push(plan);
+    } catch(err){ logLine(`${file.name} ${err.message}`,'err'); }
+  }
+  next();
+}
+
+/* ============================================================
+   ARIA DRAWER plumbing
+   ============================================================ */
+function bubble(role, text, cls){
+  const el = document.createElement('div');
+  el.className = 'msg msg--' + (cls || (role === 'user' ? 'you' : 'aria'));
+  el.textContent = text;
+  $('#thread').append(el);
+  $('#thread').scrollTop = $('#thread').scrollHeight;
+  return el;
+}
+const PROMPTS = ['Net position?','What did Vivian spend?','Where did the money go?','How long to pay off PenFedCL?'];
+function renderPrompts(){
+  $('#prompts').innerHTML = PROMPTS.map(p => `<button type="button">${esc(p)}</button>`).join('');
+  $$('#prompts button').forEach(b => b.addEventListener('click', () => { $('#ask').value = b.textContent; sendAsk(); }));
+}
+let busy = false;
+async function sendAsk(){
+  const q = $('#ask').value.trim();
+  if (!q || busy) return;
+  $('#ask').value = ''; $('#ask').style.height = 'auto';
+  bubble('user', q);
+  busy = true; $('#sendBtn').disabled = true;
+  const pending = bubble('assistant','');
+  pending.innerHTML = '<span class="dots-typing"><span></span><span></span><span></span></span>';
+  try {
+    let reply;
+    if (state.mode === 'api' && state.apiKey) reply = await askClaude(q);
+    else { await new Promise(r => setTimeout(r, 220)); reply = answerLocally(q); }
+    pending.textContent = reply;
+    state.thread.push({role:'user',content:q},{role:'assistant',content:reply});
+  } catch(err){
+    pending.textContent = err.message || 'That request did not go through.';
+    pending.style.borderColor = 'var(--danger)';
+  } finally {
+    busy = false; $('#sendBtn').disabled = false;
+    $('#thread').scrollTop = $('#thread').scrollHeight;
+  }
+}
+function trapFocus(e){
+  if (e.key === 'Escape'){ closeDrawer(); return; }
+  if (e.key !== 'Tab') return;
+  const f = $$('#ariaDrawer button, #ariaDrawer textarea').filter(el => !el.disabled && el.offsetParent !== null);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length-1];
+  if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+}
+function openDrawer(){
+  const d = $('#ariaDrawer');
+  d.classList.add('is-open'); d.setAttribute('aria-hidden','false'); d.removeAttribute('inert');
+  $('#ariaToggle').setAttribute('aria-expanded','true');
+  const scrim = $('#scrim');
+  scrim.hidden = false; requestAnimationFrame(() => scrim.classList.add('is-open'));
+  document.addEventListener('keydown', trapFocus);
+  $('#ask').focus();
+}
+function closeDrawer(){
+  const d = $('#ariaDrawer');
+  d.classList.remove('is-open'); d.setAttribute('aria-hidden','true'); d.setAttribute('inert','');
+  $('#ariaToggle').setAttribute('aria-expanded','false');
+  const scrim = $('#scrim');
+  scrim.classList.remove('is-open');
+  setTimeout(() => { scrim.hidden = true; }, 220);
+  document.removeEventListener('keydown', trapFocus);
+  $('#ariaToggle').focus();
+}
+
+/* ============================================================
+   SPLASH
+   ============================================================ */
+function setMode(mode){
+  state.mode = mode;
+  $$('#modeGroup .seg__opt').forEach(b => {
+    const on = b.dataset.mode === mode;
+    b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  $('#keyField').hidden = mode !== 'api';
+  $('#modeHint').textContent = mode === 'api'
+    ? 'ARIA sends a summary of your balances and recent lines to Claude to answer freely. Raw files never leave the phone.'
+    : 'Everything runs on this phone. ARIA answers from your numbers alone.';
+  $('#enterBtn').textContent = mode === 'api' ? 'Connect and open the ledger' : 'Open the ledger';
+}
+function enterApp(){
+  if (state.mode === 'api'){
+    const key = $('#apiKey').value.trim();
+    if (!key.startsWith('sk-ant-')){
+      $('#keyHint').textContent = 'That does not look like an Anthropic key — it starts with sk-ant-. Or switch to Guest.';
+      $('#keyHint').className = 'hint hint--warn';
+      $('#apiKey').focus();
+      return;
+    }
+    state.apiKey = key;
+    $('#apiKey').value = '';
+  }
+  $('#splash').hidden = true;
+  $('#app').hidden = false;
+  const live = state.mode === 'api';
+  $('#modeChip').textContent = live ? 'Claude' : 'Guest';
+  $('#modeChip').className = 'chip' + (live ? ' chip--live' : '');
+  $('#ariaChip').textContent = live ? 'Claude' : 'Local';
+  $('#ariaChip').className = 'chip' + (live ? ' chip--live' : '');
+  bubble('assistant', live
+    ? 'ARIA is connected to Claude. Ask anything about the ledger — I read your balances, monthly totals and recent lines.'
+    : 'ARIA is running locally. I answer from the figures on screen: balances, monthly in and out, biggest outflows. Add an API key at the splash screen for open-ended questions.');
+  render();
+  goTo(0);
+}
+
+/* ============================================================
+   WIRING + BOOT
+   ============================================================ */
+function wire(){
+  $$('#modeGroup .seg__opt').forEach(b => {
+    b.addEventListener('click', () => setMode(b.dataset.mode));
+    b.addEventListener('keydown', e => {
+      if (!['ArrowRight','ArrowLeft','ArrowUp','ArrowDown'].includes(e.key)) return;
+      e.preventDefault();
+      const opts = $$('#modeGroup .seg__opt');
+      const i = opts.indexOf(b);
+      const nextEl = opts[(i + (e.key==='ArrowRight'||e.key==='ArrowDown' ? 1 : opts.length-1)) % opts.length];
+      setMode(nextEl.dataset.mode); nextEl.focus();
+    });
+  });
+  $('#enterBtn').addEventListener('click', enterApp);
+  $('#apiKey').addEventListener('keydown', e => { if (e.key === 'Enter') enterApp(); });
+
+  const drop = $('#drop'), input = $('#fileInput');
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); input.click(); } });
+  input.addEventListener('change', e => { handleFiles(e.target.files); input.value=''; });
+  /* drag/drop still works on iPadOS and desktop Safari */
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('is-over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('is-over'); }));
+  drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+  $('#modalConfirm').addEventListener('click', confirmImport);
+  $('#modalCancel').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
+  ['#mapAccount','#mapDate','#mapDesc','#mapAmount','#mapCategory','#mapBalance','#mapFlip'].forEach(sel => {
+    $(sel).addEventListener('change', () => {
+      if (sel === '#mapAccount') $('#mapFlip').checked = ACCT[$('#mapAccount').value].flip;
+      refreshPreview();
+    });
+  });
+
+  $('#acctFilter').addEventListener('change', e => { state.filter.acct = e.target.value; shownCount = 40; renderTable(); });
+  $('#search').addEventListener('input', e => { state.filter.q = e.target.value; shownCount = 40; renderTable(); });
+  $('#moreBtn').addEventListener('click', () => { shownCount += 60; renderTable(); });
+
+  $('#sampleBtn').addEventListener('click', () => { sampleLedger(); toast('Sample ledger loaded'); goTo(0); });
+  $('#clearBtn').addEventListener('click', () => {
+    if (!state.rows.length && !Object.keys(state.balances).length){ toast('Nothing to clear'); return; }
+    state.rows = []; state.balances = {}; state.imports = [];
+    save(); render(); logLine('Ledger cleared','warn'); toast('Ledger cleared');
+  });
+
+  $('#ariaToggle').addEventListener('click', openDrawer);
+  $('#ariaClose').addEventListener('click', closeDrawer);
+  $('#scrim').addEventListener('click', closeDrawer);
+  $('#composer').addEventListener('submit', e => { e.preventDefault(); sendAsk(); });
+  $('#ask').addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendAsk(); } });
+  $('#ask').addEventListener('input', e => {
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 110) + 'px';
+  });
+
+  $('#acctFilter').innerHTML = '<option value="">All accounts</option>' +
+    ACCOUNTS.map(a => `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+}
+
+(async function boot(){
+  wire();
+  initPager();
+  setMode('guest');
+  renderPrompts();
+  renderCategories();
+  initSchemaJump();
+  initRuleForm();
+  const restored = await load();
+  if (restored) applyRules();
+  if (restored) logLine(`${state.rows.length} rows restored from your last session`,'ok');
+  render();
+})();
+</script>
+</body>
+</html>
