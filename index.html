@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#111A13">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#C7CCC2">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
@@ -17,15 +17,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ============================================================
-   THOMPSON FINANCES · iPhone 14+ build
-   ink #111A13 · slab #18241B · rise #213024 · rule #31462F
-   paper #EAF0E8 · muted #93A98F
-   asset #7FC79A · owe #CFA05F · accent #9DBE8F
+   THOMPSON FINANCES · iPhone 14+ build · daylight
+   ink #C7CCC2 · slab #DBE0D5 · rise #E5E9DF · rule #A0AB97
+   paper #171E14 · muted #52604D
+   asset #2A7049 · owe #7C581D · accent #638C4F · deep #396028
    ============================================================ */
 :root{
-  --ink:#111A13; --slab:#18241B; --rise:#213024; --rule:#31462F;
-  --paper:#EAF0E8; --muted:#93A98F;
-  --asset:#7FC79A; --owe:#CFA05F; --accent:#9DBE8F; --danger:#D97B72;
+  /* Daylight palette. The page is a true gray-green field and the
+     cards sit above it in a lighter tone, so the balance sheet
+     reads as paper on a desk rather than one flat white sheet.
+     Lightness order, darkest first: ink (page) < slab (cards)
+     < rise (raised controls). */
+  --ink:#C7CCC2; --slab:#DBE0D5; --rise:#E5E9DF; --rule:#A0AB97;
+  --paper:#171E14; --muted:#52604D;
+  --asset:#2A7049; --owe:#7C581D; --accent:#638C4F; --accent-deep:#396028; --danger:#A23E36;
   --display:"Bricolage Grotesque","Inter Tight",system-ui,sans-serif;
   --body:"Inter Tight",system-ui,-apple-system,sans-serif;
   --data:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -33,7 +38,7 @@
   --sat:env(safe-area-inset-top,0px);
   --sab:env(safe-area-inset-bottom,0px);
   --topbar:52px; --dots:38px;
-  --shadow:0 18px 48px -24px rgba(0,0,0,.85);
+  --shadow:0 18px 44px -26px rgba(23,30,20,.5);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%}
@@ -46,7 +51,7 @@ body{
 button,input,select,textarea{font:inherit;color:inherit}
 /* iOS zooms any focused control under 16px — keep form text at 16 */
 input,select,textarea{font-size:16px}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px;border-radius:6px}
 .num{font-family:var(--data);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .eyebrow{font-family:var(--data);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -58,15 +63,15 @@ input,select,textarea{font-size:16px}
   min-height:44px;padding:10px 16px;border-radius:var(--r);cursor:pointer;
   font-size:15px;font-weight:500;transition:background .16s,border-color .16s;
 }
-.btn:active{background:#2A3D2C}
-.btn--primary{background:var(--accent);border-color:var(--accent);color:#101B10;font-weight:600}
+.btn:active{background:#AEB8A6}
+.btn--primary{background:var(--accent);border-color:var(--accent-deep);color:#0E1808;font-weight:600}
 .btn--sm{min-height:38px;padding:7px 12px;font-size:13.5px;border-radius:10px}
 .btn--ghost{background:transparent}
 .btn[disabled]{opacity:.45}
 
 .crest{display:block}
-.crest use{color:var(--accent)}
-.crest--hero{width:96px;height:108px;margin:0 auto 16px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.5))}
+.crest use{color:var(--accent-deep)}
+.crest--hero{width:96px;height:108px;margin:0 auto 16px;filter:drop-shadow(0 10px 20px rgba(26,33,22,.22))}
 .crest--bar{width:28px;height:31.5px;flex:none;display:block}
 .crest-btn{background:none;border:0;padding:6px;margin:-6px 0 -6px -6px;cursor:pointer;
   border-radius:10px;flex:none;transition:transform .14s ease}
@@ -78,16 +83,16 @@ input,select,textarea{font-size:16px}
 .splash{
   position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;
   padding:calc(var(--sat) + 16px) 16px calc(var(--sab) + 16px);
-  background:radial-gradient(130% 80% at 50% -8%, #1E2E20 0%, var(--ink) 60%);
+  background:radial-gradient(130% 80% at 50% -8%, #D8DECF 0%, var(--ink) 62%);
   overflow:auto;
 }
 .splash[hidden]{display:none}
 .splash__ledger{position:absolute;inset:0;pointer-events:none;opacity:.45;
-  background-image:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(49,70,47,.55) 31px 32px);
+  background-image:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(122,136,114,.5) 31px 32px);
   mask-image:linear-gradient(to bottom,transparent,#000 20%,#000 68%,transparent);}
 .cover{
   position:relative;width:100%;max-width:430px;margin:auto 0 0;
-  background:rgba(24,36,27,.86);backdrop-filter:blur(8px);
+  background:rgba(225,230,219,.86);backdrop-filter:blur(8px);
   border:1px solid var(--rule);border-radius:20px;padding:26px 22px 20px;box-shadow:var(--shadow);
 }
 .lede{color:var(--muted);margin:4px 0 20px;font-size:15px;text-align:center}
@@ -99,16 +104,20 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .field{margin-bottom:14px}
 .field label{display:block;font-size:13.5px;font-weight:500;margin-bottom:6px}
 .input{width:100%;background:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:12px;font-family:var(--data)}
-.input::placeholder{color:#6B8168}
-.input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(157,190,143,.20)}
+.input::placeholder{color:#7A8676}
+.input:focus{border-color:var(--accent-deep);outline:none;box-shadow:0 0 0 3px rgba(99,140,79,.3)}
 .hint{margin:7px 0 0;font-size:12.5px;color:var(--muted)}
 .hint--warn{color:var(--owe)}
 .cover .btn{width:100%;min-height:50px}
 #lockRow{display:grid;gap:8px}
 #lockRow[hidden]{display:none}
-.fineprint{margin:14px 0 0;font-size:12px;color:#6F856B;line-height:1.5}
-.cover__foot{display:flex;gap:14px;margin-top:14px;border-top:1px solid var(--rule);padding-top:12px}
-.cover__foot span{font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6B8168}
+.fineprint{margin:14px 0 0;font-size:12px;color:#5F6C5B;line-height:1.5}
+.cover__foot{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;border-top:1px solid var(--rule);padding-top:12px;align-items:center}
+.cover__foot span{font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#5F6C5B}
+.stamp{margin-left:auto;background:none;border:0;padding:4px 0;cursor:pointer;
+  font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:#5F6C5B;border-bottom:1px dotted var(--rule)}
+.stamp:active{color:var(--accent);border-bottom-color:var(--accent)}
 
 /* ============================================================
    APP SHELL — fixed top bar, horizontal pager, page dots
@@ -118,17 +127,17 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .topbar{
   flex:none;display:flex;align-items:center;gap:10px;
   padding:calc(var(--sat) + 8px) 14px 8px;min-height:calc(var(--topbar) + var(--sat));
-  background:rgba(17,26,19,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule);
+  background:rgba(199,204,194,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule);
 }
 .screen-jump{
   flex:1;min-width:0;appearance:none;-webkit-appearance:none;
-  background:var(--slab) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2393A98F' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  background:var(--slab) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2352604D' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
   border:1px solid var(--rule);border-radius:11px;min-height:40px;padding:6px 32px 6px 12px;
   font-family:var(--data);font-size:13px;letter-spacing:.04em;color:var(--paper);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .chip{font-family:var(--data);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
-.chip--live{color:var(--accent);border-color:rgba(157,190,143,.55)}
+.chip--live{color:var(--accent-deep);border-color:rgba(99,140,79,.65)}
 
 /* ---------- the pager (signature interaction) ---------- */
 .pager{
@@ -150,7 +159,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   position:absolute;left:0;right:0;bottom:0;z-index:20;
   display:flex;gap:14px;align-items:center;justify-content:center;
   padding:8px 0 calc(var(--sab) + 8px);
-  background:linear-gradient(to top,rgba(17,26,19,.94) 55%,transparent);
+  background:linear-gradient(to top,rgba(199,204,194,.95) 55%,transparent);
   pointer-events:none;
 }
 .dots button{
@@ -181,10 +190,11 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .col__total{margin-left:auto;font-family:var(--data);font-size:14px;font-weight:600}
 .cards{display:grid;gap:10px}
 .card{background:var(--slab);border:1px solid var(--rule);border-radius:14px;padding:13px 14px;display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:center}
-.card--empty{opacity:.6;border-style:dashed}
+.card--empty{opacity:.9;border-style:dashed;border-color:#94A08B}
 .card__alias{font-family:var(--data);font-size:10.5px;letter-spacing:.12em;color:var(--muted)}
 .card__name{font-weight:600;font-size:15px;margin:2px 0 0}
 .card__meta{font-family:var(--data);font-size:11px;color:var(--muted);grid-column:1/2}
+.card{cursor:pointer}
 .card__bal{grid-row:1/3;grid-column:2/3;font-family:var(--data);font-size:18px;font-weight:600;
   background:none;border:0;padding:8px 4px;margin:-8px -4px;border-radius:10px;cursor:pointer;
   display:flex;align-items:center;justify-content:flex-end;gap:7px;min-height:44px;direction:ltr}
@@ -193,22 +203,41 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .card__bal:active .pen{opacity:1}
 .card__bal .fig{border-bottom:1px dashed transparent;padding-bottom:1px}
 .card__bal--set .fig{border-bottom-color:currentColor;opacity:.95}
-.card__bal:focus-visible{background:var(--ink);box-shadow:inset 0 0 0 1px var(--accent);outline:none}
-.balhint{font-size:12.5px;color:var(--muted);margin:10px 2px 0}
+.card__bal:focus-visible{background:var(--ink);box-shadow:inset 0 0 0 1px var(--accent-deep);outline:none}
+.balhint{font-size:12.5px;color:var(--muted);margin:2px 2px 0}
+
+/* Weekly budget — the derived figure and the arithmetic behind it */
+.budget__num{font-family:var(--display);font-weight:800;font-size:clamp(30px,9.5vw,40px);
+  letter-spacing:-.03em;line-height:1;margin:0 0 5px}
+.budget__sub{font-family:var(--data);font-size:11.5px;color:var(--muted);margin:0}
+.wtd{margin:15px 0 4px}
+.wtd__row{display:flex;justify-content:space-between;gap:10px;font-family:var(--data);font-size:11.5px;color:var(--muted)}
+.wtd__bar{height:10px;border-radius:5px;background:var(--ink);border:1px solid var(--rule);
+  overflow:hidden;margin-top:7px;box-shadow:inset 0 1px 3px rgba(23,30,20,.16)}
+.wtd__fill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.22,1,.36,1);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 55%,rgba(23,30,20,.14))}
+.calc{display:grid;margin-top:14px}
+.calc__row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid rgba(23,30,20,.1)}
+.calc__row b{font-weight:500;font-size:13.5px}
+.calc__row .v{font-family:var(--data);font-size:14px;font-weight:600;white-space:nowrap}
+.calc__row .why{grid-column:1/3;font-family:var(--data);font-size:10.5px;color:var(--muted);line-height:1.5}
+.calc__row--sum{border-bottom:0;border-top:1px solid var(--rule);margin-top:3px;padding-top:11px}
+.calc__row--sum b{font-weight:600;font-size:14.5px}
 .card__spark{grid-column:1/3;margin-top:7px;height:24px}
 .card__spark svg{display:block;width:100%;height:24px;overflow:visible}
 
 /* Intake */
 .drop{border:1.5px dashed var(--rule);border-radius:14px;padding:34px 18px;text-align:center;
-  background:repeating-linear-gradient(45deg,transparent 0 12px,rgba(49,70,47,.14) 12px 24px);cursor:pointer}
-.drop:active{border-color:var(--accent);background-color:rgba(157,190,143,.08)}
-.drop.is-over{border-color:var(--accent);background-color:rgba(157,190,143,.1)}
+  background:repeating-linear-gradient(45deg,transparent 0 12px,rgba(26,33,22,.05) 12px 24px);cursor:pointer}
+.drop:active{border-color:var(--accent-deep);background-color:rgba(99,140,79,.12)}
+.drop.is-over{border-color:var(--accent-deep);background-color:rgba(99,140,79,.14)}
 .drop__title{font-family:var(--display);font-size:17px;font-weight:600;margin:0 0 6px}
 .drop__sub{margin:0;color:var(--muted);font-size:13.5px}
 .log{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
 .log li{display:flex;gap:9px;align-items:baseline;font-family:var(--data);font-size:11.5px;color:var(--muted);border-left:2px solid var(--rule);padding-left:9px}
 .log li.ok{border-color:var(--asset)} .log li.warn{border-color:var(--owe)} .log li.err{border-color:var(--danger)}
-.log time{color:#6B8168}
+.log time{color:#6D7A69}
 .schema{display:grid;gap:10px}
 .schema__id{display:flex;align-items:baseline;gap:10px}
 .schema__id .alias{font-family:var(--data);font-size:11px;letter-spacing:.12em;color:var(--muted)}
@@ -242,7 +271,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .bars{display:grid;gap:8px;margin-top:4px}
 .bars .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:baseline;font-size:13px}
 .bars .row .track{grid-column:1/3;height:8px;border-radius:4px;background:var(--ink);border:1px solid var(--rule);overflow:hidden}
-.bars .row .fill{height:100%;background:linear-gradient(90deg,var(--owe),#B08145);border-radius:4px}
+.bars .row .fill{height:100%;background-color:var(--owe);border-radius:4px}
 .bars .row .amt{font-family:var(--data);color:var(--owe)}
 .bignum{font-family:var(--data);font-weight:600;font-size:22px;letter-spacing:-.02em}
 .kv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -275,38 +304,11 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .acc__body{border-top:1px solid var(--rule);padding:14px}
 .acc__body .empty{padding:14px 6px}
 
-/* Position — collapsible columns + the weekly budget block */
-.acc--col{background:transparent;background-image:none;border:0;border-radius:0;margin:16px 0 0;box-shadow:none;overflow:visible}
-.acc--col > summary{min-height:46px;padding:0 2px 7px;gap:9px;border-bottom:1px solid var(--rule);
-  font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
-.acc--col .acc__count{margin-left:auto}
-.acc--col .acc__total{font-family:var(--data);font-size:14px;font-weight:600}
-.acc--col .acc__body{border-top:0;padding:12px 0 0}
-
-.budget__num{font-family:var(--display);font-weight:800;font-size:clamp(30px,9.5vw,40px);
-  letter-spacing:-.03em;line-height:1;margin:0 0 5px}
-.budget__sub{font-family:var(--data);font-size:11.5px;color:var(--muted);margin:0}
-.wtd{margin:15px 0 4px}
-.wtd__row{display:flex;justify-content:space-between;gap:10px;font-family:var(--data);font-size:11.5px;color:var(--muted)}
-.wtd__bar{height:10px;border-radius:5px;background:var(--ink);border:1px solid var(--rule);
-  overflow:hidden;margin-top:7px;box-shadow:inset 0 1px 3px rgba(0,0,0,.45)}
-.wtd__fill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.22,1,.36,1);
-  background-image:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%,rgba(0,0,0,.15))}
-
-.calc{display:grid;margin-top:14px}
-.calc__row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:baseline;
-  padding:9px 0;border-bottom:1px solid rgba(49,70,47,.5)}
-.calc__row b{font-weight:500;font-size:13.5px}
-.calc__row .v{font-family:var(--data);font-size:14px;font-weight:600;white-space:nowrap}
-.calc__row .why{grid-column:1/3;font-family:var(--data);font-size:10.5px;color:var(--muted);line-height:1.5}
-.calc__row--sum{border-bottom:0;border-top:1px solid var(--rule);margin-top:3px;padding-top:11px}
-.calc__row--sum b{font-weight:600;font-size:14.5px}
-
 /* Calendar — month grid, day pips, due-date list */
 .cal__head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .cal__nav{background:var(--rise);border:1px solid var(--rule);border-radius:11px;width:40px;height:40px;
   flex:none;cursor:pointer;color:var(--paper);font-size:17px;line-height:1}
-.cal__nav:active{background:#2A3D2C}
+.cal__nav:active{background:#AEB8A6}
 .cal__month{flex:1;text-align:center;font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:-.01em}
 .cal__dow{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px}
 .cal__dow span{text-align:center;font-family:var(--data);font-size:10px;letter-spacing:.12em;color:var(--muted)}
@@ -314,14 +316,14 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .cal__day{position:relative;aspect-ratio:1/1;background:var(--ink);border:1px solid transparent;border-radius:10px;
   display:flex;flex-direction:column;align-items:center;padding:5px 2px 0;cursor:pointer;
   font-family:var(--data);font-size:12.5px;color:var(--paper);
-  box-shadow:inset 0 1px 2px rgba(0,0,0,.3)}
-.cal__day--out{opacity:.26}
+  box-shadow:inset 0 1px 2px rgba(23,30,20,.12)}
+.cal__day--out{opacity:.34}
 .cal__day--has{background:var(--rise)}
-.cal__day--today{border-color:rgba(157,190,143,.6)}
-.cal__day--sel{background:var(--accent);color:#101B10;border-color:var(--accent);font-weight:600}
+.cal__day--today{border-color:rgba(57,96,40,.65)}
+.cal__day--sel{background:var(--accent);color:#0E1808;border-color:var(--accent-deep);font-weight:600}
 .cal__pips{display:flex;gap:2.5px;margin-top:auto;padding-bottom:6px;min-height:4px}
 .cal__pips i{width:4.5px;height:4.5px;border-radius:50%;display:block}
-.cal__day--sel .cal__pips i{box-shadow:0 0 0 1px rgba(16,27,16,.35)}
+.cal__day--sel .cal__pips i{box-shadow:0 0 0 1px rgba(23,30,20,.35)}
 
 .daylist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .bill{background:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:10px 10px 10px 13px;
@@ -333,9 +335,47 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   width:34px;height:34px;color:var(--muted);cursor:pointer;font-size:13px;flex:none}
 
 /* ============================================================
+   LEDGER OVERLAY
+   The ledger stopped being a screen you pan to. It is a view you
+   summon: tap an account card and it opens filtered to that
+   account, or turn the phone on its side and it opens wide, as a
+   real table with every column showing.
+   ============================================================ */
+.ledger{position:fixed;inset:0;z-index:65;display:flex;flex-direction:column;
+  background:var(--ink);padding-top:var(--sat);
+  transform:translateY(100%);transition:transform .26s cubic-bezier(.22,1,.36,1)}
+.ledger[hidden]{display:none}
+.ledger.is-open{transform:translateY(0)}
+.ledger__head{flex:none;display:flex;align-items:center;gap:10px;padding:12px 14px;
+  background:var(--slab);border-bottom:1px solid var(--rule)}
+.ledger__head h2{font-family:var(--display);font-size:17px;font-weight:700;margin:0;letter-spacing:-.02em}
+.ledger__close{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:10px;
+  width:38px;height:38px;cursor:pointer;color:var(--muted);font-size:15px;flex:none}
+.ledger__filters{flex:none;display:grid;grid-template-columns:1fr;gap:8px;
+  padding:12px 14px;border-bottom:1px solid var(--rule)}
+.ledger__body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:14px 14px calc(var(--sab) + 16px)}
+
+/* wide view — landscape gets the full table */
+@media (orientation:landscape){
+  .ledger__filters{grid-template-columns:minmax(170px,250px) 1fr}
+  .ledger__body{padding-left:16px;padding-right:16px}
+}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead th{position:sticky;top:0;z-index:1;background:var(--ink);text-align:left;
+  font-family:var(--data);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--rule)}
+.tbl th.c-amt,.tbl td.c-amt{text-align:right}
+.tbl td{padding:9px 10px;border-bottom:1px solid rgba(23,30,20,.09);vertical-align:top}
+.tbl tbody tr:active td{background:var(--slab)}
+.tbl .c-date,.tbl .c-acct,.tbl .c-cat{font-family:var(--data);font-size:12px;color:var(--muted);white-space:nowrap}
+.tbl .c-desc{font-weight:500}
+.tbl .c-amt{font-family:var(--data);font-weight:600;white-space:nowrap}
+
+/* ============================================================
    ARIA DRAWER — right side, full width on phone
    ============================================================ */
-.scrim{position:fixed;inset:0;background:rgba(8,13,9,.6);z-index:40;opacity:0;transition:opacity .22s}
+.scrim{position:fixed;inset:0;background:rgba(26,33,22,.38);z-index:40;opacity:0;transition:opacity .22s}
 .scrim[hidden]{display:none}
 .scrim.is-open{opacity:1}
 .drawer{
@@ -347,12 +387,12 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .drawer.is-open{transform:translateX(0)}
 .drawer__head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rule)}
 .drawer__title{font-family:var(--display);font-weight:700;font-size:16px;margin:0;letter-spacing:-.02em}
-.drawer__title b{color:var(--accent);font-weight:800}
+.drawer__title b{color:var(--accent-deep);font-weight:800}
 .drawer__close{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:10px;width:38px;height:38px;cursor:pointer;color:var(--muted);font-size:15px}
 .thread{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;gap:11px}
 .msg{max-width:92%;padding:11px 13px;border-radius:14px;font-size:14.5px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
 .msg--aria{background:var(--rise);border:1px solid var(--rule);border-top-left-radius:4px;align-self:flex-start}
-.msg--you{background:rgba(157,190,143,.16);border:1px solid rgba(157,190,143,.45);border-top-right-radius:4px;align-self:flex-end}
+.msg--you{background:rgba(99,140,79,.18);border:1px solid rgba(99,140,79,.55);border-top-right-radius:4px;align-self:flex-end}
 .prompts{display:flex;gap:6px;padding:0 14px 10px;overflow-x:auto;scrollbar-width:none}
 .prompts::-webkit-scrollbar{display:none}
 .prompts button{flex:none;background:var(--ink);border:1px solid var(--rule);color:var(--muted);border-radius:999px;min-height:36px;padding:6px 13px;font-size:13px;cursor:pointer}
@@ -366,7 +406,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 /* ============================================================
    REVIEW SHEET — bottom sheet on phone
    ============================================================ */
-.modal{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-end;background:rgba(8,13,9,.72)}
+.modal{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-end;background:rgba(26,33,22,.45)}
 .modal[hidden]{display:none}
 .sheet{
   width:100%;max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch;
@@ -380,7 +420,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .maprows label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
 .preview{border:1px solid var(--rule);border-radius:12px;overflow:hidden;margin-top:6px}
 .preview table{width:100%;border-collapse:collapse;font-size:12.5px}
-.preview td{padding:8px 10px;border-bottom:1px solid rgba(49,70,47,.5)}
+.preview td{padding:8px 10px;border-bottom:1px solid rgba(26,33,22,.10)}
 .preview .dt{font-family:var(--data);color:var(--muted);white-space:nowrap}
 .preview .amt{text-align:right;font-family:var(--data);white-space:nowrap}
 .sheet__actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
@@ -394,79 +434,104 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
 
 /* ============================================================
+   FOLDS — every screen splits into collapsible sections
+   ============================================================ */
+.foldbar{display:flex;align-items:center;gap:10px;margin:0 2px 12px}
+.foldbar__state{font-family:var(--data);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.foldbar .btn{margin-left:auto}
+.fold{border:1px solid var(--rule);border-radius:16px;background:var(--slab);margin-bottom:12px;overflow:hidden}
+.fold>summary{
+  list-style:none;display:flex;align-items:center;gap:10px;min-height:54px;padding:12px 14px;cursor:pointer;
+  font-family:var(--display);font-size:15.5px;font-weight:600;letter-spacing:-.01em;
+}
+.fold>summary::-webkit-details-marker{display:none}
+.fold__dot{width:10px;height:10px;border-radius:3px;flex:none;background:var(--rule)}
+.fold__tag{margin-left:auto;font-family:var(--data);font-size:11.5px;font-weight:600;letter-spacing:.04em;
+  color:var(--muted);white-space:nowrap}
+.fold__tag.tone-asset{color:var(--asset)}
+.fold__tag.tone-owe{color:var(--owe)}
+.fold__chev{color:var(--muted);transition:transform .2s;font-size:12px;flex:none}
+.fold[open] .fold__chev{transform:rotate(90deg)}
+.fold__body{border-top:1px solid var(--rule);padding:14px}
+.fold__body>:last-child{margin-bottom:0}
+.fold__body .panel{margin-bottom:12px}
+.fold__body .drop+.log{margin-top:12px}
+.fold__stack{display:grid;gap:10px}
+
+/* ============================================================
    GLOSS — light falls from above
    ============================================================ */
-.panel,.card,.acc,.cover,.sheet,.drawer__head,.seg,.rules li{
+.panel,.card,.acc,.fold,.cover,.sheet,.drawer__head,.seg,.rules li{
   background-image:linear-gradient(180deg,
-    rgba(255,255,255,.065) 0%, rgba(255,255,255,.02) 34%,
-    rgba(0,0,0,0) 55%, rgba(0,0,0,.14) 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),
-             inset 0 -1px 0 rgba(0,0,0,.28),
-             0 14px 30px -20px rgba(0,0,0,.75);
+    rgba(255,255,255,.40) 0%, rgba(255,255,255,.14) 36%,
+    rgba(0,0,0,0) 58%, rgba(23,30,20,.07) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),
+             inset 0 -1px 0 rgba(23,30,20,.09),
+             0 12px 26px -20px rgba(23,30,20,.5);
 }
-.cover{box-shadow:inset 0 1px 0 rgba(255,255,255,.09),
-       inset 0 -1px 0 rgba(0,0,0,.3), var(--shadow)}
+.cover{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),
+       inset 0 -1px 0 rgba(23,30,20,.1), var(--shadow)}
 .card{transition:box-shadow .16s ease}
-.card:active{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),
-             inset 0 2px 8px rgba(0,0,0,.3)}
+.card:active{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),
+             inset 0 2px 7px rgba(23,30,20,.16)}
 
 .btn{
-  background-image:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.02) 46%,rgba(0,0,0,.1));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.3),
-             0 3px 8px -4px rgba(0,0,0,.5);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.45),rgba(255,255,255,.16) 48%,rgba(23,30,20,.06));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(23,30,20,.1),
+             0 2px 6px -3px rgba(23,30,20,.34);
 }
 .btn--ghost{background-image:none;box-shadow:none}
 .btn--primary{
-  background-image:linear-gradient(180deg,#B8D6A8 0%,var(--accent) 42%,#84A574 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(0,0,0,.28),
-             0 6px 16px -6px rgba(157,190,143,.45);
+  background-image:linear-gradient(180deg,#81AD66 0%,var(--accent) 45%,#4E7239 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(23,30,20,.22),
+             0 6px 14px -8px rgba(57,96,40,.6);
 }
-.btn--primary:active{background-image:linear-gradient(180deg,#8FB07F,#7E9E6F);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.3)}
+.btn--primary:active{background-image:linear-gradient(180deg,#547A40,#496B37);
+  box-shadow:inset 0 2px 6px rgba(23,30,20,.3)}
 
 /* the beam reads like glass tubing */
 .beam__bar{position:relative;
-  box-shadow:inset 0 1px 3px rgba(0,0,0,.5), inset 0 -1px 0 rgba(255,255,255,.05)}
+  box-shadow:inset 0 1px 3px rgba(23,30,20,.2), inset 0 -1px 0 rgba(255,255,255,.35)}
 .beam__bar::after{content:'';position:absolute;left:2px;right:2px;top:2px;height:42%;
   border-radius:6px 6px 10px 10px;pointer-events:none;
-  background:linear-gradient(180deg,rgba(255,255,255,.32),rgba(255,255,255,0))}
-.beam__fill--asset{background:linear-gradient(180deg,#93D6AA 0%,var(--asset) 45%,#4F9A6E 100%)}
-.beam__fill--owe{background:linear-gradient(180deg,#E0BA83 0%,var(--owe) 45%,#B08145 100%)}
-.bars .row .fill{background-image:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%,rgba(0,0,0,.15));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
-.bars .row .track{box-shadow:inset 0 1px 2px rgba(0,0,0,.45)}
+  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0))}
+.beam__fill--asset{background:linear-gradient(180deg,#44915F 0%,var(--asset) 45%,#1D5335 100%)}
+.beam__fill--owe{background:linear-gradient(180deg,#A57C37 0%,var(--owe) 45%,#604212 100%)}
+.bars .row .fill{background-image:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,0) 58%,rgba(23,30,20,.14));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
+.bars .row .track{box-shadow:inset 0 1px 2px rgba(23,30,20,.15)}
 
 /* controls: dropdowns, inputs, chips */
 .select,.search,.input,.screen-jump,.composer textarea{
-  background-image:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,0) 42%,rgba(255,255,255,.03));
-  box-shadow:inset 0 1.5px 3px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.05);
+  background-image:linear-gradient(180deg,rgba(23,30,20,.07),rgba(0,0,0,0) 44%,rgba(255,255,255,.28));
+  box-shadow:inset 0 1.5px 3px rgba(23,30,20,.12), inset 0 -1px 0 rgba(255,255,255,.4);
 }
 .screen-jump{background-image:
-  linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 50%,rgba(0,0,0,.12)),
-  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2393A98F' stroke-width='1.6'/%3E%3C/svg%3E");
+  linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.14) 52%,rgba(23,30,20,.07)),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2352604D' stroke-width='1.6'/%3E%3C/svg%3E");
   background-repeat:no-repeat,no-repeat;
   background-position:0 0,right 12px center;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(23,30,20,.1);
 }
-.chip{background-image:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.1));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.chip{background-image:linear-gradient(180deg,rgba(255,255,255,.38),rgba(23,30,20,.05));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 .seg__opt[aria-checked="true"]{
-  background-image:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 55%,rgba(0,0,0,.12));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 0 1px var(--rule), 0 2px 6px -2px rgba(0,0,0,.5);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.16) 58%,rgba(23,30,20,.06));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65), inset 0 0 0 1px var(--rule), 0 2px 5px -2px rgba(23,30,20,.35);
 }
-.dots button[aria-current="true"] i{box-shadow:0 0 8px rgba(157,190,143,.55),
+.dots button[aria-current="true"] i{box-shadow:0 0 6px rgba(57,96,40,.45),
   inset 0 1px 0 rgba(255,255,255,.35)}
 
 /* message bubbles + drop zone */
-.msg--aria,.msg--you{box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 4px 10px -6px rgba(0,0,0,.5)}
-.msg--aria{background-image:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.08))}
-.drop{box-shadow:inset 0 2px 8px rgba(0,0,0,.28)}
-.toast{background-image:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.1));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1), var(--shadow)}
+.msg--aria,.msg--you{box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 3px 8px -6px rgba(23,30,20,.4)}
+.msg--aria{background-image:linear-gradient(180deg,rgba(255,255,255,.3),rgba(23,30,20,.04))}
+.drop{box-shadow:inset 0 2px 7px rgba(23,30,20,.08)}
+.toast{background-image:linear-gradient(180deg,rgba(255,255,255,.4),rgba(23,30,20,.05));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5), var(--shadow)}
 
 /* ambient: a soft ceiling light on every screen */
-.screen{background:radial-gradient(120% 55% at 50% -12%, rgba(157,190,143,.05), rgba(0,0,0,0) 58%)}
-.topbar{box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 8px 24px -16px rgba(0,0,0,.7)}
+.screen{background:radial-gradient(120% 55% at 50% -12%, rgba(99,140,79,.12), rgba(0,0,0,0) 60%)}
+.topbar{box-shadow:0 1px 0 rgba(255,255,255,.4) inset, 0 8px 20px -18px rgba(23,30,20,.5)}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
@@ -480,7 +545,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <symbol id="tf-crest" viewBox="0 0 96 108">
       <!-- shield -->
       <path d="M48 4 L86 16 V56 C86 82 68 98 48 104 C28 98 10 82 10 56 V16 Z"
-            fill="var(--slab)" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round"/>
+            fill="var(--slab)" stroke="var(--accent-deep)" stroke-width="3.5" stroke-linejoin="round"/>
       <path d="M48 12 L78 21.5 V55 C78 76 63 89.5 48 95 C33 89.5 18 76 18 55 V21.5 Z"
             fill="none" stroke="var(--rule)" stroke-width="1.6" stroke-linejoin="round"/>
       <!-- ledger rules on the field -->
@@ -494,12 +559,12 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <g stroke="var(--paper)" stroke-linecap="round" fill="none">
         <path d="M26 32 H54" stroke-width="7"/>
         <path d="M40 32 V80" stroke-width="7"/>
-        <path d="M69 41 C69 32.5 61.5 30.5 57 34 M63 36.5 V78 M55 52 H71" stroke-width="5.6" stroke="var(--accent)"/>
+        <path d="M69 41 C69 32.5 61.5 30.5 57 34 M63 36.5 V78 M55 52 H71" stroke-width="5.6" stroke="var(--accent-deep)"/>
       </g>
       <!-- gloss sweep -->
-      <path d="M14 17 L48 6.5 L82 17 V30 C58 42 32 40 14 28 Z" fill="rgba(255,255,255,.075)"/>
+      <path d="M14 17 L48 6.5 L82 17 V30 C58 42 32 40 14 28 Z" fill="rgba(255,255,255,.5)"/>
       <!-- base seam -->
-      <path d="M38 88 L48 92 L58 88" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M38 88 L48 92 L58 88" fill="none" stroke="var(--accent-deep)" stroke-width="2" stroke-linecap="round"/>
     </symbol>
   </defs>
 </svg>
@@ -544,6 +609,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <p class="fineprint">Tap the intake screen to pull USAA, AMEX, PenFed and Wells Fargo exports (.xlsx, .xls, .csv, .pdf) from the Files app. Thompson Finances maps the columns to the right account and keeps the running position.</p>
     <div class="cover__foot">
       <span>7 accounts</span><span>7 screens</span><span>swipe to pan</span>
+      <button class="stamp" id="buildStamp" type="button" title="Check for a newer build">build —</button>
     </div>
   </section>
 </div>
@@ -564,114 +630,170 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
     <!-- 1 · POSITION -->
     <section class="screen" id="scr-position" aria-label="Position" data-title="Position" tabindex="-1">
-      <p class="eyebrow">Net position</p>
-      <div class="beam__net num" id="netWorth">$0</div>
-      <div class="beam__bar" role="img" aria-label="Assets versus liabilities in proportion">
-        <div class="beam__fill beam__fill--asset" id="beamAsset" style="width:50%"></div>
-        <div class="beam__fill beam__fill--owe" id="beamOwe" style="width:50%"></div>
-      </div>
-      <div class="beam__legend">
-        <div><span class="eyebrow tone-asset">Owned</span><br><b class="tone-asset num" id="totalAssets">$0</b></div>
-        <div style="text-align:right"><span class="eyebrow tone-owe">Owed</span><br><b class="tone-owe num" id="totalOwed">$0</b></div>
-      </div>
-      <p class="asof" id="asOf">no data yet</p>
-      <p class="balhint">Open a section to see the accounts inside. Tap any figure to set that balance by hand.</p>
+      <p class="eyebrow">Where the household stands</p>
+      <h1>Position</h1>
 
-      <details class="acc acc--col" id="assetBox">
-        <summary>
-          <span>Assets</span>
-          <span class="acc__count" id="colAssetsN"></span>
-          <span class="acc__total num tone-asset" id="colAssets">$0</span>
-          <span class="acc__chev" aria-hidden="true">▸</span>
-        </summary>
-        <div class="acc__body"><div class="cards" id="assetCards"></div></div>
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Net position
+          <span class="fold__tag num" id="netTag">$0</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="beam__net num" id="netWorth">$0</div>
+          <div class="beam__bar" role="img" aria-label="Assets versus liabilities in proportion">
+            <div class="beam__fill beam__fill--asset" id="beamAsset" style="width:50%"></div>
+            <div class="beam__fill beam__fill--owe" id="beamOwe" style="width:50%"></div>
+          </div>
+          <div class="beam__legend">
+            <div><span class="eyebrow tone-asset">Owned</span><br><b class="tone-asset num" id="totalAssets">$0</b></div>
+            <div style="text-align:right"><span class="eyebrow tone-owe">Owed</span><br><b class="tone-owe num" id="totalOwed">$0</b></div>
+          </div>
+          <p class="asof" id="asOf">no data yet</p>
+        </div>
       </details>
 
-      <details class="acc acc--col" id="liabBox">
-        <summary>
-          <span>Liabilities</span>
-          <span class="acc__count" id="colOwedN"></span>
-          <span class="acc__total num tone-owe" id="colOwed">$0</span>
-          <span class="acc__chev" aria-hidden="true">▸</span>
-        </summary>
-        <div class="acc__body"><div class="cards" id="liabCards"></div></div>
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--asset)"></span>Assets
+          <span class="fold__tag num tone-asset" id="colAssets">$0</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body"><div class="cards" id="assetCards"></div></div>
       </details>
 
-      <details class="acc acc--col" id="budgetBox">
-        <summary>
-          <span>Weekly budget</span>
-          <span class="acc__count" id="budgetTag">auto</span>
-          <span class="acc__total num" id="budgetChip">—</span>
-          <span class="acc__chev" aria-hidden="true">▸</span>
-        </summary>
-        <div class="acc__body" id="budgetBody"></div>
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>Liabilities
+          <span class="fold__tag num tone-owe" id="colOwed">$0</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body"><div class="cards" id="liabCards"></div></div>
       </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#3F7288"></span>Weekly budget
+          <span class="fold__tag num" id="budgetChip">&mdash;</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body" id="budgetBody"></div>
+      </details>
+
+      <p class="balhint">Tap a card to open its ledger. Tap the figure to set that balance by hand.</p>
     </section>
 
     <!-- 2 · INTAKE -->
     <section class="screen" id="scr-intake" aria-label="Intake" data-title="Intake" tabindex="-1">
       <p class="eyebrow">Statements in</p>
       <h1>Intake</h1>
-      <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
-        <p class="drop__title">Tap to add statement exports</p>
-        <p class="drop__sub" id="dropHelp">.xlsx, .xls, .csv or .pdf from the Files app. Files are read on this phone only, account numbers are scrubbed before anything is stored, and you confirm the mapping before rows land.</p>
-      </div>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf" multiple class="sr-only">
-      <ul class="log" id="log" aria-live="polite" aria-label="Import log"></ul>
-      <div class="panel" style="margin-top:14px">
-        <div class="panel__head"><h2>Account schema</h2><p class="eyebrow" id="rowCount">0 rows</p></div>
-        <label class="sr-only" for="schemaJump">Choose an account to view its schema and route imports</label>
-        <select class="select" id="schemaJump" style="margin-bottom:12px"></select>
-        <div id="schemaDetail"></div>
-      </div>
-      <button class="btn btn--ghost morebtn" id="sampleBtn" type="button">Load sample ledger</button>
-      <button class="btn btn--ghost morebtn" id="clearBtn" type="button">Clear all data</button>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Add statements
+          <span class="fold__tag">files in</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
+            <p class="drop__title">Tap to add statement exports</p>
+            <p class="drop__sub" id="dropHelp">.xlsx, .xls, .csv or .pdf from the Files app. Files are read on this phone only, account numbers are scrubbed before anything is stored, and you confirm the mapping before rows land.</p>
+          </div>
+          <ul class="log" id="log" aria-live="polite" aria-label="Import log"></ul>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--asset)"></span>Account schema
+          <span class="fold__tag" id="rowCount">0 rows</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <label class="sr-only" for="schemaJump">Choose an account to view its schema and route imports</label>
+          <select class="select" id="schemaJump" style="margin-bottom:12px"></select>
+          <div id="schemaDetail"></div>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>Ledger tools
+          <span class="fold__tag">sample · clear</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="fold__stack">
+            <button class="btn btn--ghost" id="sampleBtn" type="button">Load sample ledger</button>
+            <button class="btn btn--ghost" id="clearBtn" type="button">Clear all data</button>
+          </div>
+        </div>
+      </details>
     </section>
 
     <!-- 3 · FLOW -->
     <section class="screen" id="scr-flow" aria-label="Flow" data-title="Flow" tabindex="-1">
       <p class="eyebrow">Money in, money out</p>
       <h1>Flow</h1>
-      <div class="panel">
-        <div class="panel__head"><h2>By month</h2><p class="eyebrow" id="flowNote"></p></div>
-        <div class="chart" id="flowChart"></div>
-        <div class="legend-row">
-          <span><i class="swatch" style="background:var(--asset)"></i>In</span>
-          <span><i class="swatch" style="background:var(--owe)"></i>Out</span>
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>By month
+          <span class="fold__tag" id="flowNote"></span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="chart" id="flowChart"></div>
+          <div class="legend-row">
+            <span><i class="swatch" style="background:var(--asset)"></i>In</span>
+            <span><i class="swatch" style="background:var(--owe)"></i>Out</span>
+          </div>
         </div>
-      </div>
-      <div class="kv">
-        <div class="panel"><p class="eyebrow">Avg monthly in</p><div class="bignum tone-asset" id="avgIn">—</div></div>
-        <div class="panel"><p class="eyebrow">Avg monthly out</p><div class="bignum tone-owe" id="avgOut">—</div></div>
-      </div>
-      <div class="panel" style="margin-top:14px">
-        <div class="panel__head"><h2>Biggest outflows</h2></div>
-        <div class="bars" id="topSpend"></div>
-      </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--asset)"></span>Monthly averages
+          <span class="fold__tag">in vs out</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="kv">
+            <div class="panel"><p class="eyebrow">Avg monthly in</p><div class="bignum tone-asset" id="avgIn">—</div></div>
+            <div class="panel"><p class="eyebrow">Avg monthly out</p><div class="bignum tone-owe" id="avgOut">—</div></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>Biggest outflows
+          <span class="fold__tag">top 6</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body"><div class="bars" id="topSpend"></div></div>
+      </details>
     </section>
 
     <!-- 4 · PROJECTIONS -->
     <section class="screen" id="scr-project" aria-label="Projections" data-title="Projections" tabindex="-1">
       <p class="eyebrow">If the pattern holds</p>
       <h1>Projections</h1>
-      <div class="panel">
-        <div class="panel__head"><h2>Net position, 12 months out</h2></div>
-        <div class="chart" id="projChart"></div>
-        <div class="legend-row">
-          <span><i class="swatch" style="background:var(--accent)"></i>On file</span>
-          <span><i class="swatch" style="background:transparent;border:1px dashed var(--accent)"></i>Projected</span>
-          <span id="projNote"></span>
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Net position, 12 months out
+          <span class="fold__tag">line</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="chart" id="projChart"></div>
+          <div class="legend-row">
+            <span><i class="swatch" style="background:var(--accent)"></i>On file</span>
+            <span><i class="swatch" style="background:transparent;border:1px dashed var(--accent)"></i>Projected</span>
+            <span id="projNote"></span>
+          </div>
         </div>
-      </div>
-      <div class="kv">
-        <div class="panel"><p class="eyebrow">Avg net / month</p><div class="bignum" id="avgNet">—</div></div>
-        <div class="panel"><p class="eyebrow">In 12 months</p><div class="bignum" id="proj12">—</div></div>
-      </div>
-      <div class="panel" style="margin-top:14px">
-        <div class="panel__head"><h2>Debt runway</h2><p class="eyebrow">at current pace</p></div>
-        <div class="bars" id="payoff"></div>
-      </div>
-      <p class="hint" style="padding:0 4px">Straight-line reading of the months on file — a sketch of direction, not advice.</p>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--asset)"></span>Where it lands
+          <span class="fold__tag">pace</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="kv">
+            <div class="panel"><p class="eyebrow">Avg net / month</p><div class="bignum" id="avgNet">—</div></div>
+            <div class="panel"><p class="eyebrow">In 12 months</p><div class="bignum" id="proj12">—</div></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>Debt runway
+          <span class="fold__tag">at current pace</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="bars" id="payoff"></div>
+          <p class="hint">Straight-line reading of the months on file — a sketch of direction, not advice.</p>
+        </div>
+      </details>
     </section>
 
 
@@ -680,56 +802,80 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <p class="eyebrow">What lands, and when</p>
       <h1>Calendar</h1>
 
-      <div class="panel">
-        <div class="cal__head">
-          <button class="cal__nav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button>
-          <div class="cal__month" id="calMonth">&mdash;</div>
-          <button class="cal__nav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button>
-        </div>
-        <div class="cal__dow" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
-        <div class="cal__grid" id="calGrid"></div>
-        <div class="legend-row">
-          <span><i class="swatch" style="background:var(--owe)"></i>Due out</span>
-          <span><i class="swatch" style="background:var(--asset)"></i>Coming in</span>
-          <button class="btn btn--sm btn--ghost" id="calToday" type="button" style="margin-left:auto">Today</button>
-        </div>
-      </div>
-
-      <div class="kv">
-        <div class="panel"><p class="eyebrow">Due out</p><div class="bignum tone-owe" id="calOut">&mdash;</div></div>
-        <div class="panel"><p class="eyebrow">Coming in</p><div class="bignum tone-asset" id="calIn">&mdash;</div></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel__head"><h2 id="calDayTitle">Pick a day</h2><p class="eyebrow" id="calDayNote"></p></div>
-        <ul class="daylist" id="calDayList"></ul>
-      </div>
-
-      <div class="panel">
-        <div class="panel__head"><h2>Next 30 days</h2><p class="eyebrow" id="calUpNote"></p></div>
-        <ul class="daylist" id="calUpcoming"></ul>
-      </div>
-
-      <div class="panel">
-        <div class="panel__head"><h2>Add a due date</h2></div>
-        <div class="rule-form">
-          <input class="search" id="billName" type="text" placeholder="What is it? e.g. Mortgage" aria-label="Name" autocapitalize="words">
-          <fieldset style="margin:0">
-            <legend id="billKindLegend">Direction</legend>
-            <div class="seg" role="radiogroup" aria-labelledby="billKindLegend" id="billKind">
-              <button type="button" class="seg__opt" role="radio" aria-checked="true" tabindex="0" data-kind="expense">Expense</button>
-              <button type="button" class="seg__opt" role="radio" aria-checked="false" tabindex="-1" data-kind="income">Income</button>
-            </div>
-          </fieldset>
-          <div class="rule-form__row">
-            <input class="search" id="billAmount" type="text" inputmode="decimal" placeholder="Amount" aria-label="Amount">
-            <input class="search" id="billDate" type="date" aria-label="Due date">
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Month
+          <span class="fold__tag" id="calMonthTag">&mdash;</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <div class="cal__head">
+            <button class="cal__nav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button>
+            <div class="cal__month" id="calMonth">&mdash;</div>
+            <button class="cal__nav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button>
           </div>
-          <select class="select" id="billAcct" aria-label="Account"></select>
-          <label class="switch"><input type="checkbox" id="billRepeat" checked> Repeats on this day every month</label>
-          <button class="btn btn--primary" id="billAdd" type="button">Add to the calendar</button>
+          <div class="cal__dow" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+          <div class="cal__grid" id="calGrid"></div>
+          <div class="legend-row">
+            <span><i class="swatch" style="background:var(--owe)"></i>Due out</span>
+            <span><i class="swatch" style="background:var(--asset)"></i>Coming in</span>
+            <button class="btn btn--sm btn--ghost" id="calToday" type="button" style="margin-left:auto">Today</button>
+          </div>
         </div>
-      </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>This month
+          <span class="fold__tag">in and out</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <div class="kv">
+            <div class="panel"><p class="eyebrow">Due out</p><div class="bignum tone-owe" id="calOut">&mdash;</div></div>
+            <div class="panel"><p class="eyebrow">Coming in</p><div class="bignum tone-asset" id="calIn">&mdash;</div></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--asset)"></span>Selected day
+          <span class="fold__tag" id="calDayTitle">Pick a day</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <p class="eyebrow" id="calDayNote" style="margin-bottom:8px"></p>
+          <ul class="daylist" id="calDayList"></ul>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#3F7288"></span>Next 30 days
+          <span class="fold__tag" id="calUpNote"></span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body"><ul class="daylist" id="calUpcoming"></ul></div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#8A5787"></span>Add a due date
+          <span class="fold__tag">one-off or monthly</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <div class="rule-form">
+            <input class="search" id="billName" type="text" placeholder="What is it? e.g. Mortgage" aria-label="Name" autocapitalize="words">
+            <fieldset style="margin:0">
+              <legend id="billKindLegend">Direction</legend>
+              <div class="seg" role="radiogroup" aria-labelledby="billKindLegend" id="billKind">
+                <button type="button" class="seg__opt" role="radio" aria-checked="true" tabindex="0" data-kind="expense">Expense</button>
+                <button type="button" class="seg__opt" role="radio" aria-checked="false" tabindex="-1" data-kind="income">Income</button>
+              </div>
+            </fieldset>
+            <div class="rule-form__row">
+              <input class="search" id="billAmount" type="text" inputmode="decimal" placeholder="Amount" aria-label="Amount">
+              <input class="search" id="billDate" type="date" aria-label="Due date">
+            </div>
+            <select class="select" id="billAcct" aria-label="Account"></select>
+            <label class="switch"><input type="checkbox" id="billRepeat" checked> Repeats on this day every month</label>
+            <button class="btn btn--primary" id="billAdd" type="button">Add to the calendar</button>
+          </div>
+        </div>
+      </details>
+
       <p class="hint" style="padding:0 4px">Due dates live beside the ledger, not inside it — nothing here changes a balance until the real transaction imports.</p>
     </section>
 
@@ -737,58 +883,62 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <section class="screen" id="scr-family" aria-label="The Family" data-title="The Family" tabindex="-1">
       <p class="eyebrow">Who spent what</p>
       <h1>The Family</h1>
-      <label class="sr-only" for="personJump">Show spending for</label>
-      <select class="select" id="personJump" style="margin-bottom:14px"></select>
-
-      <div class="kv">
-        <div class="panel"><p class="eyebrow">Outflow, all months</p><div class="bignum tone-owe" id="famTotal">—</div></div>
-        <div class="panel"><p class="eyebrow">Share of household</p><div class="bignum" id="famShare">—</div></div>
-      </div>
-
-      <div class="panel" style="margin-top:14px">
-        <div class="panel__head"><h2>By month</h2><p class="eyebrow" id="famNote"></p></div>
-        <div class="chart" id="famChart"></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel__head"><h2>By account</h2></div>
-        <div class="bars" id="famAccounts"></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel__head"><h2>By category</h2></div>
-        <div class="bars" id="famCats"></div>
-      </div>
-      <div class="panel">
-        <div class="panel__head"><h2>Ownership rules</h2><p class="eyebrow" id="ruleNote">first match wins</p></div>
-        <ul class="rules" id="ruleList"></ul>
-        <div class="rule-form">
-          <input class="search" id="ruleQ" type="text" placeholder="Description contains… (e.g. NETFLIX)"
-                 aria-label="Description keyword" autocapitalize="characters">
-          <div class="rule-form__row">
-            <select class="select" id="ruleAcct" aria-label="Limit to account"></select>
-            <select class="select" id="rulePerson" aria-label="Belongs to"></select>
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Who you're looking at
+          <span class="fold__tag" id="famWho">Whole household</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <label class="sr-only" for="personJump">Show spending for</label>
+          <select class="select" id="personJump" style="margin-bottom:14px"></select>
+          <div class="kv">
+            <div class="panel"><p class="eyebrow">Outflow, all months</p><div class="bignum tone-owe" id="famTotal">—</div></div>
+            <div class="panel"><p class="eyebrow">Share of household</p><div class="bignum" id="famShare">—</div></div>
           </div>
-          <button class="btn" id="ruleAdd" type="button">Add rule</button>
         </div>
-      </div>
-      <p class="hint" style="padding:0 4px" id="famUnassigned"></p>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>By month
+          <span class="fold__tag" id="famNote"></span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body"><div class="chart" id="famChart"></div></div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#3F7288"></span>By account
+          <span class="fold__tag">outflow</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body"><div class="bars" id="famAccounts"></div></div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#8A5787"></span>By category
+          <span class="fold__tag">top 8</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body"><div class="bars" id="famCats"></div></div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--asset)"></span>Ownership rules
+          <span class="fold__tag" id="ruleNote">first match wins</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <ul class="rules" id="ruleList"></ul>
+          <div class="rule-form">
+            <input class="search" id="ruleQ" type="text" placeholder="Description contains… (e.g. NETFLIX)"
+                   aria-label="Description keyword" autocapitalize="characters">
+            <div class="rule-form__row">
+              <select class="select" id="ruleAcct" aria-label="Limit to account"></select>
+              <select class="select" id="rulePerson" aria-label="Belongs to"></select>
+            </div>
+            <button class="btn" id="ruleAdd" type="button">Add rule</button>
+          </div>
+          <p class="hint" id="famUnassigned"></p>
+        </div>
+      </details>
     </section>
 
-    <!-- 7 · LEDGER -->
-    <section class="screen" id="scr-ledger" aria-label="Ledger" data-title="Ledger" tabindex="-1">
-      <p class="eyebrow">Every line</p>
-      <h1>Ledger <span class="eyebrow" id="shown" style="font-size:11px"></span></h1>
-      <div class="filters">
-        <select class="select" id="acctFilter" aria-label="Filter by account"><option value="">All accounts</option></select>
-        <input class="search" id="search" type="search" placeholder="Search description" aria-label="Search descriptions">
-      </div>
-      <ul class="txn" id="txnList"></ul>
-      <div class="empty" id="tableEmpty">Nothing imported yet. Swipe to Intake and add a statement, or load the sample ledger.</div>
-      <button class="btn morebtn" id="moreBtn" type="button" hidden>Show more</button>
-    </section>
-
-    <!-- 8 · CATEGORIES -->
+    <!-- 7 · CATEGORIES -->
     <section class="screen" id="scr-categories" aria-label="Categories" data-title="Categories" tabindex="-1">
       <p class="eyebrow">Sorting the outflows</p>
       <h1>Categories</h1>
@@ -843,7 +993,27 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   </div>
 </div>
 
-<!-- ============ SET BALANCE SHEET ============ -->
+<!-- ============ LEDGER OVERLAY ============ -->
+<div class="ledger" id="ledgerView" hidden role="dialog" aria-modal="true" aria-labelledby="ledgerTitle">
+  <header class="ledger__head">
+    <h2 id="ledgerTitle">Ledger</h2>
+    <span class="chip" id="shown"></span>
+    <button class="ledger__close" id="ledgerClose" type="button" aria-label="Close the ledger">&#10005;</button>
+  </header>
+  <div class="ledger__filters">
+    <label class="sr-only" for="acctFilter">Filter by account</label>
+    <select class="select" id="acctFilter"><option value="">All accounts</option></select>
+    <label class="sr-only" for="search">Search descriptions</label>
+    <input class="search" id="search" type="search" placeholder="Search description">
+  </div>
+  <div class="ledger__body">
+    <div id="ledgerRows"></div>
+    <div class="empty" id="tableEmpty">Nothing imported yet. Open Intake and add a statement, or load the sample ledger.</div>
+    <button class="btn morebtn" id="moreBtn" type="button" hidden>Show more</button>
+  </div>
+</div>
+
+<!-- ============ SET A BALANCE ============ -->
 <div class="modal" id="balModal" hidden role="dialog" aria-modal="true" aria-labelledby="balTitle">
   <div class="sheet">
     <div class="sheet__grab" aria-hidden="true"></div>
@@ -1340,21 +1510,21 @@ function topSpend(limit = 6, acctId = ''){
 
 /* the household */
 const FAMILY = [
-  { id:'Ryan',    color:'#9DBE8F' },
-  { id:'Vanessa', color:'#CFA05F' },
-  { id:'Vivian',  color:'#B98FB6' },
-  { id:'Cooper',  color:'#7FA6B8' },
+  { id:'Ryan',    color:'#5C8C43' },
+  { id:'Vanessa', color:'#A2701F' },
+  { id:'Vivian',  color:'#8A5787' },
+  { id:'Cooper',  color:'#3F7288' },
 ];
 const PERSON = Object.fromEntries(FAMILY.map(f => [f.id, f]));
 
 /* categories: six empty groups, ready for rules and budgets later */
 const CATEGORIES = [
-  { id:'housing',   name:'Housing',        color:'#9DBE8F', note:'Mortgage, HELOC, repairs, insurance' },
-  { id:'transport', name:'Transportation', color:'#4FC3B0', note:'Car loan, fuel, maintenance, tolls' },
-  { id:'food',      name:'Food',           color:'#E0A458', note:'Groceries and dining' },
-  { id:'utilities', name:'Utilities',      color:'#7FA6B8', note:'Power, water, phone, internet' },
-  { id:'subs',      name:'Subscriptions',  color:'#B98FB6', note:'Streaming, memberships, software' },
-  { id:'income',    name:'Income',         color:'#9BC46B', note:'Payroll, interest, refunds' },
+  { id:'housing',   name:'Housing',        color:'#5C8C43', note:'Mortgage, HELOC, repairs, insurance' },
+  { id:'transport', name:'Transportation', color:'#1F8C7C', note:'Car loan, fuel, maintenance, tolls' },
+  { id:'food',      name:'Food',           color:'#B07A22', note:'Groceries and dining' },
+  { id:'utilities', name:'Utilities',      color:'#3F7288', note:'Power, water, phone, internet' },
+  { id:'subs',      name:'Subscriptions',  color:'#8A5787', note:'Streaming, memberships, software' },
+  { id:'income',    name:'Income',         color:'#4E8C2E', note:'Payroll, interest, refunds' },
 ];
 
 
@@ -1438,14 +1608,14 @@ async function disableFaceId(){
   await save();   /* ledger back to plaintext */
 }
 
-/* seal/open the ledger payload */
+/* seal/unseal the ledger payload */
 async function sealLedger(json){
   if (!lock.cryptoKey) return json;
   const iv = rand(12);
   const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, lock.cryptoKey, new TextEncoder().encode(json));
   return JSON.stringify({ __sealed:1, iv:b64u.enc(iv.buffer), ct:b64u.enc(ct) });
 }
-async function openLedger(raw){
+async function unsealLedger(raw){
   let env = null;
   try { env = JSON.parse(raw); } catch(_){ return null; }
   if (!env || !env.__sealed) return raw;               /* plaintext ledger */
@@ -1491,7 +1661,7 @@ async function load(){
   try {
     let value = await storeGet(STORE_KEY);
     if (!value) return false;
-    value = await openLedger(value);
+    value = await unsealLedger(value);
     if (!value) return false;
     const data = JSON.parse(value);
     state.rows = (data.rows || []).map(r => ({...r, date: new Date(r.date), desc: redactAccountNumbers(r.desc)})).sort((a,b) => b.date - a.date);
@@ -1691,6 +1861,59 @@ async function askClaude(q){
 
 
 /* ============================================================
+   FOLDS — each screen is split into collapsible sections, and
+   each screen carries its own expand/collapse-all control. Every
+   section opens closed, so a screen reads as a short menu first
+   and only shows the detail you ask for.
+   ============================================================ */
+const FOLDBARS = [];
+
+function initFolds(){
+  $$('.screen').forEach(screen => {
+    const folds = () => $$('details[data-fold]', screen);
+    if (!folds().length) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'foldbar';
+    bar.innerHTML = `<span class="foldbar__state"></span>
+      <button class="btn btn--sm" type="button">Expand all</button>`;
+    const btn = bar.querySelector('button');
+    const state = bar.querySelector('.foldbar__state');
+
+    const sync = () => {
+      const f = folds();
+      const open = f.filter(d => d.open).length;
+      state.textContent = `${open} of ${f.length} open`;
+      const allOpen = f.length > 0 && open === f.length;
+      btn.textContent = allOpen ? 'Collapse all' : 'Expand all';
+      btn.setAttribute('aria-label', `${allOpen ? 'Collapse' : 'Expand'} all sections on ${screen.dataset.title}`);
+    };
+
+    btn.addEventListener('click', () => {
+      const f = folds();
+      const expand = !f.every(d => d.open);
+      f.forEach(d => { d.open = expand; });
+      sync();
+    });
+
+    /* toggle does not bubble — catch it on the way down instead */
+    screen.addEventListener('toggle', e => {
+      if (e.target.matches && e.target.matches('details[data-fold]')) sync();
+    }, true);
+
+    const anchor = screen.querySelector('h1');
+    if (anchor) anchor.after(bar); else screen.prepend(bar);
+    FOLDBARS.push({screen, sync});
+    sync();
+  });
+}
+
+function collapseAllFolds(){
+  $$('details[data-fold]').forEach(d => { d.open = false; });
+  FOLDBARS.forEach(f => f.sync());
+}
+
+/* ============================================================
    PAGER — swipe to pan, dropdown to jump, dots to track
    ============================================================ */
 const SCREENS = [];
@@ -1701,8 +1924,12 @@ function initPager(){
   $$('.screen', pager).forEach((el, i) => SCREENS.push({el, id:el.id, title:el.dataset.title}));
 
   $('#screenJump').innerHTML = SCREENS.map((s,i) =>
-    `<option value="${i}">${esc(s.title)}</option>`).join('');
-  $('#screenJump').addEventListener('change', e => goTo(+e.target.value));
+    `<option value="${i}">${esc(s.title)}</option>`).join('')
+    + '<option value="ledger">Ledger — full view</option>';
+  $('#screenJump').addEventListener('change', e => {
+    if (e.target.value === 'ledger'){ e.target.value = String(activeScreen); openLedger(''); return; }
+    goTo(+e.target.value);
+  });
 
   $('#dots').innerHTML = SCREENS.map((s,i) =>
     `<button type="button" data-i="${i}" aria-label="${esc(s.title)}" aria-current="${i===0}"><i></i></button>`).join('');
@@ -1721,7 +1948,8 @@ function initPager(){
 
   /* left/right arrows pan too (external keyboards, accessibility) */
   document.addEventListener('keydown', e => {
-    if (e.target.closest('input,textarea,select') || !$('#modal').hidden || !$('#balModal').hidden || $('#ariaDrawer').classList.contains('is-open')) return;
+    if (e.target.closest('input,textarea,select') || !$('#modal').hidden || !$('#balModal').hidden
+        || ledgerOpen() || $('#ariaDrawer').classList.contains('is-open')) return;
     if (e.key === 'ArrowRight') goTo(activeScreen + 1);
     if (e.key === 'ArrowLeft')  goTo(activeScreen - 1);
   });
@@ -1775,7 +2003,8 @@ function renderCards(){
       : byHand ? a.kind : `${a.kind} · no statement yet`;
     const bare = !rs.length && !byHand && bal.source !== 'statement';
     groups[a.side].push(`
-      <article class="card${bare ? ' card--empty' : ''}">
+      <article class="card${bare ? ' card--empty' : ''}" data-acct="${a.id}" role="button" tabindex="0"
+               aria-label="${esc(a.name)} — open the ledger for this account">
         <div><div class="card__alias">${esc(a.id)}</div><p class="card__name">${esc(a.name)}</p></div>
         <button type="button" class="card__bal ${a.side==='asset'?'tone-asset':'tone-owe'}${byHand?' card__bal--set':''}"
                 data-acct="${a.id}"
@@ -1792,7 +2021,19 @@ function renderCards(){
   });
   $('#assetCards').innerHTML = groups.asset.join('');
   $('#liabCards').innerHTML = groups.liability.join('');
-  $$('.card__bal').forEach(b => b.addEventListener('click', () => openBalance(b.dataset.acct)));
+
+  /* the card opens the ledger; the figure opens the balance sheet */
+  $$('#assetCards .card, #liabCards .card').forEach(c => {
+    const go = () => openLedger(c.dataset.acct);
+    c.addEventListener('click', go);
+    c.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); }
+    });
+  });
+  $$('.card__bal').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    openBalance(b.dataset.acct);
+  }));
 }
 
 /* ============================================================
@@ -1805,7 +2046,6 @@ function renderCards(){
    figure back to the rows on file.
    ============================================================ */
 let balTarget = null, balReturnFocus = null;
-const isoDay = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
 function openBalance(id){
   const a = ACCT[id];
@@ -1825,7 +2065,7 @@ function openBalance(id){
   $('#balHint').textContent = a.side === 'liability'
     ? 'Enter what you still owe as a positive number — it counts against the net position.'
     : 'Enter what the account holds. A minus sign marks it overdrawn.';
-  $('#balAsOf').value = isoDay(held && held.at ? new Date(held.at) : (state.rows.length ? state.rows[0].date : new Date()));
+  $('#balAsOf').value = isoOf(held && held.at ? new Date(held.at) : (state.rows.length ? state.rows[0].date : new Date()));
   $('#balClear').hidden = bal.source !== 'manual';
 
   $('#balModal').hidden = false;
@@ -1868,26 +2108,6 @@ function clearBalance(){
   closeBalance();
   save(); render();
   toast(`${a.id} back to the figure its rows imply`);
-}
-
-function renderBeam(){
-  const t = totals();
-  $('#netWorth').textContent = money(t.net);
-  $('#netWorth').className = 'beam__net num ' + (t.net >= 0 ? 'tone-asset' : 'tone-owe');
-  $('#totalAssets').textContent = money(t.assets);
-  $('#totalOwed').textContent = money(t.owed);
-  $('#colAssets').textContent = money(t.assets);
-  $('#colOwed').textContent = money(t.owed);
-  const nA = ACCOUNTS.filter(a => a.side === 'asset').length, nL = ACCOUNTS.length - nA;
-  $('#colAssetsN').textContent = `${nA} accounts`;
-  $('#colOwedN').textContent = `${nL} accounts`;
-  const span = t.assets + t.owed;
-  const a = span ? (t.assets / span) * 100 : 50;
-  $('#beamAsset').style.width = a + '%';
-  $('#beamOwe').style.width = (100 - a) + '%';
-  const last = state.rows.length ? state.rows[0].date : null;
-  $('#asOf').textContent = last ? `as of ${fmtDate(last)} · ${state.rows.length.toLocaleString()} rows on file` : 'no data yet';
-  $('#rowCount').textContent = `${state.rows.length.toLocaleString()} rows`;
 }
 
 /* ============================================================
@@ -1957,7 +2177,7 @@ function renderBudget(){
 
   if (!p){
     $('#budgetChip').textContent = '—';
-    $('#budgetTag').textContent = 'waiting';
+    $('#budgetChip').className = 'fold__tag num';
     body.innerHTML = `<div class="empty">Nothing to work from yet. Set a balance on any account above, or put a
       payday and a bill on the Calendar — the weekly figure builds itself from those.</div>`;
     return;
@@ -1971,8 +2191,7 @@ function renderBudget(){
   const left = p.weekly - spent;
 
   $('#budgetChip').textContent = moneyShort(p.weekly);
-  $('#budgetChip').className = 'acc__total num ' + (p.weekly > 0 ? 'tone-asset' : 'tone-owe');
-  $('#budgetTag').textContent = 'auto';
+  $('#budgetChip').className = 'fold__tag num ' + (p.weekly > 0 ? 'tone-asset' : 'tone-owe');
 
   const row = (label, why, value, tone, cls = '') => `
     <div class="calc__row ${cls}"><b>${esc(label)}</b>
@@ -2016,6 +2235,28 @@ function renderBudget(){
 
     <p class="hint" style="margin:14px 0 0">A first pass: the cushion target, the rebuild window and the debt
     share are fixed for now. Add bills and paydays on the Calendar and this figure sharpens.</p>`;
+}
+
+function renderBeam(){
+  const t = totals();
+  $('#netWorth').textContent = money(t.net);
+  $('#netWorth').className = 'beam__net num ' + (t.net >= 0 ? 'tone-asset' : 'tone-owe');
+  $('#totalAssets').textContent = money(t.assets);
+  $('#totalOwed').textContent = money(t.owed);
+  $('#colAssets').textContent = money(t.assets);
+  $('#colOwed').textContent = money(t.owed);
+  const span = t.assets + t.owed;
+  const a = span ? (t.assets / span) * 100 : 50;
+  $('#beamAsset').style.width = a + '%';
+  $('#beamOwe').style.width = (100 - a) + '%';
+  const netTag = $('#netTag');
+  if (netTag){
+    netTag.textContent = moneyShort(t.net);
+    netTag.className = 'fold__tag num ' + (t.net >= 0 ? 'tone-asset' : 'tone-owe');
+  }
+  const last = state.rows.length ? state.rows[0].date : null;
+  $('#asOf').textContent = last ? `as of ${fmtDate(last)} · ${state.rows.length.toLocaleString()} rows on file` : 'no data yet';
+  $('#rowCount').textContent = `${state.rows.length.toLocaleString()} rows`;
 }
 
 /* ============================================================
@@ -2139,27 +2380,106 @@ function renderProjections(){
 /* ============================================================
    RENDER — ledger (card rows) + categories
    ============================================================ */
+/* ============================================================
+   THE LEDGER VIEW
+   Portrait shows one card per line, thumb-sized. Landscape gives
+   the whole table — date, description, account, category, amount —
+   because that is what a wide screen is for. Rotating the phone
+   opens it; the filter follows whichever card you came in from.
+   ============================================================ */
 let shownCount = 40;
+let ledgerReturnFocus = null, ledgerRotateLock = false;
+const landscapeMQ = window.matchMedia('(orientation: landscape)');
+const wideLedger = () => landscapeMQ.matches;
+
 function visibleRows(){
   const q = state.filter.q.toLowerCase();
   return state.rows.filter(r =>
     (!state.filter.acct || r.acct === state.filter.acct) &&
     (!q || r.desc.toLowerCase().includes(q) || r.category.toLowerCase().includes(q)));
 }
-function renderTable(){
-  const rs = visibleRows();
-  $('#tableEmpty').hidden = rs.length > 0;
-  $('#shown').textContent = rs.length ? `· ${rs.length.toLocaleString()} lines` : '';
-  $('#txnList').innerHTML = rs.slice(0, shownCount).map(r => `
+
+function ledgerList(rows){
+  return `<ul class="txn">` + rows.map(r => `
     <li><span class="desc">${esc(r.desc)}</span>
       <span class="amt" style="color:${r.amount<0?'var(--owe)':'var(--asset)'}">${money(r.amount)}</span>
-      <span class="meta">${fmtDate(r.date)} · ${esc(r.acct)}${r.category?' · '+esc(r.category):''}</span></li>`).join('');
+      <span class="meta">${fmtDate(r.date)} · ${esc(r.acct)}${r.category?' · '+esc(r.category):''}</span></li>`).join('')
+    + `</ul>`;
+}
+
+function ledgerTable(rows){
+  return `<table class="tbl">
+    <thead><tr>
+      <th class="c-date">Date</th><th class="c-desc">Description</th>
+      <th class="c-acct">Account</th><th class="c-cat">Category</th><th class="c-amt">Amount</th>
+    </tr></thead>
+    <tbody>` + rows.map(r => `<tr>
+      <td class="c-date">${fmtDate(r.date)}</td>
+      <td class="c-desc">${esc(r.desc)}</td>
+      <td class="c-acct">${esc(r.acct)}</td>
+      <td class="c-cat">${esc(r.category || '—')}</td>
+      <td class="c-amt" style="color:${r.amount<0?'var(--owe)':'var(--asset)'}">${money(r.amount)}</td>
+    </tr>`).join('') + `</tbody></table>`;
+}
+
+function renderTable(){
+  const host = $('#ledgerRows');
+  if (!host) return;
+  const rs = visibleRows();
+  $('#ledgerTitle').textContent = state.filter.acct ? `Ledger · ${state.filter.acct}` : 'Ledger';
+  $('#shown').textContent = rs.length ? `${rs.length.toLocaleString()} lines` : 'no lines';
+  $('#tableEmpty').hidden = rs.length > 0;
+  const page = rs.slice(0, shownCount);
+  host.innerHTML = page.length ? (wideLedger() ? ledgerTable(page) : ledgerList(page)) : '';
   $('#moreBtn').hidden = rs.length <= shownCount;
+}
+
+function ledgerOpen(){ return !$('#ledgerView').hidden; }
+
+function openLedger(acctId){
+  if (ledgerOpen()) { state.filter.acct = acctId || ''; $('#acctFilter').value = state.filter.acct; renderTable(); return; }
+  state.filter.acct = acctId || '';
+  $('#acctFilter').value = state.filter.acct;
+  shownCount = 40;
+  ledgerReturnFocus = document.activeElement;
+  const v = $('#ledgerView');
+  v.hidden = false;
+  requestAnimationFrame(() => v.classList.add('is-open'));
+  document.addEventListener('keydown', ledgerKeys);
+  renderTable();
+  $('#ledgerClose').focus();
+}
+
+function closeLedger(){
+  const v = $('#ledgerView');
+  v.classList.remove('is-open');
+  setTimeout(() => { v.hidden = true; }, 240);
+  document.removeEventListener('keydown', ledgerKeys);
+  if (landscapeMQ.matches) ledgerRotateLock = true;   /* do not spring back open */
+  if (ledgerReturnFocus && ledgerReturnFocus.focus) ledgerReturnFocus.focus();
+}
+
+function ledgerKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeLedger(); } }
+
+/** Turning the phone sideways is the gesture for "let me read this properly". */
+function initLedgerRotation(){
+  const onChange = e => {
+    if (e.matches){
+      const idle = $('#splash').hidden && $('#modal').hidden && $('#balModal').hidden
+        && !$('#ariaDrawer').classList.contains('is-open') && !ledgerOpen();
+      if (idle && !ledgerRotateLock) openLedger(state.filter.acct);
+    } else {
+      ledgerRotateLock = false;
+    }
+    renderTable();
+  };
+  if (landscapeMQ.addEventListener) landscapeMQ.addEventListener('change', onChange);
+  else landscapeMQ.addListener(onChange);
 }
 
 function renderCategories(){
   $('#catList').innerHTML = CATEGORIES.map(c => `
-    <details class="acc" id="cat-${c.id}">
+    <details class="acc" data-fold id="cat-${c.id}">
       <summary>
         <span class="acc__dot" style="background:${c.color}"></span>
         ${esc(c.name)}
@@ -2225,6 +2545,8 @@ function renderFamily(){
     sel.addEventListener('change', e => { state.person = e.target.value; renderFamily(); });
   }
   sel.value = state.person;
+  const whoTag = $('#famWho');
+  if (whoTag) whoTag.textContent = state.person || 'Whole household';
 
   const rs = familyRows();
   const total = rs.reduce((s,r) => s - r.amount, 0);
@@ -2359,7 +2681,10 @@ function renderCalendar(){
   const today = startOfToday();
   const todayIso = isoOf(today);
 
-  $('#calMonth').textContent = new Date(y, m, 1).toLocaleDateString('en-US',{month:'long', year:'numeric'});
+  const monthName = new Date(y, m, 1).toLocaleDateString('en-US',{month:'long', year:'numeric'});
+  $('#calMonth').textContent = monthName;
+  const mt = $('#calMonthTag');
+  if (mt) mt.textContent = new Date(y, m, 1).toLocaleDateString('en-US',{month:'short', year:'numeric'});
 
   /* the grid */
   const dim = new Date(y, m+1, 0).getDate();
@@ -2798,6 +3123,69 @@ async function shareSite(){
 }
 
 /* ============================================================
+   SERVICE WORKER — the Home Screen icon updates itself
+   The worker answers every request for the app from the network
+   first, so a commit to the repo shows up on the next launch
+   without deleting and re-adding the icon; the cached copy is
+   the fallback for when the phone has no signal. When a new
+   build lands mid-session the app reloads itself, unless an
+   import or a question is in flight — then it waits for the
+   next launch rather than pulling the floor out.
+   ============================================================ */
+const BUILD = '2026-07-30a';
+let swReg = null, updateReady = false, reloading = false;
+
+function applyUpdateWhenIdle(){
+  updateReady = true;
+  const midTask = !$('#modal').hidden || busy || queue.length || current;
+  if (midTask){
+    toast('New build ready — it loads next time you open the app');
+    return;
+  }
+  if (reloading) return;
+  reloading = true;
+  toast('New build downloaded — reloading');
+  setTimeout(() => location.reload(), 900);
+}
+
+function initServiceWorker(){
+  $('#buildStamp').textContent = 'build ' + BUILD;
+  $('#buildStamp').addEventListener('click', checkForUpdate);
+  if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    swReg = reg;
+    reg.addEventListener('updatefound', () => {
+      const incoming = reg.installing;
+      if (!incoming) return;
+      incoming.addEventListener('statechange', () => {
+        /* a controller already exists => this is an update, not a first install */
+        if (incoming.state === 'installed' && navigator.serviceWorker.controller) applyUpdateWhenIdle();
+      });
+    });
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    window.addEventListener('focus', check);
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
+}
+
+async function checkForUpdate(){
+  if (!swReg){
+    toast(location.protocol === 'https:' ? 'Update checks start after the first launch' : 'Update checks need the hosted version');
+    return;
+  }
+  updateReady = false;
+  toast('Checking for a new build…');
+  try {
+    await swReg.update();
+    setTimeout(() => { if (!updateReady) toast(`You're on the latest build · ${BUILD}`); }, 1400);
+  } catch(_){
+    toast('Could not reach the server');
+  }
+}
+
+/* ============================================================
    SPLASH
    ============================================================ */
 function setMode(mode){
@@ -2830,6 +3218,7 @@ function renderLockRow(){
 let lastGreetMode = null;
 function goSplash(){
   if ($('#ariaDrawer').classList.contains('is-open')) closeDrawer();
+  if (ledgerOpen()) closeLedger();
   $('#app').hidden = true;
   $('#splash').hidden = false;
   setMode(state.mode);              /* splash reflects the current mode */
@@ -2862,6 +3251,7 @@ async function enterApp(){
   }
   $('#splash').hidden = true;
   $('#app').hidden = false;
+  collapseAllFolds();          /* every screen opens as a closed menu */
   const live = state.mode === 'api';
   $('#modeChip').textContent = live ? 'Claude' : 'Guest';
   $('#modeChip').className = 'chip' + (live ? ' chip--live' : '');
@@ -2928,11 +3318,6 @@ function wire(){
   ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('is-over'); }));
   drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
 
-  $('#balSave').addEventListener('click', saveBalance);
-  $('#balClear').addEventListener('click', clearBalance);
-  $('#balCancel').addEventListener('click', closeBalance);
-  $('#balModal').addEventListener('click', e => { if (e.target === $('#balModal')) closeBalance(); });
-
   $('#modalConfirm').addEventListener('click', confirmImport);
   $('#modalCancel').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
   ['#mapAccount','#mapDate','#mapDesc','#mapAmount','#mapCategory','#mapBalance','#mapFlip'].forEach(sel => {
@@ -2953,6 +3338,10 @@ function wire(){
     save(); render(); logLine('Ledger cleared','warn'); toast('Ledger cleared');
   });
 
+  $('#ledgerClose').addEventListener('click', closeLedger);
+  $('#balCancel').addEventListener('click', closeBalance);
+  $('#balSave').addEventListener('click', saveBalance);
+  $('#balClear').addEventListener('click', clearBalance);
   $('#crestHome').addEventListener('click', goSplash);
   $('#ariaToggle').addEventListener('click', openDrawer);
   $('#ariaClose').addEventListener('click', closeDrawer);
@@ -2977,6 +3366,9 @@ function wire(){
   initSchemaJump();
   initRuleForm();
   initCalendar();
+  initLedgerRotation();
+  initFolds();
+  initServiceWorker();
   try { const lm = await storeGet(LOCK_KEY); if (lm) lock.meta = JSON.parse(lm); } catch(_){}
   if (!lock.meta){
     const restored = await load();
