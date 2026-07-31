@@ -372,6 +372,49 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .tbl .c-desc{font-weight:500}
 .tbl .c-amt{font-family:var(--data);font-weight:600;white-space:nowrap}
 
+/* the amortize button that sits on every card */
+.card__acts{grid-column:1/3;display:flex;justify-content:flex-end;margin-top:9px}
+.card__amort{min-height:36px;padding:6px 12px;font-size:12.5px;border-radius:10px;gap:6px}
+.card__amort svg{flex:none;opacity:.7}
+
+/* the chrome-bar file button */
+.topbtn{width:40px;padding:0;flex:none;min-height:40px}
+.topbtn svg{flex:none}
+
+/* the schedule's own input form */
+.amort__form{background:var(--slab);border:1px solid var(--rule);border-radius:16px;padding:14px;margin-bottom:14px}
+.amort__grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.amort__grid .field{margin-bottom:0}
+.amort__run{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}
+.amort__run .btn{min-height:46px}
+@media (orientation:landscape){
+  .amort__grid{grid-template-columns:repeat(4,1fr)}
+}
+.tbl tr.is-past td{opacity:.5}
+.tbl tr.is-now td{background:rgba(99,140,79,.14);font-weight:600}
+
+/* saved files */
+.file__meta{font-family:var(--data);font-size:11.5px;color:var(--muted);margin:0 0 10px}
+.file__acts{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}
+
+/* Loan terms inside the balance sheet, and the schedule it opens */
+.terms{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.terms .field{margin-bottom:0}
+.amort__strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.amort__cell{background:var(--slab);border:1px solid var(--rule);border-radius:12px;padding:11px 12px}
+.amort__cell .eyebrow{margin-bottom:5px}
+.amort__cell .v{font-family:var(--data);font-weight:600;font-size:17px;letter-spacing:-.02em}
+.amort__seg{margin-bottom:12px}
+.amort__note{font-size:12.5px;color:var(--muted);margin:12px 2px 0;line-height:1.55}
+.tbl .c-n{font-family:var(--data);font-size:11px;color:var(--muted);white-space:nowrap}
+@media (orientation:portrait){
+  .tbl .c-n{display:none}
+  .amort__strip{grid-template-columns:1fr 1fr}
+}
+@media (orientation:landscape){
+  .amort__strip{grid-template-columns:repeat(4,1fr)}
+}
+
 /* ============================================================
    ARIA DRAWER — right side, full width on phone
    ============================================================ */
@@ -608,7 +651,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     </button>
     <p class="fineprint">Tap the intake screen to pull USAA, AMEX, PenFed and Wells Fargo exports (.xlsx, .xls, .csv, .pdf) from the Files app. Thompson Finances maps the columns to the right account and keeps the running position.</p>
     <div class="cover__foot">
-      <span>7 accounts</span><span>7 screens</span><span>swipe to pan</span>
+      <span>7 accounts</span><span>8 screens</span><span>swipe to pan</span>
       <button class="stamp" id="buildStamp" type="button" title="Check for a newer build">build —</button>
     </div>
   </section>
@@ -623,6 +666,13 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <label class="sr-only" for="screenJump">Go to screen</label>
     <select class="screen-jump" id="screenJump"></select>
     <span class="chip" id="modeChip">Guest</span>
+    <button class="btn btn--sm topbtn" id="filesBtn" type="button" aria-label="Files — saved schedules">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/>
+        <path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>
+      </svg>
+    </button>
     <button class="btn btn--sm" id="ariaToggle" type="button" aria-expanded="false" aria-controls="ariaDrawer">ARIA</button>
   </header>
 
@@ -672,7 +722,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <div class="fold__body" id="budgetBody"></div>
       </details>
 
-      <p class="balhint">Tap a card to open its ledger. Tap the figure to set that balance by hand.</p>
+      <p class="balhint">Tap a card to open its ledger. Tap the figure to set that balance by hand — loans also take a rate, a term and a start date, and hand back an amortization schedule.</p>
     </section>
 
     <!-- 2 · INTAKE -->
@@ -946,6 +996,14 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <div id="catList"></div>
     </section>
 
+    <!-- 8 · FILES -->
+    <section class="screen" id="scr-files" aria-label="Files" data-title="Files" tabindex="-1">
+      <p class="eyebrow">Saved from the schedule</p>
+      <h1>Files</h1>
+      <div id="fileList"></div>
+      <p class="hint" style="padding:0 4px">A saved file keeps the numbers you ran — amount, rate, term and start date — so the schedule redraws exactly as it was. Nothing here changes a balance.</p>
+    </section>
+
   </div>
 
   <nav class="dots" id="dots" aria-label="Screens"></nav>
@@ -1013,6 +1071,54 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   </div>
 </div>
 
+<!-- ============ AMORTIZATION SCHEDULE ============ -->
+<div class="ledger" id="amortView" hidden role="dialog" aria-modal="true" aria-labelledby="amortTitle">
+  <header class="ledger__head">
+    <h2 id="amortTitle">Schedule</h2>
+    <span class="chip" id="amortChip"></span>
+    <button class="ledger__close" id="amortClose" type="button" aria-label="Close the schedule">&#10005;</button>
+  </header>
+  <div class="ledger__body">
+    <div class="amort__form">
+      <div class="amort__grid">
+        <div class="field">
+          <label for="amAmount">Amount</label>
+          <input class="input" id="amAmount" type="text" inputmode="decimal" placeholder="312500" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="amRate">Interest rate %</label>
+          <input class="input" id="amRate" type="text" inputmode="decimal" placeholder="6.25" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="amYears">Years</label>
+          <input class="input" id="amYears" type="text" inputmode="decimal" placeholder="30" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="amStart">Start date</label>
+          <input class="input" id="amStart" type="date">
+        </div>
+      </div>
+      <div class="amort__run">
+        <button class="btn btn--primary" id="amortRun" type="button">Run schedule</button>
+        <button class="btn" id="amortSave" type="button" disabled aria-label="Save this schedule to Files">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v13"/>
+          </svg>
+          Save
+        </button>
+      </div>
+    </div>
+    <div class="amort__strip" id="amortStrip"></div>
+    <div class="seg amort__seg" role="radiogroup" aria-label="Schedule detail" id="amortMode" hidden>
+      <button type="button" class="seg__opt" role="radio" aria-checked="true" tabindex="0" data-mode="year">By year</button>
+      <button type="button" class="seg__opt" role="radio" aria-checked="false" tabindex="-1" data-mode="month">By month</button>
+    </div>
+    <div id="amortRows"></div>
+    <p class="amort__note" id="amortNote"></p>
+  </div>
+</div>
+
 <!-- ============ SET A BALANCE ============ -->
 <div class="modal" id="balModal" hidden role="dialog" aria-modal="true" aria-labelledby="balTitle">
   <div class="sheet">
@@ -1030,6 +1136,27 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <label for="balAsOf">As of</label>
       <input class="input" id="balAsOf" type="date">
     </div>
+    <div id="balLoan" hidden>
+      <p class="eyebrow" style="margin-top:2px">Loan terms</p>
+      <div class="terms">
+        <div class="field">
+          <label for="loanRate">Interest rate %</label>
+          <input class="input" id="loanRate" type="text" inputmode="decimal" placeholder="6.25"
+                 autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="loanYears">Years</label>
+          <input class="input" id="loanYears" type="text" inputmode="decimal" placeholder="30"
+                 autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label for="loanStart">Start date of the loan</label>
+        <input class="input" id="loanStart" type="date">
+      </div>
+      <button class="btn" id="loanSchedule" type="button" style="width:100%">View amortization schedule</button>
+    </div>
+
     <div class="sheet__actions">
       <button class="btn" id="balCancel" type="button">Cancel</button>
       <button class="btn btn--primary" id="balSave" type="button">Save balance</button>
@@ -1128,6 +1255,8 @@ const state = {
   person:'',            // '' = All
   routeAcct:'',          // '' = auto-detect; else force imports to this account
   rules:[],              // ownership rules: {q, acct, person} — first match wins
+  loans:{},              // acctId -> {rate, years, start} for the amortising accounts
+  files:[],              // saved schedules: {id, name, acct, params, summary, savedAt}
   bills:[],              // scheduled due dates: {id, name, date, acct, kind, amount, repeat}
   cal:{ y:new Date().getFullYear(), m:new Date().getMonth(), sel:null },
   thread:[],             // {role, content}
@@ -1653,6 +1782,8 @@ async function save(){
       balances: state.balances,
       imports: state.imports,
       rules: state.rules,
+      loans: state.loans,
+      files: state.files,
       bills: state.bills,
     })));
   } catch(_){ /* storage is a bonus, not a requirement */ }
@@ -1668,6 +1799,8 @@ async function load(){
     state.balances = data.balances || {};
     state.imports = data.imports || [];
     state.rules = data.rules || [];
+    state.loans = data.loans || {};
+    state.files = data.files || [];
     state.bills = data.bills || [];
     return state.rows.length > 0 || state.bills.length > 0;
   } catch(_){ return false; }
@@ -1908,6 +2041,11 @@ function initFolds(){
   });
 }
 
+/** Re-count a screen's folds after its content is rebuilt. */
+function syncFoldbar(screenId){
+  FOLDBARS.filter(f => f.screen.id === screenId).forEach(f => f.sync());
+}
+
 function collapseAllFolds(){
   $$('details[data-fold]').forEach(d => { d.open = false; });
   FOLDBARS.forEach(f => f.sync());
@@ -1949,7 +2087,7 @@ function initPager(){
   /* left/right arrows pan too (external keyboards, accessibility) */
   document.addEventListener('keydown', e => {
     if (e.target.closest('input,textarea,select') || !$('#modal').hidden || !$('#balModal').hidden
-        || ledgerOpen() || $('#ariaDrawer').classList.contains('is-open')) return;
+        || ledgerOpen() || amortOpen() || $('#ariaDrawer').classList.contains('is-open')) return;
     if (e.key === 'ArrowRight') goTo(activeScreen + 1);
     if (e.key === 'ArrowLeft')  goTo(activeScreen - 1);
   });
@@ -2017,6 +2155,16 @@ function renderCards(){
         </button>
         <div class="card__meta">${esc(base)}${src ? ' · ' + esc(src) : ''}</div>
         <div class="card__spark">${sparkline(rs)}</div>
+        <div class="card__acts">
+          <button type="button" class="btn btn--sm card__amort" data-amort="${a.id}"
+                  aria-label="Amortization schedule for ${esc(a.name)}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3v18h18"/><path d="M19 8l-5 6-3-3-4 5"/>
+            </svg>
+            Amortize
+          </button>
+        </div>
       </article>`);
   });
   $('#assetCards').innerHTML = groups.asset.join('');
@@ -2033,6 +2181,10 @@ function renderCards(){
   $$('.card__bal').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
     openBalance(b.dataset.acct);
+  }));
+  $$('.card__amort').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    openAmort(b.dataset.amort);
   }));
 }
 
@@ -2068,6 +2220,16 @@ function openBalance(id){
   $('#balAsOf').value = isoOf(held && held.at ? new Date(held.at) : (state.rows.length ? state.rows[0].date : new Date()));
   $('#balClear').hidden = bal.source !== 'manual';
 
+  /* the amortising accounts carry terms as well as a balance */
+  const isLoan = a.schema === 'loan';
+  $('#balLoan').hidden = !isLoan;
+  if (isLoan){
+    const t = state.loans[id] || {};
+    $('#loanRate').value  = t.rate  != null ? String(t.rate)  : '';
+    $('#loanYears').value = t.years != null ? String(t.years) : '';
+    $('#loanStart').value = t.start || '';
+  }
+
   $('#balModal').hidden = false;
   document.addEventListener('keydown', balKeys);
   setTimeout(() => { const f = $('#balAmount'); f.focus(); f.select(); }, 60);
@@ -2096,6 +2258,7 @@ function saveBalance(){
   const at = toDate($('#balAsOf').value) || new Date();
   const value = a.side === 'liability' ? Math.abs(n) : n;
   state.balances[a.id] = { value, source:'manual', at: at.getTime() };
+  if (a.schema === 'loan') commitLoanTerms(a.id);
   const label = a.id;
   closeBalance();
   save(); render();
@@ -2235,6 +2398,312 @@ function renderBudget(){
 
     <p class="hint" style="margin:14px 0 0">A first pass: the cushion target, the rebuild window and the debt
     share are fixed for now. Add bills and paydays on the Calendar and this figure sharpens.</p>`;
+}
+
+/* ============================================================
+   AMORTISATION
+   The schedule is a calculator, not a record. Four numbers go in —
+   amount, rate, term, start date — and the level payment that
+   clears the amount over the term comes out, split into interest
+   and principal month by month until the balance is zero. The
+   whole term is drawn, with months already past dimmed and the
+   current one marked, so a loan can be read forwards or back.
+   A card's button arrives with the account's own figures filled
+   in; anything can be typed over before running it again.
+   ============================================================ */
+function commitLoanTerms(id){
+  const rate  = toNumber($('#loanRate').value);
+  const years = toNumber($('#loanYears').value);
+  const start = $('#loanStart').value;
+  if (rate == null && years == null && !start){ delete state.loans[id]; return; }
+  state.loans[id] = {
+    rate:  rate  == null ? null : Math.abs(rate),
+    years: years == null ? null : Math.abs(years),
+    start: start || '',
+  };
+}
+
+/** What a set of inputs is still missing, in plain words. */
+function amortGaps(p){
+  const gaps = [];
+  if (!(Number(p.amount) > 0)) gaps.push('an amount');
+  if (!(Number(p.rate) >= 0) || p.rate === '' || p.rate == null) gaps.push('an interest rate');
+  if (!(Number(p.years) > 0)) gaps.push('a term in years');
+  if (!toDate(p.start)) gaps.push('a start date');
+  return gaps;
+}
+
+/** The account's own figures, as a starting point for the form. */
+function amortParamsFor(id){
+  const t = state.loans[id] || {};
+  const bal = balanceOf(id).value;
+  return {
+    amount: bal ? Math.abs(bal).toFixed(2) : '',
+    rate:   t.rate  != null ? String(t.rate)  : '',
+    years:  t.years != null ? String(t.years) : '',
+    start:  t.start || '',
+  };
+}
+
+function amortize(p){
+  if (amortGaps(p).length) return null;
+  const amount = Math.abs(Number(p.amount));
+  const rate = Number(p.rate);
+  const years = Number(p.years);
+  const start = toDate(p.start);
+  const n = Math.max(1, Math.round(years * 12));
+  const i = rate / 100 / 12;
+  const payment = i > 0 ? amount * i / (1 - Math.pow(1 + i, -n)) : amount / n;
+
+  /* keep the loan's day of the month, clamped for short months */
+  const day = start.getDate();
+  const dueOn = k => {
+    const y = start.getFullYear(), m = start.getMonth() + k;
+    const dim = new Date(y, m + 1, 0).getDate();
+    return new Date(y, m, Math.min(day, dim));
+  };
+
+  const today = startOfToday();
+  const rows = [];
+  let bal = amount;
+  for (let k = 1; k <= n && bal > 0.005; k++){
+    const interest = bal * i;
+    let principal = payment - interest;
+    if (principal <= 0 && i > 0) principal = 0;          /* payment cannot cover interest */
+    if (principal > bal) principal = bal;
+    bal = Math.max(0, bal - principal);
+    const date = dueOn(k);
+    rows.push({ k, date, pay: principal + interest, principal, interest, balance: bal, past: date < today });
+  }
+  const totalInterest = rows.reduce((sum, r) => sum + r.interest, 0);
+  const paid = rows.filter(r => r.past);
+  const nowIdx = paid.length;                            /* the next payment due */
+  return {
+    rows, payment, months: rows.length, totalInterest,
+    payoff: rows.length ? rows[rows.length-1].date : null,
+    amount, rate, years, start,
+    balanceToday: paid.length ? paid[paid.length-1].balance : amount,
+    paidCount: paid.length,
+    nowIdx,
+  };
+}
+
+function amortByYear(rows){
+  const years = new Map();
+  rows.forEach(r => {
+    const y = r.date.getFullYear();
+    if (!years.has(y)) years.set(y, { y, n:0, pay:0, principal:0, interest:0, balance:0, past:true });
+    const g = years.get(y);
+    g.n++; g.pay += r.pay; g.principal += r.principal; g.interest += r.interest; g.balance = r.balance;
+    if (!r.past) g.past = false;
+  });
+  return Array.from(years.values());
+}
+
+function scheduleTable(plan, mode){
+  if (mode === 'year'){
+    return `<table class="tbl">
+      <thead><tr><th class="c-n">Yr</th><th class="c-date">Year</th><th class="c-amt">Paid</th>
+        <th class="c-amt">Principal</th><th class="c-amt">Interest</th><th class="c-amt">Balance</th></tr></thead>
+      <tbody>` + amortByYear(plan.rows).map((g, idx) => `<tr class="${g.past ? 'is-past' : ''}">
+        <td class="c-n">${idx + 1}</td>
+        <td class="c-date">${g.y}${g.n < 12 ? ` · ${g.n} pmt${g.n === 1 ? '' : 's'}` : ''}</td>
+        <td class="c-amt">${money(g.pay)}</td>
+        <td class="c-amt tone-asset">${money(g.principal)}</td>
+        <td class="c-amt tone-owe">${money(g.interest)}</td>
+        <td class="c-amt">${money(g.balance)}</td>
+      </tr>`).join('') + `</tbody></table>`;
+  }
+  return `<table class="tbl">
+    <thead><tr><th class="c-n">#</th><th class="c-date">Due</th><th class="c-amt">Payment</th>
+      <th class="c-amt">Principal</th><th class="c-amt">Interest</th><th class="c-amt">Balance</th></tr></thead>
+    <tbody>` + plan.rows.map((r, idx) => `<tr class="${r.past ? 'is-past' : (idx === plan.nowIdx ? 'is-now' : '')}">
+      <td class="c-n">${r.k}</td>
+      <td class="c-date">${fmtDate(r.date)}</td>
+      <td class="c-amt">${money(r.pay)}</td>
+      <td class="c-amt tone-asset">${money(r.principal)}</td>
+      <td class="c-amt tone-owe">${money(r.interest)}</td>
+      <td class="c-amt">${money(r.balance)}</td>
+    </tr>`).join('') + `</tbody></table>`;
+}
+
+function scheduleStrip(plan){
+  const cell = (label, value, tone) =>
+    `<div class="amort__cell"><p class="eyebrow">${esc(label)}</p><div class="v${tone ? ' ' + tone : ''}">${value}</div></div>`;
+  return cell('Monthly payment', money(plan.payment), 'tone-owe') +
+         cell('Total interest', moneyShort(plan.totalInterest), 'tone-owe') +
+         cell('Balance today', moneyShort(plan.balanceToday)) +
+         cell('Payoff', plan.payoff ? plan.payoff.toLocaleDateString('en-US',{month:'short', year:'numeric'}) : '—');
+}
+
+let amortTarget = null, amortMode = 'year', amortPlan = null, amortReturnFocus = null;
+function amortOpen(){ return !$('#amortView').hidden; }
+
+function readAmortForm(){
+  return { amount:$('#amAmount').value.trim(), rate:$('#amRate').value.trim(),
+           years:$('#amYears').value.trim(), start:$('#amStart').value };
+}
+function fillAmortForm(p){
+  $('#amAmount').value = p.amount || '';
+  $('#amRate').value   = p.rate   || '';
+  $('#amYears').value  = p.years  || '';
+  $('#amStart').value  = p.start  || '';
+}
+
+function runAmort(quiet){
+  const p = readAmortForm();
+  const gaps = amortGaps(p);
+  if (gaps.length){
+    amortPlan = null;
+    $('#amortStrip').innerHTML = '';
+    $('#amortMode').hidden = true;
+    $('#amortRows').innerHTML = `<div class="empty">Enter ${gaps.join(', ')}, then run the schedule.</div>`;
+    $('#amortNote').textContent = '';
+    $('#amortSave').disabled = true;
+    if (!quiet) toast(`Add ${gaps[0]} first`);
+    return;
+  }
+  amortPlan = amortize(p);
+  $('#amortStrip').innerHTML = scheduleStrip(amortPlan);
+  $('#amortMode').hidden = false;
+  $('#amortRows').innerHTML = scheduleTable(amortPlan, amortMode);
+  $('#amortSave').disabled = false;
+
+  /* remember the terms against the account the schedule came from */
+  if (amortTarget){
+    state.loans[amortTarget] = { rate:Number(p.rate), years:Number(p.years), start:p.start };
+    save();
+  }
+
+  const onFile = amortTarget ? balanceOf(amortTarget).value : 0;
+  const drift = amortTarget && onFile > 0 ? Math.abs(onFile - amortPlan.balanceToday) : 0;
+  $('#amortNote').textContent =
+    `${amortPlan.rate}% on ${money(amortPlan.amount)} over ${amortPlan.years} year${amortPlan.years === 1 ? '' : 's'} ` +
+    `from ${fmtDate(amortPlan.start)} — ${amortPlan.months} payments, ${amortPlan.paidCount} of them already past. ` +
+    (drift > 1 ? `The balance on file is ${money(onFile)}, ${money(drift)} off the scheduled ${money(amortPlan.balanceToday)}. ` : '') +
+    `Extra payments and rate changes are not modelled.`;
+}
+
+function openAmort(id, params){
+  amortTarget = id || null;
+  amortPlan = null;
+  amortReturnFocus = document.activeElement;
+  const a = id ? ACCT[id] : null;
+  $('#amortTitle').textContent = a ? `Amortization · ${a.id}` : 'Amortization';
+  $('#amortChip').textContent = a ? a.kind : 'scratch';
+  fillAmortForm(params || (id ? amortParamsFor(id) : {amount:'',rate:'',years:'',start:''}));
+
+  const v = $('#amortView');
+  v.hidden = false;
+  requestAnimationFrame(() => v.classList.add('is-open'));
+  document.addEventListener('keydown', amortKeys);
+  runAmort(true);                       /* draw it straight away when the inputs allow */
+  $('#amortClose').focus();
+}
+
+function closeAmort(){
+  const v = $('#amortView');
+  v.classList.remove('is-open');
+  setTimeout(() => { v.hidden = true; }, 240);
+  document.removeEventListener('keydown', amortKeys);
+  amortTarget = null; amortPlan = null;
+  if (amortReturnFocus && amortReturnFocus.focus) amortReturnFocus.focus();
+}
+
+function amortKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeAmort(); } }
+
+/* ---------- saving a schedule into Files ---------- */
+function saveScheduleFile(){
+  if (!amortPlan){ toast('Run the schedule first'); return; }
+  const p = readAmortForm();
+  const label = (amortTarget ? amortTarget + ' · ' : '') +
+    `${moneyShort(amortPlan.amount)} at ${amortPlan.rate}% · ${amortPlan.years}yr`;
+  state.files.unshift({
+    id: `F-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+    name: label,
+    acct: amortTarget || '',
+    params: p,
+    savedAt: Date.now(),
+    summary: {
+      payment: amortPlan.payment,
+      totalInterest: amortPlan.totalInterest,
+      months: amortPlan.months,
+      payoff: amortPlan.payoff ? amortPlan.payoff.getTime() : null,
+    },
+  });
+  save(); renderFiles();
+  toast('Saved to Files');
+}
+
+function renderFiles(){
+  const host = $('#fileList');
+  if (!host) return;
+  if (!state.files.length){
+    host.innerHTML = '<div class="empty">No saved schedules yet. Tap Amortize on any account card, run a schedule, then save it here.</div>';
+    syncFoldbar('scr-files');
+    return;
+  }
+  host.innerHTML = state.files.map(f => {
+    const plan = amortize(f.params);
+    const when = new Date(f.savedAt);
+    return `<details class="fold" data-fold data-file="${esc(f.id)}">
+      <summary><span class="fold__dot" style="background:var(--accent)"></span>${esc(f.name)}
+        <span class="fold__tag num">${plan ? money(plan.payment) : '—'}</span>
+        <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+      <div class="fold__body">
+        <p class="file__meta">saved ${when.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} at ${when.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}${f.acct ? ' · ' + esc(f.acct) : ''}</p>
+        ${plan ? `<div class="amort__strip">${scheduleStrip(plan)}</div>${scheduleTable(plan, 'year')}`
+               : '<div class="empty">These inputs no longer make a schedule.</div>'}
+        <div class="file__acts">
+          <button class="btn" type="button" data-open="${esc(f.id)}">Open in the schedule</button>
+          <button class="btn btn--ghost" type="button" data-del="${esc(f.id)}" style="color:var(--danger)">Delete</button>
+        </div>
+      </div>
+    </details>`;
+  }).join('');
+
+  $$('#fileList [data-open]').forEach(b => b.addEventListener('click', () => {
+    const f = state.files.find(x => x.id === b.dataset.open);
+    if (f) openAmort(f.acct || null, f.params);
+  }));
+  $$('#fileList [data-del]').forEach(b => b.addEventListener('click', () => {
+    const f = state.files.find(x => x.id === b.dataset.del);
+    state.files = state.files.filter(x => x.id !== b.dataset.del);
+    save(); renderFiles();
+    toast(f ? `${f.name} deleted` : 'Deleted');
+  }));
+  syncFoldbar('scr-files');
+}
+
+function initAmort(){
+  $('#amortClose').addEventListener('click', closeAmort);
+  $('#amortRun').addEventListener('click', () => runAmort(false));
+  $('#amortSave').addEventListener('click', saveScheduleFile);
+  ['#amAmount','#amRate','#amYears'].forEach(sel => $(sel).addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); runAmort(false); }
+  }));
+  $$('#amortMode .seg__opt').forEach(b => {
+    b.addEventListener('click', () => {
+      amortMode = b.dataset.mode;
+      $$('#amortMode .seg__opt').forEach(x => {
+        const on = x.dataset.mode === amortMode;
+        x.setAttribute('aria-checked', String(on));
+        x.tabIndex = on ? 0 : -1;
+      });
+      if (amortPlan) $('#amortRows').innerHTML = scheduleTable(amortPlan, amortMode);
+    });
+  });
+  $('#loanSchedule').addEventListener('click', () => {
+    const id = balTarget;
+    commitLoanTerms(id);
+    save();
+    closeBalance();
+    openAmort(id);
+  });
+  $('#filesBtn').addEventListener('click', () => {
+    const i = SCREENS.findIndex(x => x.id === 'scr-files');
+    if (i > -1) goTo(i);
+  });
 }
 
 function renderBeam(){
@@ -2466,7 +2935,7 @@ function initLedgerRotation(){
   const onChange = e => {
     if (e.matches){
       const idle = $('#splash').hidden && $('#modal').hidden && $('#balModal').hidden
-        && !$('#ariaDrawer').classList.contains('is-open') && !ledgerOpen();
+        && !$('#ariaDrawer').classList.contains('is-open') && !ledgerOpen() && !amortOpen();
       if (idle && !ledgerRotateLock) openLedger(state.filter.acct);
     } else {
       ledgerRotateLock = false;
@@ -2910,7 +3379,7 @@ function initSchemaJump(){
   renderSchemaDetail();
 }
 
-function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderFamily(); renderTable(); }
+function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderFamily(); renderTable(); renderFiles(); }
 
 /* ---------- log + toast ---------- */
 function logLine(text, kind='ok'){
@@ -3219,6 +3688,7 @@ let lastGreetMode = null;
 function goSplash(){
   if ($('#ariaDrawer').classList.contains('is-open')) closeDrawer();
   if (ledgerOpen()) closeLedger();
+  if (amortOpen()) closeAmort();
   $('#app').hidden = true;
   $('#splash').hidden = false;
   setMode(state.mode);              /* splash reflects the current mode */
@@ -3300,7 +3770,7 @@ function wire(){
   });
   $('#lockReset').addEventListener('click', async () => {
     if (!confirm('This erases the ledger and removes the lock so the app can be used again. Erase everything?')) return;
-    state.rows = []; state.balances = {}; state.imports = []; state.rules = []; state.bills = [];
+    state.rows = []; state.balances = {}; state.imports = []; state.rules = []; state.bills = []; state.loans = {}; state.files = [];
     lock.meta = null; lock.cryptoKey = null; lock.unlocked = true;
     await storeSet(LOCK_KEY, '');
     await storeSet(STORE_KEY, '');
@@ -3367,6 +3837,7 @@ function wire(){
   initRuleForm();
   initCalendar();
   initLedgerRotation();
+  initAmort();
   initFolds();
   initServiceWorker();
   try { const lm = await storeGet(LOCK_KEY); if (lm) lock.meta = JSON.parse(lm); } catch(_){}
