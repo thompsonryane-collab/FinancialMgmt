@@ -206,6 +206,30 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .card__bal:focus-visible{background:var(--ink);box-shadow:inset 0 0 0 1px var(--accent-deep);outline:none}
 .balhint{font-size:12.5px;color:var(--muted);margin:2px 2px 0}
 
+/* Institution banner — accounts are grouped by who holds them.
+   The banner is a raised control (rise) and its body drops back to
+   the page field (ink) so the cards inside float the way they do
+   on the balance sheet proper. */
+.inst{border:1px solid var(--rule);border-radius:14px;background:var(--rise);overflow:hidden}
+.inst>summary{
+  list-style:none;display:flex;align-items:center;gap:9px;min-height:46px;padding:11px 13px;cursor:pointer;
+  font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:-.01em;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.12) 52%,rgba(23,30,20,.05));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
+}
+.inst>summary::-webkit-details-marker{display:none}
+.inst>summary:active{background-color:var(--ink)}
+.inst__dot{width:9px;height:9px;border-radius:3px;flex:none;box-shadow:inset 0 -1px 0 rgba(23,30,20,.22)}
+.inst__name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inst__n{font-family:var(--data);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap;flex:none}
+.inst__sum{margin-left:auto;font-family:var(--data);font-size:13.5px;font-weight:600;
+  font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+.inst__chev{color:var(--muted);transition:transform .2s;font-size:11px;flex:none}
+.inst[open] .inst__chev{transform:rotate(90deg)}
+.inst__body{border-top:1px solid var(--rule);padding:10px;background:var(--ink)}
+.inst__body .cards{gap:10px}
+
 /* Weekly budget — the derived figure and the arithmetic behind it */
 .budget__num{font-family:var(--display);font-weight:800;font-size:clamp(30px,9.5vw,40px);
   letter-spacing:-.03em;line-height:1;margin:0 0 5px}
@@ -619,7 +643,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <svg class="crest crest--hero" role="img" aria-labelledby="coverTitle"><use href="#tf-crest"/></svg>
     <h1 class="sr-only" id="coverTitle">Thompson Finances</h1>
     <p class="eyebrow" style="text-align:center">Household balance sheet</p>
-    <p class="lede">The Thompson household ledger. Seven accounts, one number.</p>
+    <p class="lede">The Thompson household ledger. <span id="ledeCount">—</span> accounts, one number.</p>
 
     <fieldset>
       <legend id="modeLegend">Choose how to work</legend>
@@ -649,9 +673,9 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
       Share with the family
     </button>
-    <p class="fineprint">Tap the intake screen to pull USAA, AMEX, PenFed and Wells Fargo exports (.xlsx, .xls, .csv, .pdf) from the Files app. Thompson Finances maps the columns to the right account and keeps the running position.</p>
+    <p class="fineprint">Tap the intake screen to pull USAA, Ameriprise, AMEX, PenFed and Wells Fargo exports (.xlsx, .xls, .csv, .pdf) from the Files app. Thompson Finances maps the columns to the right account and keeps the running position. Accounts that arrive without an export — the Ameriprise side — take their value by hand: tap the figure on the card.</p>
     <div class="cover__foot">
-      <span>7 accounts</span><span>8 screens</span><span>swipe to pan</span>
+      <span id="footAccts">— accounts</span><span>8 screens</span><span>swipe to pan</span>
       <button class="stamp" id="buildStamp" type="button" title="Check for a newer build">build —</button>
     </div>
   </section>
@@ -722,7 +746,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <div class="fold__body" id="budgetBody"></div>
       </details>
 
-      <p class="balhint">Tap a card to open its ledger. Tap the figure to set that balance by hand — loans also take a rate, a term and a start date, and hand back an amortization schedule.</p>
+      <p class="balhint">Accounts sit under the institution that holds them — tap a banner to open it. Tap a card to open its ledger. Tap the figure to set that balance by hand — the debts also take a rate, a term and a start date, and hand back an amortization schedule.</p>
     </section>
 
     <!-- 2 · INTAKE -->
@@ -1128,7 +1152,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <p class="file" id="balAcct"></p>
     <div class="field" style="margin-top:16px">
       <label for="balAmount">Balance</label>
-      <input class="input" id="balAmount" type="text" inputmode="decimal" placeholder="0.00"
+      <input class="input" id="balAmount" type="text" inputmode="decimal" placeholder="$0.00"
              autocomplete="off" autocorrect="off" spellcheck="false" aria-describedby="balHint">
       <p class="hint" id="balHint"></p>
     </div>
@@ -1184,6 +1208,22 @@ const ACCOUNTS = [
   { id:'USAAS', name:'USAA Savings', inst:'USAA', side:'asset', kind:'Savings',
     schema:'bank', flip:false,
     match:[{re:/usaa/i,w:3},{re:/sav|usaas/i,w:4}] },
+
+  { id:'AMPONE', name:'Ameriprise ONE ACCT', inst:'Ameriprise', side:'asset', kind:'Cash management',
+    schema:'bank', flip:false, manual:true,
+    match:[{re:/ameriprise|\bamp\b/i,w:4},{re:/one[ _-]?acc?t|one[ _-]?account|ampone/i,w:5}] },
+
+  { id:'AMPBRK', name:'Ameriprise BROKERAGE', inst:'Ameriprise', side:'asset', kind:'Brokerage',
+    schema:'bank', flip:false, manual:true,
+    match:[{re:/ameriprise|\bamp\b/i,w:4},{re:/brokerage|\bbrk\b|ampbrk/i,w:5}] },
+
+  { id:'SPSADV01', name:'SPS ADV 01', inst:'Ameriprise', side:'asset', kind:'Advisory account',
+    schema:'bank', flip:false, manual:true,
+    match:[{re:/(^|[^a-z])sps([^a-z]|$)/i,w:4},{re:/adv/i,w:2},{re:/(^|[^0-9])0?1(?![0-9])/,w:4}] },
+
+  { id:'SPSADV02', name:'SPS ADV 02', inst:'Ameriprise', side:'asset', kind:'Advisory account',
+    schema:'bank', flip:false, manual:true,
+    match:[{re:/(^|[^a-z])sps([^a-z]|$)/i,w:4},{re:/adv/i,w:2},{re:/(^|[^0-9])0?2(?![0-9])/,w:4}] },
 
   { id:'AMEX', name:'American Express', inst:'AMEX', side:'liability', kind:'Credit card',
     schema:'card', flip:true,
@@ -1853,8 +1893,12 @@ function sampleLedger(){
     AMEX:{value:1842.66,source:'statement'}, PenFed:{value:963.20,source:'statement'},
     PenFedCL:{value:18420.00,source:'statement'}, WellsFargo:{value:312500.00,source:'statement'},
     WellsFargoHELOC:{value:41250.00,source:'statement'},
+    AMPONE:{value:14680.42,source:'manual',at:Date.now()},
+    AMPBRK:{value:98240.75,source:'manual',at:Date.now()},
+    SPSADV01:{value:186430.10,source:'manual',at:Date.now()},
+    SPSADV02:{value:74915.88,source:'manual',at:Date.now()},
   };
-  logLine('Sample ledger loaded — 8 months across all seven accounts', 'ok');
+  logLine(`Sample ledger loaded — 8 months across all ${ACCOUNTS.length} accounts`, 'ok');
   save(); render();
 }
 
@@ -2048,6 +2092,8 @@ function syncFoldbar(screenId){
 
 function collapseAllFolds(){
   $$('details[data-fold]').forEach(d => { d.open = false; });
+  instOpen = Object.create(null);
+  $$('details.inst').forEach(d => { d.open = false; });
   FOLDBARS.forEach(f => f.sync());
 }
 
@@ -2125,8 +2171,26 @@ function sparkline(rs){
     <polyline points="${d}" fill="none" stroke="${c}" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
+/* Which institution banners are open. Every banner starts closed —
+   the app opens as a closed menu and stays that way until something
+   is tapped — but an opened banner survives a re-render. Keyed by
+   side, so USAA on the asset column and a USAA debt on the liability
+   column keep their own state. */
+let instOpen = Object.create(null);
+
+const INST_TINT = {
+  'USAA':'#3F7288', 'Ameriprise':'#5B7F6A', 'AMEX':'#6E6B93',
+  'PenFed':'#8A6A2F', 'Wells Fargo':'#A23E36',
+};
+function instTint(name){
+  if (INST_TINT[name]) return INST_TINT[name];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  return `hsl(${h % 360} 24% 42%)`;
+}
+
 function renderCards(){
-  const groups = {asset:[], liability:[]};
+  const groups = {asset:new Map(), liability:new Map()};
   ACCOUNTS.forEach(a => {
     const rs = rowsFor(a.id);
     const bal = balanceOf(a.id);
@@ -2138,9 +2202,15 @@ function renderCards(){
       : bal.source === 'statement' ? 'from statement'
       : bal.source === 'derived'   ? 'derived from rows' : '';
     const base = rs.length ? `${a.kind} · ${rs.length} rows · thru ${fmtDate(last)}`
-      : byHand ? a.kind : `${a.kind} · no statement yet`;
+      : byHand ? a.kind
+      : a.manual ? `${a.kind} · tap the figure to set its value`
+      : `${a.kind} · no statement yet`;
     const bare = !rs.length && !byHand && bal.source !== 'statement';
-    groups[a.side].push(`
+    const inst = a.inst || 'Other';
+    if (!groups[a.side].has(inst)) groups[a.side].set(inst, {total:0, cards:[]});
+    const bucket = groups[a.side].get(inst);
+    bucket.total += bal.value;
+    bucket.cards.push(`
       <article class="card${bare ? ' card--empty' : ''}" data-acct="${a.id}" role="button" tabindex="0"
                aria-label="${esc(a.name)} — open the ledger for this account">
         <div><div class="card__alias">${esc(a.id)}</div><p class="card__name">${esc(a.name)}</p></div>
@@ -2155,6 +2225,7 @@ function renderCards(){
         </button>
         <div class="card__meta">${esc(base)}${src ? ' · ' + esc(src) : ''}</div>
         <div class="card__spark">${sparkline(rs)}</div>
+        ${a.side === 'liability' ? `
         <div class="card__acts">
           <button type="button" class="btn btn--sm card__amort" data-amort="${a.id}"
                   aria-label="Amortization schedule for ${esc(a.name)}">
@@ -2164,11 +2235,33 @@ function renderCards(){
             </svg>
             Amortize
           </button>
-        </div>
+        </div>` : ''}
       </article>`);
   });
-  $('#assetCards').innerHTML = groups.asset.join('');
-  $('#liabCards').innerHTML = groups.liability.join('');
+  const banners = side => Array.from(groups[side], ([inst, b]) => {
+    const key = `${side}|${inst}`;
+    const open = instOpen[key] === true;
+    const n = b.cards.length;
+    return `
+      <details class="inst" data-inst="${esc(key)}"${open ? ' open' : ''}>
+        <summary aria-label="${esc(inst)} — ${n} ${n === 1 ? 'account' : 'accounts'}, ${esc(money(b.total))}">
+          <span class="inst__dot" style="background:${instTint(inst)}" aria-hidden="true"></span>
+          <span class="inst__name">${esc(inst)}</span>
+          <span class="inst__n">${n} ${n === 1 ? 'acct' : 'accts'}</span>
+          <span class="inst__sum ${side === 'asset' ? 'tone-asset' : 'tone-owe'}">${moneyShort(b.total)}</span>
+          <span class="inst__chev" aria-hidden="true">&#9656;</span>
+        </summary>
+        <div class="inst__body"><div class="cards">${b.cards.join('')}</div></div>
+      </details>`;
+  }).join('');
+
+  $('#assetCards').innerHTML = banners('asset');
+  $('#liabCards').innerHTML = banners('liability');
+
+  /* remember which banners the household left open */
+  $$('#assetCards .inst, #liabCards .inst').forEach(d => {
+    d.addEventListener('toggle', () => { instOpen[d.dataset.inst] = d.open; });
+  });
 
   /* the card opens the ledger; the figure opens the balance sheet */
   $$('#assetCards .card, #liabCards .card').forEach(c => {
@@ -2199,6 +2292,42 @@ function renderCards(){
    ============================================================ */
 let balTarget = null, balReturnFocus = null;
 
+/* ---------- live currency field ----------
+   Types as money: 62480.19 reads $62,480.19 while the keys are
+   still landing. Grouping is inserted per keystroke, the decimal
+   tail is capped at two, and the caret is re-seated by counting
+   digits rather than characters, so a comma appearing never bumps
+   the cursor mid-entry. toNumber() strips $ and commas on save. */
+function formatMoneyField(raw){
+  let v = String(raw);
+  const neg = v.trim().startsWith('-');
+  v = v.replace(/[^0-9.]/g, '');
+  const dot = v.indexOf('.');
+  let whole = dot === -1 ? v : v.slice(0, dot);
+  let frac  = dot === -1 ? null : v.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+  whole = whole.replace(/^0+(?=\d)/, '');
+  if (!whole && frac !== null) whole = '0';
+  if (!whole && frac === null) return neg ? '-' : '';
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (neg ? '-$' : '$') + grouped + (frac !== null ? '.' + frac : '');
+}
+
+function attachMoneyInput(el){
+  const digitsBefore = (str, pos) => (str.slice(0, pos).match(/[0-9]/g) || []).length;
+  el.addEventListener('input', () => {
+    const before = el.value, caret = el.selectionStart;
+    const seen = digitsBefore(before, caret);
+    const out = formatMoneyField(before);
+    if (out === before) return;
+    el.value = out;
+    let i = 0, count = 0;
+    while (i < out.length && count < seen){ if (/[0-9]/.test(out[i])) count++; i++; }
+    while (i < out.length && !/[0-9.]/.test(out[i])) i++;
+    el.setSelectionRange(i, i);
+  });
+  el.addEventListener('blur', () => { if (el.value.trim()) el.value = formatMoneyField(el.value); });
+}
+
 function openBalance(id){
   const a = ACCT[id];
   const bal = balanceOf(id);
@@ -2213,10 +2342,12 @@ function openBalance(id){
     bal.source === 'statement' ? ', from a statement' :
     bal.source === 'derived'   ? ', derived from the rows on file' : ', nothing on file yet');
 
-  $('#balAmount').value = bal.source === 'empty' ? '' : Math.abs(bal.value).toFixed(2);
+  $('#balAmount').value = bal.source === 'empty' ? '' : formatMoneyField(Math.abs(bal.value).toFixed(2));
   $('#balHint').textContent = a.side === 'liability'
     ? 'Enter what you still owe as a positive number — it counts against the net position.'
-    : 'Enter what the account holds. A minus sign marks it overdrawn.';
+    : a.manual
+      ? 'This account has no export to read. Enter the value from your statement or the Ameriprise app.'
+      : 'Enter what the account holds. A minus sign marks it overdrawn.';
   $('#balAsOf').value = isoOf(held && held.at ? new Date(held.at) : (state.rows.length ? state.rows[0].date : new Date()));
   $('#balClear').hidden = bal.source !== 'manual';
 
@@ -3601,7 +3732,7 @@ async function shareSite(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-07-30a';
+const BUILD = '2026-08-03d';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -3619,6 +3750,8 @@ function applyUpdateWhenIdle(){
 
 function initServiceWorker(){
   $('#buildStamp').textContent = 'build ' + BUILD;
+  $('#ledeCount').textContent = ACCOUNTS.length;
+  $('#footAccts').textContent = `${ACCOUNTS.length} accounts`;
   $('#buildStamp').addEventListener('click', checkForUpdate);
   if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
 
@@ -3809,6 +3942,7 @@ function wire(){
   });
 
   $('#ledgerClose').addEventListener('click', closeLedger);
+  attachMoneyInput($('#balAmount'));
   $('#balCancel').addEventListener('click', closeBalance);
   $('#balSave').addEventListener('click', saveBalance);
   $('#balClear').addEventListener('click', clearBalance);
