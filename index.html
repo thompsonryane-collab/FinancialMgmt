@@ -191,6 +191,11 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .cards{display:grid;gap:10px}
 .card{background:var(--slab);border:1px solid var(--rule);border-radius:14px;padding:13px 14px;display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:center}
 .card--empty{opacity:.9;border-style:dashed;border-color:#94A08B}
+/* On an empty card the pen is the only thing to do, so it stops
+   whispering. And an unknown balance reads as a dash, not as $0.00 —
+   the account does not hold nothing, we simply have not been told. */
+.card--empty .card__bal .pen{opacity:.9}
+.card__bal .fig--none{color:var(--muted);font-weight:500;letter-spacing:.06em}
 .card__alias{font-family:var(--data);font-size:10.5px;letter-spacing:.12em;color:var(--muted)}
 .card__name{font-weight:600;font-size:15px;margin:2px 0 0}
 .card__meta{font-family:var(--data);font-size:11px;color:var(--muted);grid-column:1/2}
@@ -423,6 +428,14 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
 /* Loan terms inside the balance sheet, and the schedule it opens */
 .terms{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.recon{margin:2px 0 14px;border:1px solid var(--rule);border-radius:12px;background:var(--slab);padding:4px 12px}
+.recon .calc{margin-top:0}
+.recon .calc__row{padding:7px 0}
+.recon .calc__row:last-child{border-bottom:0}
+.recon__flag{font-family:var(--data);font-size:11.5px;line-height:1.55;margin:0 0 10px;padding:9px 11px;
+  border-radius:10px;border:1px solid var(--rule)}
+.recon__flag--ok{color:var(--asset);border-color:color-mix(in srgb, var(--asset) 40%, var(--rule))}
+.recon__flag--off{color:var(--owe);border-color:color-mix(in srgb, var(--owe) 45%, var(--rule))}
 .terms .field{margin-bottom:0}
 .amort__strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .amort__cell{background:var(--slab);border:1px solid var(--rule);border-radius:12px;padding:11px 12px}
@@ -503,9 +516,14 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 /* ============================================================
    FOLDS — every screen splits into collapsible sections
    ============================================================ */
-.foldbar{display:flex;align-items:center;gap:10px;margin:0 2px 12px}
-.foldbar__state{font-family:var(--data);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.foldbar .btn{margin-left:auto}
+.foldbar{display:flex;align-items:center;gap:8px;margin:0 2px 12px}
+/* The count holds the left edge; every control groups on the right, so
+   a screen can hang its own action next to Expand all. */
+.foldbar__state{font-family:var(--data);font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-right:auto;white-space:nowrap}
+.foldbar .btn{margin-left:0;white-space:nowrap}
+.foldbar .btn--wipe{color:var(--danger);border-color:color-mix(in srgb, var(--danger) 34%, var(--rule))}
+.foldbar .btn--wipe.is-armed{background:var(--danger);color:var(--paper);border-color:var(--danger)}
 .fold{border:1px solid var(--rule);border-radius:16px;background:var(--slab);margin-bottom:12px;overflow:hidden}
 .fold>summary{
   list-style:none;display:flex;align-items:center;gap:10px;min-height:54px;padding:12px 14px;cursor:pointer;
@@ -765,6 +783,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
             <p class="drop__sub" id="dropHelp">.xlsx, .xls, .csv or .pdf from the Files app. Files are read on this phone only, account numbers are scrubbed before anything is stored, and you confirm the mapping before rows land.</p>
           </div>
           <ul class="log" id="log" aria-live="polite" aria-label="Import log"></ul>
+          <button class="btn btn--ghost btn--sm" id="sampleBtn" type="button" style="width:100%;margin-top:10px">Load sample ledger</button>
         </div>
       </details>
 
@@ -779,17 +798,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         </div>
       </details>
 
-      <details class="fold" data-fold>
-        <summary><span class="fold__dot" style="background:var(--owe)"></span>Ledger tools
-          <span class="fold__tag">sample · clear</span>
-          <span class="fold__chev" aria-hidden="true">▸</span></summary>
-        <div class="fold__body">
-          <div class="fold__stack">
-            <button class="btn btn--ghost" id="sampleBtn" type="button">Load sample ledger</button>
-            <button class="btn btn--ghost" id="clearBtn" type="button">Clear all data</button>
-          </div>
-        </div>
-      </details>
     </section>
 
     <!-- 3 · FLOW -->
@@ -1160,6 +1168,28 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <label for="balAsOf">As of</label>
       <input class="input" id="balAsOf" type="date">
     </div>
+
+    <div id="balOpen">
+      <p class="eyebrow" style="margin-top:2px">Opening balance</p>
+      <p class="hint" style="margin:0 0 10px" id="openIntro">
+        What the account held on a chosen day. Every row since lands on top of it,
+        so the figure on the card is derived end to end — set it and the card should
+        read what the bank reads.</p>
+      <div class="terms">
+        <div class="field">
+          <label for="openAmount">Balance that day</label>
+          <input class="input" id="openAmount" type="text" inputmode="decimal" placeholder="$0.00"
+                 autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="openDate">On</label>
+          <input class="input" id="openDate" type="date">
+        </div>
+      </div>
+      <div class="recon" id="openRecon" hidden></div>
+      <button class="btn btn--ghost" id="openClear" type="button" style="width:100%;margin:0 0 14px" hidden>Remove the opening balance</button>
+    </div>
+
     <div id="balLoan" hidden>
       <p class="eyebrow" style="margin-top:2px">Loan terms</p>
       <div class="terms">
@@ -1289,6 +1319,10 @@ const state = {
   apiKey:'',             // memory only, never persisted
   rows:[],               // normalised transactions
   balances:{},           // acctId -> number (assets positive, debts positive)
+  opens:{},              // acctId -> {value, at} the opening balance: what the
+                         // account held on a chosen day. Every row since rolls
+                         // onto it, so the card figure is fully derived and can
+                         // be reconciled against the bank.
   imports:[],            // {file, acct, count, at}
   sort:{key:'date', dir:-1},
   filter:{acct:'', q:''},
@@ -1591,6 +1625,12 @@ function planImport(file, wb){
 function normalize(plan){
   const acct = ACCT[plan.acctId];
   const out = [];
+  /* The running-balance column is only meaningful on the newest row.
+     USAA and AMEX export newest-first, so walking the file in order
+     used to leave us holding the OLDEST balance — the statement's
+     previous balance — and posting it as the current one. Track the
+     greatest date instead, with later file position breaking a tie
+     (banks list same-day lines in posting order). */
   let lastBalance = null;
   plan.body.forEach((r, i) => {
     const get = k => plan.map[k] > -1 ? r[plan.map[k]] : null;
@@ -1606,7 +1646,9 @@ function normalize(plan){
     if (plan.flip) amount = -amount;
 
     const bal = toNumber(get('balance'));
-    if (bal != null) lastBalance = { date, value: bal };
+    if (bal != null && (!lastBalance || date >= lastBalance.date)){
+      lastBalance = { date, value: bal };
+    }
 
     out.push({
       id: `${plan.acctId}-${date.getTime()}-${i}-${Math.round(amount*100)}`,
@@ -1637,14 +1679,100 @@ function mergeRows(incoming){
    ============================================================ */
 function rowsFor(id){ return state.rows.filter(r => r.acct === id); }
 
+/** End of the calendar day a timestamp falls in. */
+function endOfDay(t){
+  const d = new Date(t); d.setHours(23,59,59,999); return d.getTime();
+}
+
+/* An anchor is a figure plus the day it was true — from a statement
+   or typed by hand. Everything the account did AFTER that day still
+   has to land on top of it, or the card reports a stale number while
+   fresh rows sit in the ledger.
+
+   Sign convention: rows are stored so negative means money left the
+   pocket. An asset therefore adds the rows since the anchor; a
+   liability subtracts them, because a charge (negative) raises what
+   is owed and a payment (positive) lowers it. */
 function balanceOf(id){
-  const b = state.balances[id];
-  if (b && typeof b.value === 'number') return b;
-  const rs = rowsFor(id);
-  if (!rs.length) return { value:0, source:'empty' };
-  const sum = rs.reduce((s,r) => s + r.amount, 0);
   const acct = ACCT[id];
-  return { value: acct.side === 'liability' ? Math.abs(Math.min(sum,0)) : sum, source:'derived' };
+  const b = state.balances[id];
+  const rs = rowsFor(id);
+
+  /* An opening balance outranks everything. It is a deliberate
+     reconciliation base: the household states what the account held on
+     a given day, and the ledger derives the rest. If the result and the
+     bank disagree, rows are missing — which is the point of setting it. */
+  const op = state.opens[id];
+  if (op && typeof op.value === 'number'){
+    const cut = endOfDay(op.at);
+    const after = rs.filter(r => r.date.getTime() > cut);
+    const move = after.reduce((s,r) => s + r.amount, 0);
+    const value = acct.side === 'liability' ? op.value - move : op.value + move;
+    return { value, source:'opening', at:op.at, anchor:op.value, since:after.length, move };
+  }
+
+  if (b && typeof b.value === 'number'){
+    const cut = b.at ? endOfDay(b.at) : null;
+    const after = cut == null ? [] : rs.filter(r => r.date.getTime() > cut);
+    if (!after.length) return { value:b.value, source:b.source, at:b.at, anchor:b.value, since:0 };
+    const move = after.reduce((s,r) => s + r.amount, 0);
+    const value = acct.side === 'liability' ? b.value - move : b.value + move;
+    return { value, source:b.source, at:b.at, anchor:b.value, since:after.length, move };
+  }
+
+  if (!rs.length) return { value:0, source:'empty', since:0 };
+
+  /* No anchor on file. If the export carried a running balance, the
+     newest row that has one is the best figure available; a bare sum
+     of amounts is only the period's net change, not a balance. */
+  const withBal = rs.filter(r => typeof r.balance === 'number');
+  if (withBal.length){
+    const newest = withBal.reduce((m,r) => r.date > m.date ? r : m, withBal[0]);
+    const cut = endOfDay(newest.date.getTime());
+    const move = rs.filter(r => r.date.getTime() > cut).reduce((s,r) => s + r.amount, 0);
+    const base = acct.side === 'liability' ? Math.abs(newest.balance) : newest.balance;
+    const value = acct.side === 'liability' ? base - move : base + move;
+    return { value, source:'derived', at:newest.date.getTime(), anchor:base, since:0 };
+  }
+
+  const sum = rs.reduce((s,r) => s + r.amount, 0);
+  return { value: acct.side === 'liability' ? Math.abs(Math.min(sum,0)) : sum, source:'derived', since:0 };
+}
+
+/* Reconciliation. With an opening balance set, the derived figure is
+   only as good as the rows between then and now. If a statement or a
+   hand-set figure also sits on file, the two can be compared at that
+   figure's own date: opening plus everything up to that day should
+   equal it. Any gap is rows the ledger never saw. */
+function reconcile(id, override){
+  const op = override !== undefined ? override : state.opens[id];
+  if (!op || typeof op.value !== 'number') return null;
+  const acct = ACCT[id], rs = rowsFor(id);
+  const from = endOfDay(op.at);
+  const after = rs.filter(r => r.date.getTime() > from);
+  const move = after.reduce((s,r) => s + r.amount, 0);
+  const derived = acct.side === 'liability' ? op.value - move : op.value + move;
+
+  const out = { opening:op.value, at:op.at, rows:after.length, move, derived, check:null };
+
+  const b = state.balances[id];
+  if (b && typeof b.value === 'number' && b.at && b.at > op.at){
+    const to = endOfDay(b.at);
+    const upto = rs.filter(r => r.date.getTime() > from && r.date.getTime() <= to);
+    const m2 = upto.reduce((s,r) => s + r.amount, 0);
+    const expect = acct.side === 'liability' ? op.value - m2 : op.value + m2;
+    out.check = {
+      at: b.at, source: b.source, stated: b.value, expect,
+      gap: b.value - expect, rows: upto.length,
+    };
+  }
+  return out;
+}
+
+/** Newest row on file for one account, or null. */
+function newestRow(id){
+  const rs = rowsFor(id);
+  return rs.length ? rs.reduce((m,r) => r.date > m.date ? r : m, rs[0]) : null;
 }
 
 function totals(){
@@ -1820,6 +1948,7 @@ async function save(){
     await storeSet(STORE_KEY, await sealLedger(JSON.stringify({
       rows: state.rows.map(r => ({...r, date: r.date.getTime()})),
       balances: state.balances,
+      opens: state.opens,
       imports: state.imports,
       rules: state.rules,
       loans: state.loans,
@@ -1836,7 +1965,18 @@ async function load(){
     if (!value) return false;
     const data = JSON.parse(value);
     state.rows = (data.rows || []).map(r => ({...r, date: new Date(r.date), desc: redactAccountNumbers(r.desc)})).sort((a,b) => b.date - a.date);
+    state.opens = data.opens || {};
     state.balances = data.balances || {};
+    /* Balances written before anchors carried a date have no `at`, so
+       nothing rolls forward onto them. Seat them on the newest row the
+       account holds — that is the statement they came from — and the
+       figure starts tracking again without a re-import. */
+    Object.keys(state.balances).forEach(id => {
+      const b = state.balances[id];
+      if (!b || b.at || b.source !== 'statement') return;
+      const rs = state.rows.filter(r => r.acct === id);
+      if (rs.length) b.at = rs.reduce((m,r) => r.date > m ? r.date : m, rs[0].date).getTime();
+    });
     state.imports = data.imports || [];
     state.rules = data.rules || [];
     state.loans = data.loans || {};
@@ -1889,7 +2029,7 @@ function sampleLedger(){
   }
   state.rows = rows.sort((a,b) => b.date - a.date);
   state.balances = {
-    USAAC:{value:8412.55,source:'statement'}, USAAS:{value:21980.10,source:'statement'},
+    USAAC:{value:8412.55,source:'statement',at:Date.now()}, USAAS:{value:21980.10,source:'statement',at:Date.now()},
     AMEX:{value:1842.66,source:'statement'}, PenFed:{value:963.20,source:'statement'},
     PenFedCL:{value:18420.00,source:'statement'}, WellsFargo:{value:312500.00,source:'statement'},
     WellsFargoHELOC:{value:41250.00,source:'statement'},
@@ -1937,8 +2077,8 @@ show and let the person decide.`;
 function answerLocally(q){
   const s = q.toLowerCase();
   const t = totals();
-  if (!state.rows.length && !Object.keys(state.balances).length)
-    return 'Nothing is imported yet. Drop a statement on the intake panel, or load the sample ledger from the top bar, and I can work from there.';
+  if (!state.rows.length && !Object.keys(state.balances).length && !Object.keys(state.opens).length)
+    return 'Nothing is imported yet. Open Intake and drop a statement, or load the sample ledger from the same panel, and I can work from there.';
 
   // longest alias first, so "penfedcl" doesn't resolve to PenFed
   const who = FAMILY.find(f => s.includes(f.id.toLowerCase()));
@@ -2045,6 +2185,15 @@ async function askClaude(q){
    ============================================================ */
 const FOLDBARS = [];
 
+/* Per-screen foldbar actions, wired as the bar is built so nothing
+   depends on markup that no longer exists. */
+const FOLDBAR_ACTIONS = {
+  'scr-intake': [
+    { label:'Clear all', arm:'Tap to wipe', tone:'wipe',
+      aria:'Clear every imported row, balance and opening figure', run:() => clearLedger() },
+  ],
+};
+
 function initFolds(){
   $$('.screen').forEach(screen => {
     const folds = () => $$('details[data-fold]', screen);
@@ -2053,9 +2202,42 @@ function initFolds(){
     const bar = document.createElement('div');
     bar.className = 'foldbar';
     bar.innerHTML = `<span class="foldbar__state"></span>
-      <button class="btn btn--sm" type="button">Expand all</button>`;
-    const btn = bar.querySelector('button');
+      <button class="btn btn--sm btn--fold" type="button">Expand all</button>`;
+    const btn = bar.querySelector('.btn--fold');
     const state = bar.querySelector('.foldbar__state');
+
+    /* Screens can hang an action on their own foldbar. Intake keeps the
+       wipe here rather than buried in a section, because it is the one
+       control you want to find deliberately and never by accident. */
+    (FOLDBAR_ACTIONS[screen.id] || []).forEach(act => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn--sm' + (act.tone ? ' btn--' + act.tone : '');
+      b.textContent = act.label;
+      b.setAttribute('aria-label', act.aria || act.label);
+      if (act.arm){
+        /* Sitting on the bar, this is a thumb's width from Expand all.
+           One tap arms it and says so; the second does the damage. It
+           disarms itself after a few seconds. */
+        let armed = null;
+        const disarm = () => {
+          clearTimeout(armed); armed = null;
+          b.textContent = act.label;
+          b.classList.remove('is-armed');
+          b.setAttribute('aria-label', act.aria || act.label);
+        };
+        b.addEventListener('click', () => {
+          if (armed){ disarm(); act.run(); return; }
+          b.textContent = act.arm;
+          b.classList.add('is-armed');
+          b.setAttribute('aria-label', `${act.aria || act.label} — tap again to confirm`);
+          armed = setTimeout(disarm, 4000);
+        });
+      } else {
+        b.addEventListener('click', act.run);
+      }
+      btn.before(b);
+    });
 
     const sync = () => {
       const f = folds();
@@ -2083,6 +2265,15 @@ function initFolds(){
     FOLDBARS.push({screen, sync});
     sync();
   });
+}
+
+/** Wipe every imported row, balance and opening figure. */
+function clearLedger(){
+  if (!state.rows.length && !Object.keys(state.balances).length && !Object.keys(state.opens).length){
+    toast('Nothing to clear'); return;
+  }
+  state.rows = []; state.balances = {}; state.opens = {}; state.imports = [];
+  save(); render(); logLine('Ledger cleared','warn'); toast('Ledger cleared');
 }
 
 /** Re-count a screen's folds after its content is rebuilt. */
@@ -2197,15 +2388,21 @@ function renderCards(){
     const held = state.balances[a.id];
     const byHand = bal.source === 'manual';
     const last = rs.length ? rs.reduce((m,r) => r.date > m ? r.date : m, rs[0].date) : null;
-    const stamp = byHand && held && held.at ? ` ${fmtDate(new Date(held.at))}` : '';
-    const src = byHand ? `set by hand${stamp}`
-      : bal.source === 'statement' ? 'from statement'
-      : bal.source === 'derived'   ? 'derived from rows' : '';
+    const stamp = held && held.at ? ` ${fmtDate(new Date(held.at))}` : '';
+    const rolled = bal.since ? ` + ${bal.since} row${bal.since === 1 ? '' : 's'} since` : '';
+    const opStamp = bal.source === 'opening' && bal.at ? ` ${fmtDate(new Date(bal.at))}` : '';
+    const rec = bal.source === 'opening' ? reconcile(a.id) : null;
+    const offBy = rec && rec.check && Math.abs(rec.check.gap) >= 0.01
+      ? ` · off by ${money(Math.abs(rec.check.gap))}` : '';
+    const src = bal.source === 'opening' ? `opened${opStamp}${rolled}${offBy}`
+      : byHand ? `set by hand${stamp}${rolled}`
+      : bal.source === 'statement' ? `from statement${stamp}${rolled}`
+      : bal.source === 'derived'   ? `derived from rows${rolled}` : '';
     const base = rs.length ? `${a.kind} · ${rs.length} rows · thru ${fmtDate(last)}`
       : byHand ? a.kind
       : a.manual ? `${a.kind} · tap the figure to set its value`
-      : `${a.kind} · no statement yet`;
-    const bare = !rs.length && !byHand && bal.source !== 'statement';
+      : `${a.kind} · no statement yet · tap the figure to open it`;
+    const bare = !rs.length && !byHand && bal.source !== 'statement' && bal.source !== 'opening';
     const inst = a.inst || 'Other';
     if (!groups[a.side].has(inst)) groups[a.side].set(inst, {total:0, cards:[]});
     const bucket = groups[a.side].get(inst);
@@ -2216,12 +2413,14 @@ function renderCards(){
         <div><div class="card__alias">${esc(a.id)}</div><p class="card__name">${esc(a.name)}</p></div>
         <button type="button" class="card__bal ${a.side==='asset'?'tone-asset':'tone-owe'}${byHand?' card__bal--set':''}"
                 data-acct="${a.id}"
-                aria-label="Set the ${esc(a.name)} balance. Currently ${esc(money(bal.value))}">
+                aria-label="${bal.source === 'empty'
+                  ? `Set the ${esc(a.name)} balance or opening balance. Nothing on file yet`
+                  : `Set the ${esc(a.name)} balance. Currently ${esc(money(bal.value))}`}">
           <svg class="pen" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
           </svg>
-          <span class="fig">${moneyShort(bal.value)}</span>
+          <span class="fig${bal.source === 'empty' ? ' fig--none' : ''}">${bal.source === 'empty' ? '—' : moneyShort(bal.value)}</span>
         </button>
         <div class="card__meta">${esc(base)}${src ? ' · ' + esc(src) : ''}</div>
         <div class="card__spark">${sparkline(rs)}</div>
@@ -2337,18 +2536,49 @@ function openBalance(id){
 
   $('#balSide').textContent = a.side === 'liability' ? 'Amount owed' : 'Amount held';
   $('#balTitle').textContent = a.name;
+  const anchored = held && held.at ? fmtDate(new Date(held.at)) : null;
   $('#balAcct').textContent = `${a.id} · ${a.kind} · now ${money(bal.value)}` + (
-    bal.source === 'manual'    ? ', set by hand' :
-    bal.source === 'statement' ? ', from a statement' :
-    bal.source === 'derived'   ? ', derived from the rows on file' : ', nothing on file yet');
+    bal.source === 'manual'    ? `, set by hand${anchored ? ' ' + anchored : ''}` :
+    bal.source === 'statement' ? `, from a statement${anchored ? ' ' + anchored : ''}` :
+    bal.source === 'derived'   ? ', derived from the rows on file' : ', nothing on file yet')
+    + (bal.since ? ` and rolled forward by ${bal.since} row${bal.since === 1 ? '' : 's'} since` : '');
 
-  $('#balAmount').value = bal.source === 'empty' ? '' : formatMoneyField(Math.abs(bal.value).toFixed(2));
-  $('#balHint').textContent = a.side === 'liability'
-    ? 'Enter what you still owe as a positive number — it counts against the net position.'
-    : a.manual
-      ? 'This account has no export to read. Enter the value from your statement or the Ameriprise app.'
-      : 'Enter what the account holds. A minus sign marks it overdrawn.';
-  $('#balAsOf').value = isoOf(held && held.at ? new Date(held.at) : (state.rows.length ? state.rows[0].date : new Date()));
+  /* Type the figure as of the day you are stating it. The field holds
+     the anchor, not the rolled-forward total, so re-saving an untouched
+     sheet is a no-op rather than a double count. And an asset keeps its
+     minus sign — stripping it turned an overdrawn account into a held
+     one on the next save. */
+  const seed = bal.since && typeof bal.anchor === 'number' ? bal.anchor : bal.value;
+  $('#balAmount').value = bal.source === 'empty' ? ''
+    : formatMoneyField((a.side === 'liability' ? Math.abs(seed) : seed).toFixed(2));
+  const nothingYet = bal.source === 'empty';
+  $('#balHint').textContent = nothingYet
+    ? (a.side === 'liability'
+        ? 'Enter what you owe today — or leave this blank and set only an opening balance below. Either one is enough.'
+        : 'Enter what the account holds today — or leave this blank and set only an opening balance below. Either one is enough.')
+    : a.side === 'liability'
+      ? 'Enter what you still owe as a positive number — it counts against the net position.'
+      : a.manual
+        ? 'This account has no export to read. Enter the value from your statement or the Ameriprise app.'
+        : 'Enter what the account holds. A minus sign marks it overdrawn.';
+  /* Default the date to this account's newest row — not the newest row
+     in the whole ledger, which used to stamp USAA with an AMEX date. */
+  const nr = newestRow(id);
+  $('#balAsOf').value = isoOf(held && held.at ? new Date(held.at) : (nr ? nr.date : new Date()));
+
+  /* Opening balance. Defaults to the first of the current year, the day
+     most people have a statement for. */
+  const op = state.opens[id];
+  $('#openAmount').value = op && typeof op.value === 'number'
+    ? formatMoneyField(Math.abs(op.value).toFixed(2)) : '';
+  $('#openDate').value = op && op.at
+    ? isoOf(new Date(op.at))
+    : isoOf(new Date(new Date().getFullYear(), 0, 1));
+  $('#openIntro').textContent = a.side === 'liability'
+    ? 'What you owed on a chosen day. Every charge and payment since lands on top of it, so the card figure is derived end to end.'
+    : 'What the account held on a chosen day. Every row since lands on top of it, so the card figure is derived end to end — set it and the card should read what the bank reads.';
+  $('#openClear').hidden = !op;
+  renderRecon(id);
   $('#balClear').hidden = bal.source !== 'manual';
 
   /* the amortising accounts carry terms as well as a balance */
@@ -2366,34 +2596,137 @@ function openBalance(id){
   setTimeout(() => { const f = $('#balAmount'); f.focus(); f.select(); }, 60);
 }
 
+/* The panel under the opening field: where the figure came from and,
+   when a statement can vouch for it, whether the two agree. */
+function renderRecon(id, override){
+  const box = $('#openRecon');
+  const rec = reconcile(id, override);
+  if (!rec){ box.hidden = true; box.innerHTML = ''; return; }
+  const a = ACCT[id];
+  const dir = a.side === 'liability' ? 'charges less payments' : 'money in and out';
+  const rows = [
+    ['Opening balance', money(rec.opening), fmtDate(new Date(rec.at))],
+    [`${rec.rows} row${rec.rows === 1 ? '' : 's'} since`, (rec.move >= 0 ? '+' : '−') + money(Math.abs(rec.move)), dir],
+  ];
+
+  let flag = '';
+  if (rec.check){
+    const gap = rec.check.gap, off = Math.abs(gap) >= 0.01;
+    const who = rec.check.source === 'manual' ? 'the figure set by hand' : 'the statement';
+    rows.push([`Should read on ${fmtDate(new Date(rec.check.at))}`, money(rec.check.expect), `against ${who}: ${money(rec.check.stated)}`]);
+    flag = off
+      ? `<p class="recon__flag recon__flag--off">Off by ${money(Math.abs(gap))}. The ledger holds ${rec.check.rows} row${rec.check.rows === 1 ? '' : 's'} between those two dates — if ${who} is right, some are missing. Import the gap and this clears itself.</p>`
+      : `<p class="recon__flag recon__flag--ok">Reconciled. Opening balance plus every row since matches ${who} to the cent.</p>`;
+  } else {
+    flag = rec.rows === 0
+      ? `<p class="recon__flag">No rows on file yet, so this figure stands on its own. Import statements covering ${fmtDate(new Date(rec.at))} onward and every one of them will land on top of it.</p>`
+      : `<p class="recon__flag">Nothing to check against yet. Import a statement that ends after ${fmtDate(new Date(rec.at))} and this will tell you whether the rows in between add up.</p>`;
+  }
+
+  rows.push(['Balance now', money(rec.derived), 'what the card shows']);
+  const last = rows.length - 1;
+  box.innerHTML = flag + '<div class="calc">' + rows.map(([k,v,why], i) =>
+    `<div class="calc__row${i === last ? ' calc__row--sum' : ''}"><b>${esc(k)}</b><span class="v">${esc(v)}</span>` +
+    (why ? `<span class="why">${esc(why)}</span>` : '') + '</div>').join('') + '</div>';
+  box.hidden = false;
+}
+
 function balKeys(e){
   if (e.key === 'Escape'){ e.preventDefault(); closeBalance(); }
-  if (e.key === 'Enter' && e.target.id === 'balAmount'){ e.preventDefault(); saveBalance(); }
+  if (e.key === 'Enter' && ['balAmount','openAmount','openDate'].includes(e.target.id)){ e.preventDefault(); saveBalance(); }
 }
 
 function closeBalance(){
   $('#balModal').hidden = true;
+  $('#openRecon').hidden = true; $('#openRecon').innerHTML = '';
   document.removeEventListener('keydown', balKeys);
   balTarget = null;
   if (balReturnFocus && balReturnFocus.focus) balReturnFocus.focus();
 }
 
+/* Either field alone is enough. An opening balance is the figure you
+   have BEFORE any statement exists — demanding a current balance first
+   made it impossible to enter, and left the sheet sitting open when the
+   household tapped Save with only the opening filled. */
 function saveBalance(){
   const a = ACCT[balTarget];
-  const n = toNumber($('#balAmount').value);
-  if (n == null){
+  const label = a.id;
+  const raw     = $('#balAmount').value.trim();
+  const openRaw = $('#openAmount').value.trim();
+  const n = raw ? toNumber(raw) : null;
+
+  /* Only complain about a field that actually has something in it. */
+  if (raw && n == null){
     $('#balHint').textContent = 'That is not a number the ledger can read. Try something like 1842.66.';
     $('#balAmount').focus();
     return;
   }
-  const at = toDate($('#balAsOf').value) || new Date();
-  const value = a.side === 'liability' ? Math.abs(n) : n;
-  state.balances[a.id] = { value, source:'manual', at: at.getTime() };
+  if (openRaw && readOpening(a.id) == null){
+    $('#openAmount').focus();
+    toast('That opening balance is not a number the ledger can read');
+    return;
+  }
+
+  /* Nothing typed and nothing on file: close rather than nag. */
+  const hadSomething = state.balances[a.id] || state.opens[a.id];
+  if (!raw && !openRaw && !hadSomething && a.schema !== 'loan'){ closeBalance(); return; }
+
+  let value = null;
+  if (raw){
+    const at = toDate($('#balAsOf').value) || new Date();
+    value = a.side === 'liability' ? Math.abs(n) : n;
+    state.balances[a.id] = { value, source:'manual', at: at.getTime() };
+  }
+  commitOpening(a.id);
   if (a.schema === 'loan') commitLoanTerms(a.id);
-  const label = a.id;
+
+  const now = balanceOf(a.id);
+  const rec = reconcile(a.id);
   closeBalance();
   save(); render();
-  toast(`${label} set to ${money(Math.abs(value))}${a.side === 'liability' ? ' owed' : ''}`);
+
+  if (rec){
+    const gap = rec.check ? rec.check.gap : null;
+    toast(
+      gap != null && Math.abs(gap) >= 0.01
+        ? `${label} opens at ${money(rec.opening)} — ${rec.rows} rows bring it to ${money(rec.derived)}, off by ${money(Math.abs(gap))}`
+      : rec.rows === 0
+        ? `${label} opens at ${money(rec.opening)} — no rows on file yet, so that is the balance`
+        : `${label} opens at ${money(rec.opening)} — ${rec.rows} row${rec.rows === 1 ? '' : 's'} bring it to ${money(rec.derived)}`);
+    return;
+  }
+  if (value == null){ toast(`${label} unchanged`); return; }
+  toast(now.since
+    ? `${label} anchored at ${money(Math.abs(value))} — ${now.since} row${now.since === 1 ? '' : 's'} since bring it to ${money(now.value)}`
+    : `${label} set to ${money(Math.abs(value))}${a.side === 'liability' ? ' owed' : ''}`);
+}
+
+/* What the opening fields currently say, or null. Reads only — the
+   panel previews against this while typing, so nothing is written to
+   state until the sheet is actually saved. */
+function readOpening(id){
+  const raw = $('#openAmount').value.trim();
+  if (!raw) return null;
+  const v = toNumber(raw);
+  if (v == null) return null;
+  const d = toDate($('#openDate').value) || new Date(new Date().getFullYear(), 0, 1);
+  return { value: ACCT[id].side === 'liability' ? Math.abs(v) : v, at: d.getTime() };
+}
+
+/* Commit on save. An empty amount removes the opening balance. */
+function commitOpening(id){
+  const op = readOpening(id);
+  if (op) state.opens[id] = op; else delete state.opens[id];
+}
+
+function clearOpening(){
+  const id = balTarget;
+  delete state.opens[id];
+  $('#openAmount').value = '';
+  $('#openClear').hidden = true;
+  renderRecon(id);
+  save(); render();
+  toast(`${id} opening balance removed`);
 }
 
 function clearBalance(){
@@ -3589,7 +3922,21 @@ function confirmImport(){
   const added = mergeRows(rows);
   const acct = ACCT[current.acctId];
   if (lastBalance){
-    state.balances[acct.id] = { value: acct.side==='liability' ? Math.abs(lastBalance.value) : lastBalance.value, source:'statement' };
+    /* A balance is an anchor: a figure AND the day it was true.
+       Import an older statement after a newer one — or after a figure
+       set by hand — and the older number must not win. */
+    const held = state.balances[acct.id];
+    const heldAt = held && held.at ? held.at : null;
+    const freshAt = lastBalance.date.getTime();
+    if (!held || heldAt == null || freshAt >= heldAt){
+      state.balances[acct.id] = {
+        value: acct.side === 'liability' ? Math.abs(lastBalance.value) : lastBalance.value,
+        source: 'statement',
+        at: freshAt,
+      };
+    } else {
+      logLine(`${acct.id}: statement balance is older than the figure on file — kept the newer one`,'warn');
+    }
   }
   state.imports.push({ file:current.file, acct:acct.id, count:added, at:Date.now() });
   const claimed = applyRules();
@@ -3599,6 +3946,10 @@ function confirmImport(){
   toast(`${added} rows added to ${acct.id}`);
   closeReview();
   save(); render();
+  /* Rows are in — show what they did. If more files are still queued,
+     closeReview() has already opened the next mapping sheet, so stay
+     put until the whole batch has landed. */
+  if (!current && !queue.length) goTo(0);
 }
 function next(){
   if (current || !queue.length) return;
@@ -3732,7 +4083,7 @@ async function shareSite(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-03d';
+const BUILD = '2026-08-03j';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -3903,7 +4254,7 @@ function wire(){
   });
   $('#lockReset').addEventListener('click', async () => {
     if (!confirm('This erases the ledger and removes the lock so the app can be used again. Erase everything?')) return;
-    state.rows = []; state.balances = {}; state.imports = []; state.rules = []; state.bills = []; state.loans = {}; state.files = [];
+    state.rows = []; state.balances = {}; state.opens = {}; state.imports = []; state.rules = []; state.bills = []; state.loans = {}; state.files = [];
     lock.meta = null; lock.cryptoKey = null; lock.unlocked = true;
     await storeSet(LOCK_KEY, '');
     await storeSet(STORE_KEY, '');
@@ -3935,17 +4286,23 @@ function wire(){
   $('#moreBtn').addEventListener('click', () => { shownCount += 60; renderTable(); });
 
   $('#sampleBtn').addEventListener('click', () => { sampleLedger(); toast('Sample ledger loaded'); goTo(0); });
-  $('#clearBtn').addEventListener('click', () => {
-    if (!state.rows.length && !Object.keys(state.balances).length){ toast('Nothing to clear'); return; }
-    state.rows = []; state.balances = {}; state.imports = [];
-    save(); render(); logLine('Ledger cleared','warn'); toast('Ledger cleared');
-  });
 
   $('#ledgerClose').addEventListener('click', closeLedger);
   attachMoneyInput($('#balAmount'));
+  attachMoneyInput($('#openAmount'));
   $('#balCancel').addEventListener('click', closeBalance);
   $('#balSave').addEventListener('click', saveBalance);
   $('#balClear').addEventListener('click', clearBalance);
+  $('#openClear').addEventListener('click', clearOpening);
+  /* The reconciliation panel recomputes as the figure is typed, so the
+     variance is visible before the sheet is ever saved. */
+  const previewRecon = () => {
+    if (!balTarget) return;
+    renderRecon(balTarget, readOpening(balTarget));
+    $('#openClear').hidden = !state.opens[balTarget] && !$('#openAmount').value.trim();
+  };
+  $('#openAmount').addEventListener('input', previewRecon);
+  $('#openDate').addEventListener('change', previewRecon);
   $('#crestHome').addEventListener('click', goSplash);
   $('#ariaToggle').addEventListener('click', openDrawer);
   $('#ariaClose').addEventListener('click', closeDrawer);
