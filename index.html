@@ -67,6 +67,10 @@ input,select,textarea{font-size:16px}
 .btn--primary{background:var(--accent);border-color:var(--accent-deep);color:#0E1808;font-weight:600}
 .btn--sm{min-height:38px;padding:7px 12px;font-size:13.5px;border-radius:10px}
 .btn--ghost{background:transparent}
+.samplerow{display:flex;gap:8px;margin-top:10px}
+.samplerow .btn{flex:1 1 0;min-width:0}
+.samplerow .btn--wipe{color:var(--danger);border-color:color-mix(in srgb, var(--danger) 34%, var(--rule))}
+.samplerow .btn:disabled{opacity:.42;pointer-events:none}
 .btn[disabled]{opacity:.45}
 
 .crest{display:block}
@@ -764,6 +768,19 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <div class="fold__body" id="budgetBody"></div>
       </details>
 
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--muted)"></span>Sample data
+          <span class="fold__tag" id="sampleTag">off</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <p class="hint" id="sampleNote" style="margin:0"></p>
+          <div class="samplerow">
+            <button class="btn btn--sm" id="sampleLoad" type="button">Load sample data</button>
+            <button class="btn btn--ghost btn--sm btn--wipe" id="sampleClear" type="button">Clear sample data</button>
+          </div>
+        </div>
+      </details>
+
       <p class="balhint">Accounts sit under the institution that holds them — tap a banner to open it. Tap a card to open its ledger. Tap the figure to set that balance by hand — the debts also take a rate, a term and a start date, and hand back an amortization schedule.</p>
     </section>
 
@@ -783,7 +800,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
             <p class="drop__sub" id="dropHelp">.xlsx, .xls, .csv or .pdf from the Files app. Files are read on this phone only, account numbers are scrubbed before anything is stored, and you confirm the mapping before rows land.</p>
           </div>
           <ul class="log" id="log" aria-live="polite" aria-label="Import log"></ul>
-          <button class="btn btn--ghost btn--sm" id="sampleBtn" type="button" style="width:100%;margin-top:10px">Load sample ledger</button>
+          <button class="btn btn--ghost btn--sm" id="sampleBtn" type="button" style="width:100%;margin-top:10px">Load sample data</button>
         </div>
       </details>
 
@@ -1240,20 +1257,28 @@ const ACCOUNTS = [
     match:[{re:/usaa/i,w:3},{re:/sav|usaas/i,w:4}] },
 
   { id:'AMPONE', name:'Ameriprise ONE ACCT', inst:'Ameriprise', side:'asset', kind:'Cash management',
-    schema:'bank', flip:false, manual:true,
+    schema:'bank', flip:false, manual:true, via:'your statement or the Ameriprise app',
     match:[{re:/ameriprise|\bamp\b/i,w:4},{re:/one[ _-]?acc?t|one[ _-]?account|ampone/i,w:5}] },
 
   { id:'AMPBRK', name:'Ameriprise BROKERAGE', inst:'Ameriprise', side:'asset', kind:'Brokerage',
-    schema:'bank', flip:false, manual:true,
+    schema:'bank', flip:false, manual:true, via:'your statement or the Ameriprise app',
     match:[{re:/ameriprise|\bamp\b/i,w:4},{re:/brokerage|\bbrk\b|ampbrk/i,w:5}] },
 
   { id:'SPSADV01', name:'SPS ADV 01', inst:'Ameriprise', side:'asset', kind:'Advisory account',
-    schema:'bank', flip:false, manual:true,
+    schema:'bank', flip:false, manual:true, via:'your statement or the Ameriprise app',
     match:[{re:/(^|[^a-z])sps([^a-z]|$)/i,w:4},{re:/adv/i,w:2},{re:/(^|[^0-9])0?1(?![0-9])/,w:4}] },
 
   { id:'SPSADV02', name:'SPS ADV 02', inst:'Ameriprise', side:'asset', kind:'Advisory account',
-    schema:'bank', flip:false, manual:true,
+    schema:'bank', flip:false, manual:true, via:'your statement or the Ameriprise app',
     match:[{re:/(^|[^a-z])sps([^a-z]|$)/i,w:4},{re:/adv/i,w:2},{re:/(^|[^0-9])0?2(?![0-9])/,w:4}] },
+
+  { id:'TSP', name:'Thrift Savings Plan', inst:'TSP', side:'asset', kind:'Retirement',
+    schema:'bank', flip:false, manual:true, via:'your quarterly statement or tsp.gov',
+    match:[{re:/\btsp\b/i,w:6},{re:/thrift ?savings/i,w:6}] },
+
+  { id:'DCAPPLE', name:'DC Appleseed', inst:'DC Appleseed', side:'asset', kind:'Investment',
+    schema:'bank', flip:false, manual:true, via:'your latest statement',
+    match:[{re:/appleseed/i,w:6},{re:/dcapple/i,w:6}] },
 
   { id:'AMEX', name:'American Express', inst:'AMEX', side:'liability', kind:'Credit card',
     schema:'card', flip:true,
@@ -1332,6 +1357,7 @@ const state = {
   loans:{},              // acctId -> {rate, years, start} for the amortising accounts
   files:[],              // saved schedules: {id, name, acct, params, summary, savedAt}
   bills:[],              // scheduled due dates: {id, name, date, acct, kind, amount, repeat}
+  sample:false,          // true while the demo ledger is standing in for the real one
   cal:{ y:new Date().getFullYear(), m:new Date().getMonth(), sel:null },
   thread:[],             // {role, content}
 };
@@ -1858,6 +1884,11 @@ async function deriveLedgerKey(prfOutput){
 }
 
 async function enrollFaceId(){
+  /* The pre-sample stash is sealed with whatever key the ledger uses. Read
+     it while the current key still opens it, so it can be re-sealed under
+     the new one below — otherwise Clear sample data would find a stash it
+     can no longer decrypt. */
+  const stash = await readStash();
   const prfSalt = rand(32);
   const cred = await navigator.credentials.create({ publicKey:{
     challenge: rand(32),
@@ -1878,6 +1909,7 @@ async function enrollFaceId(){
     lock.cryptoKey = await deriveLedgerKey(ext.prf.results.first);
   }
   await save();   /* re-persist the ledger, encrypted if a key exists */
+  await writeStash(stash);
   return prfEnabled;
 }
 
@@ -1900,9 +1932,26 @@ async function unlockFaceId(){
 }
 
 async function disableFaceId(){
+  const stash = await readStash();          /* still readable under the old key */
   lock.meta = null; lock.cryptoKey = null; lock.unlocked = true;
   await storeSet(LOCK_KEY, '');
   await save();   /* ledger back to plaintext */
+  await writeStash(stash);
+}
+
+/* The pre-sample stash: the real ledger, held aside while the demo stands
+   in. Sealed exactly like the live ledger, so switching the sample on never
+   downgrades what is written to the device. */
+async function readStash(){
+  try {
+    const raw = await storeGet(SAMPLE_KEY);
+    if (!raw) return null;
+    return await unsealLedger(raw);
+  } catch(_){ return null; }
+}
+async function writeStash(json){
+  if (json == null) return;
+  try { await storeSet(SAMPLE_KEY, await sealLedger(json)); } catch(_){}
 }
 
 /* seal/unseal the ledger payload */
@@ -1943,18 +1992,48 @@ async function storeGet(key){
   return memStore[key] ?? null;
 }
 
+/* One shape for the ledger, used by both the live store and the
+   pre-sample stash, so the two can never drift apart. */
+function ledgerPayload(){
+  return {
+    rows: state.rows.map(r => ({...r, date: r.date.getTime()})),
+    balances: state.balances,
+    opens: state.opens,
+    imports: state.imports,
+    rules: state.rules,
+    loans: state.loans,
+    files: state.files,
+    bills: state.bills,
+    sample: state.sample,
+  };
+}
+
+function applyPayload(data){
+  state.rows = (data.rows || []).map(r => ({...r, date: new Date(r.date), desc: redactAccountNumbers(r.desc)})).sort((a,b) => b.date - a.date);
+  state.opens = data.opens || {};
+  state.balances = data.balances || {};
+  /* Balances written before anchors carried a date have no `at`, so
+     nothing rolls forward onto them. Seat them on the newest row the
+     account holds — that is the statement they came from — and the
+     figure starts tracking again without a re-import. */
+  Object.keys(state.balances).forEach(id => {
+    const b = state.balances[id];
+    if (!b || b.at || b.source !== 'statement') return;
+    const rs = state.rows.filter(r => r.acct === id);
+    if (rs.length) b.at = rs.reduce((m,r) => r.date > m ? r.date : m, rs[0].date).getTime();
+  });
+  state.imports = data.imports || [];
+  state.rules = data.rules || [];
+  state.loans = data.loans || {};
+  state.files = data.files || [];
+  state.bills = data.bills || [];
+  state.sample = Boolean(data.sample);
+  return state.rows.length > 0 || state.bills.length > 0;
+}
+
 async function save(){
   try {
-    await storeSet(STORE_KEY, await sealLedger(JSON.stringify({
-      rows: state.rows.map(r => ({...r, date: r.date.getTime()})),
-      balances: state.balances,
-      opens: state.opens,
-      imports: state.imports,
-      rules: state.rules,
-      loans: state.loans,
-      files: state.files,
-      bills: state.bills,
-    })));
+    await storeSet(STORE_KEY, await sealLedger(JSON.stringify(ledgerPayload())));
   } catch(_){ /* storage is a bonus, not a requirement */ }
 }
 async function load(){
@@ -1963,84 +2042,248 @@ async function load(){
     if (!value) return false;
     value = await unsealLedger(value);
     if (!value) return false;
-    const data = JSON.parse(value);
-    state.rows = (data.rows || []).map(r => ({...r, date: new Date(r.date), desc: redactAccountNumbers(r.desc)})).sort((a,b) => b.date - a.date);
-    state.opens = data.opens || {};
-    state.balances = data.balances || {};
-    /* Balances written before anchors carried a date have no `at`, so
-       nothing rolls forward onto them. Seat them on the newest row the
-       account holds — that is the statement they came from — and the
-       figure starts tracking again without a re-import. */
-    Object.keys(state.balances).forEach(id => {
-      const b = state.balances[id];
-      if (!b || b.at || b.source !== 'statement') return;
-      const rs = state.rows.filter(r => r.acct === id);
-      if (rs.length) b.at = rs.reduce((m,r) => r.date > m ? r.date : m, rs[0].date).getTime();
-    });
-    state.imports = data.imports || [];
-    state.rules = data.rules || [];
-    state.loans = data.loans || {};
-    state.files = data.files || [];
-    state.bills = data.bills || [];
-    return state.rows.length > 0 || state.bills.length > 0;
+    return applyPayload(JSON.parse(value));
   } catch(_){ return false; }
 }
 
-function sampleLedger(){
-  const merchants = {
-    USAAC: [['PUBLIX #1204','Groceries',-142],['SHELL OIL','Fuel',-58],['DUKE ENERGY','Utilities',-186],
-            ['PAYROLL DEPOSIT','Income',4180],['WELLS FARGO MTG PMT','Mortgage',-2240],['CITY WATER','Utilities',-74],
-            ['TRANSFER TO SAVINGS','Transfer',-600],['AMEX EPAYMENT','Card payment',-940]],
-    USAAS: [['TRANSFER FROM CHECKING','Transfer',600],['INTEREST PAID','Interest',18]],
-    AMEX:  [['AMAZON MKTPLACE','Shopping',-96],['DELTA AIR LINES','Travel',-412],['WHOLE FOODS','Groceries',-118],
-            ['NETFLIX','Subscriptions',-23],['PAYMENT RECEIVED','Payment',940],['CHIPOTLE','Dining',-31]],
-    PenFed:[['HOME DEPOT','Home',-208],['COSTCO WHSE','Groceries',-176],['PAYMENT THANK YOU','Payment',420],['SHELL OIL','Fuel',-62]],
-    PenFedCL:[['AUTO LOAN PAYMENT','Loan',486]],
-    WellsFargo:[['MORTGAGE PAYMENT','Loan',2140],['INTEREST CHARGED','Interest',-1310]],
-    WellsFargoHELOC:[['HELOC DRAW','Draw',-3500],['HELOC PAYMENT','Loan',310]],
-  };
-  const WHO = {
-    'PAYROLL DEPOSIT':'Ryan', 'WELLS FARGO MTG PMT':'Ryan', 'MORTGAGE PAYMENT':'Ryan',
-    'INTEREST CHARGED':'Ryan', 'AUTO LOAN PAYMENT':'Ryan', 'SHELL OIL':'Ryan',
-    'DUKE ENERGY':'Vanessa', 'CITY WATER':'Vanessa', 'PUBLIX #1204':'Vanessa',
-    'WHOLE FOODS':'Vanessa', 'COSTCO WHSE':'Vanessa', 'TRANSFER TO SAVINGS':'Vanessa',
-    'TRANSFER FROM CHECKING':'Vanessa', 'AMEX EPAYMENT':'Ryan', 'PAYMENT RECEIVED':'Ryan',
-    'PAYMENT THANK YOU':'Vanessa', 'INTEREST PAID':'Vanessa',
-    'DELTA AIR LINES':'Vivian', 'NETFLIX':'Vivian', 'CHIPOTLE':'Vivian',
-    'AMAZON MKTPLACE':'Cooper', 'HOME DEPOT':'Cooper',
-    'HELOC DRAW':'Ryan', 'HELOC PAYMENT':'Ryan',
-  };
+/* ============================================================
+   SAMPLE DATA
+   A complete household, eight months deep, so every screen has
+   something to chew on before a single real statement lands.
+
+   Loading it does not destroy anything: whatever is really on
+   file is sealed into a side stash first, and Clear puts it
+   back exactly as it was.
+   ============================================================ */
+const SAMPLE_KEY = 'thompson:presample:v1';
+
+const SAMPLE_MERCHANTS = {
+  USAAC: [['PUBLIX #1204','Groceries',-142],['SHELL OIL','Fuel',-58],['DUKE ENERGY','Utilities',-186],
+          ['PAYROLL DEPOSIT','Income',4180],['PAYROLL DEPOSIT VNT','Income',2260],
+          ['WELLS FARGO MTG PMT','Mortgage',-2240],['CITY WATER','Utilities',-74],
+          ['VERIZON FIOS','Utilities',-89],['TRANSFER TO SAVINGS','Transfer',-600],
+          ['AMEX EPAYMENT','Card payment',-940],['PENFED AUTO PMT','Loan payment',-486],
+          ['STATE FARM INS','Insurance',-268],['ATM WITHDRAWAL','Cash',-200],
+          ['TARGET SUPERCENTER','Shopping',-165],['EXXONMOBIL','Fuel',-64],
+          ['CVS PHARMACY','Health',-42],['CHICK-FIL-A','Dining',-38],
+          ['SCHOOL LUNCH ACCT','Education',-85],['VENMO TO SITTER','Childcare',-120]],
+  USAAS: [['TRANSFER FROM CHECKING','Transfer',600],['INTEREST PAID','Interest',18]],
+  AMEX:  [['AMAZON MKTPLACE','Shopping',-96],['DELTA AIR LINES','Travel',-412],['WHOLE FOODS','Groceries',-118],
+          ['NETFLIX','Subscriptions',-23],['SPOTIFY USA','Subscriptions',-17],
+          ['PAYMENT RECEIVED','Payment',940],['CHIPOTLE','Dining',-31],['TARGET T-2287','Shopping',-84]],
+  PenFed:[['HOME DEPOT','Home',-208],['COSTCO WHSE','Groceries',-176],['PAYMENT THANK YOU','Payment',420],
+          ['SHELL OIL','Fuel',-62],['PETSMART','Pets',-54]],
+  PenFedCL:[['AUTO LOAN PAYMENT','Loan',486]],
+  WellsFargo:[['MORTGAGE PAYMENT','Loan',2140],['INTEREST CHARGED','Interest',-1310]],
+  WellsFargoHELOC:[['HELOC DRAW','Draw',-3500],['HELOC PAYMENT','Loan',310]],
+};
+
+/* Who owns what. Anything left off this list stays unowned on
+   purpose — the rules below then claim most of it, and one line
+   is left for the Family screen to flag as still unclaimed. */
+const SAMPLE_WHO = {
+  'PAYROLL DEPOSIT':'Ryan', 'WELLS FARGO MTG PMT':'Ryan', 'MORTGAGE PAYMENT':'Ryan',
+  'INTEREST CHARGED':'Ryan', 'AUTO LOAN PAYMENT':'Ryan', 'PENFED AUTO PMT':'Ryan',
+  'DUKE ENERGY':'Vanessa', 'CITY WATER':'Vanessa', 'VERIZON FIOS':'Vanessa',
+  'WHOLE FOODS':'Vanessa', 'COSTCO WHSE':'Vanessa', 'TRANSFER TO SAVINGS':'Vanessa',
+  'TRANSFER FROM CHECKING':'Vanessa', 'PAYROLL DEPOSIT VNT':'Vanessa',
+  'AMEX EPAYMENT':'Ryan', 'PAYMENT RECEIVED':'Ryan',
+  'PAYMENT THANK YOU':'Vanessa', 'INTEREST PAID':'Vanessa',
+  'DELTA AIR LINES':'Vivian',
+  'HOME DEPOT':'Cooper', 'PETSMART':'Cooper',
+  'STATE FARM INS':'Ryan', 'EXXONMOBIL':'Ryan',
+  'SCHOOL LUNCH ACCT':'Vanessa', 'VENMO TO SITTER':'Vanessa', 'CVS PHARMACY':'Vanessa',
+  'CHICK-FIL-A':'Vivian',
+  'HELOC DRAW':'Ryan', 'HELOC PAYMENT':'Ryan',
+};
+
+const SAMPLE_RULES = [
+  { q:'publix',   acct:'', person:'Vanessa' },
+  { q:'shell',    acct:'', person:'Ryan'    },
+  { q:'chipotle', acct:'', person:'Vivian'  },
+  { q:'amazon',   acct:'', person:'Cooper'  },
+  { q:'target',   acct:'', person:'Cooper'  },
+];
+
+/* Stated figures as of the last statement cycle. Rows dated after
+   the anchor roll forward onto these, which is what the real
+   import path does too. */
+const SAMPLE_BALANCES = {
+  USAAC:8412.55, USAAS:21980.10, AMEX:1842.66, PenFed:963.20,
+  PenFedCL:18420.00, WellsFargo:312500.00, WellsFargoHELOC:41250.00,
+};
+const SAMPLE_MANUAL = {
+  AMPONE:14680.42, AMPBRK:98240.75, SPSADV01:186430.10, SPSADV02:74915.88,
+  TSP:243870.55, DCAPPLE:31640.00,
+};
+
+const SAMPLE_LOANS = {
+  PenFedCL:        { rate:6.4,  years:5,  back:26 },
+  WellsFargo:      { rate:5.75, years:30, back:74 },
+  WellsFargoHELOC: { rate:8.25, years:15, back:14 },
+};
+
+/* name, amount, day of month, account, direction, cadence */
+const SAMPLE_BILLS = [
+  ['Mortgage',        2240, 1,  'WellsFargo',      'expense', 'monthly'],
+  ['Payroll — Ryan',  4180, 1,  'USAAC',           'income',  'monthly'],
+  ['Netflix',           23, 8,  'AMEX',            'expense', 'monthly'],
+  ['Car loan',         486, 12, 'PenFedCL',        'expense', 'monthly'],
+  ['Payroll — Vanessa',2260,15, 'USAAC',           'income',  'monthly'],
+  ['Verizon Fios',      89, 15, 'USAAC',           'expense', 'monthly'],
+  ['Duke Energy',      186, 18, 'USAAC',           'expense', 'monthly'],
+  ['City water',        74, 22, 'USAAC',           'expense', 'monthly'],
+  ['HELOC payment',    310, 24, 'WellsFargoHELOC', 'expense', 'monthly'],
+  ['Amex minimum',     940, 26, 'AMEX',            'expense', 'monthly'],
+];
+
+/** Fill state with the demo household. Does not touch storage. */
+function buildSample(){
+  const today = startOfToday();
+  const MONTHS = 8;
+
+  /* ---- transactions -------------------------------------------------- */
   const rows = [];
-  const today = new Date();
-  for (let m = 7; m >= 0; m--){
+  for (let m = MONTHS - 1; m >= 0; m--){
     const base = new Date(today.getFullYear(), today.getMonth() - m, 1);
-    Object.entries(merchants).forEach(([acct, list]) => {
+    Object.entries(SAMPLE_MERCHANTS).forEach(([acct, list]) => {
       list.forEach(([desc, cat, amt], i) => {
-        if (acct === 'WellsFargoHELOC' && desc === 'HELOC DRAW' && m !== 5) return;
+        /* the HELOC was drawn once, five months back — not every month */
+        if (desc === 'HELOC DRAW' && m !== 5) return;
         const day = 2 + ((i * 5 + m * 3) % 25);
-        const jitter = cat === 'Income' || cat === 'Loan' ? 1 : 0.75 + ((m * 7 + i * 13) % 50) / 100;
         const date = new Date(base.getFullYear(), base.getMonth(), day);
-        const amount = Math.round(amt * jitter * 100) / 100;
-        rows.push({ id:`S-${acct}-${m}-${i}`, acct, side: ACCT[acct].side, date, amount,
-                    desc, category: cat, person: WHO[desc] || 'Ryan',
-                    principal:null, interest:null, balance:null });
+        if (date > today) return;                    // no rows from the future
+        /* fixed obligations do not wobble; discretionary spend does */
+        const fixed = cat === 'Income' || cat === 'Loan' || cat === 'Mortgage'
+                   || cat === 'Interest' || cat === 'Payment' || cat === 'Card payment'
+                   || cat === 'Loan payment' || cat === 'Transfer' || cat === 'Draw';
+        const jitter = fixed ? 1 : 0.75 + ((m * 7 + i * 13) % 50) / 100;
+        rows.push({
+          id:`S-${acct}-${m}-${i}`, acct, side: ACCT[acct].side, date,
+          amount: Math.round(amt * jitter * 100) / 100,
+          desc, category: cat, person: SAMPLE_WHO[desc] || null, ruled:false,
+          principal:null, interest:null, balance:null,
+        });
       });
     });
   }
   state.rows = rows.sort((a,b) => b.date - a.date);
-  state.balances = {
-    USAAC:{value:8412.55,source:'statement',at:Date.now()}, USAAS:{value:21980.10,source:'statement',at:Date.now()},
-    AMEX:{value:1842.66,source:'statement'}, PenFed:{value:963.20,source:'statement'},
-    PenFedCL:{value:18420.00,source:'statement'}, WellsFargo:{value:312500.00,source:'statement'},
-    WellsFargoHELOC:{value:41250.00,source:'statement'},
-    AMPONE:{value:14680.42,source:'manual',at:Date.now()},
-    AMPBRK:{value:98240.75,source:'manual',at:Date.now()},
-    SPSADV01:{value:186430.10,source:'manual',at:Date.now()},
-    SPSADV02:{value:74915.88,source:'manual',at:Date.now()},
-  };
-  logLine(`Sample ledger loaded — 8 months across all ${ACCOUNTS.length} accounts`, 'ok');
-  save(); render();
+
+  /* ---- balances, anchored on the last statement cycle ----------------- */
+  const anchor = new Date(today.getFullYear(), today.getMonth(), 0);  // last day of prior month
+  anchor.setHours(23,59,59,999);
+  const anchorAt = anchor.getTime();
+  state.balances = {};
+  Object.entries(SAMPLE_BALANCES).forEach(([id, value]) => {
+    state.balances[id] = { value, source:'statement', at:anchorAt };
+  });
+  Object.entries(SAMPLE_MANUAL).forEach(([id, value]) => {
+    state.balances[id] = { value, source:'manual', at:today.getTime() };
+  });
+
+  /* ---- opening figures that reconcile to the penny -------------------- */
+  /* Seat an opening on the two busiest accounts, worked backwards from the
+     stated figure so the reconciliation panel shows a clean zero gap. Any
+     row deleted afterwards makes the gap appear — which is the point. */
+  const openAt = new Date(today.getFullYear(), today.getMonth() - MONTHS, 1);
+  openAt.setHours(23,59,59,999);
+  state.opens = {};
+  ['USAAC','AMEX'].forEach(id => {
+    const move = state.rows
+      .filter(r => r.acct === id && r.date.getTime() > openAt.getTime() && r.date.getTime() <= anchorAt)
+      .reduce((s,r) => s + r.amount, 0);
+    const stated = SAMPLE_BALANCES[id];
+    const value = ACCT[id].side === 'liability' ? stated + move : stated - move;
+    state.opens[id] = { value: Math.round(value * 100) / 100, at: openAt.getTime() };
+  });
+
+  /* ---- loan terms ------------------------------------------------------ */
+  state.loans = {};
+  Object.entries(SAMPLE_LOANS).forEach(([id, t]) => {
+    const st = new Date(today.getFullYear(), today.getMonth() - t.back, 1);
+    state.loans[id] = { rate:t.rate, years:t.years, start:isoOf(st) };
+  });
+
+  /* ---- calendar bills --------------------------------------------------- */
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  state.bills = SAMPLE_BILLS.map(([name, amount, day, acct, kind, repeat], i) => ({
+    id:`SB-${i}`, name, amount, acct, kind, repeat,
+    date: isoOf(new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth(), day)),
+  }));
+  /* one non-recurring item, so the once/monthly split is visible */
+  const oneOff = new Date(today.getFullYear(), today.getMonth() + 1, 12);
+  state.bills.push({ id:'SB-tax', name:'Property tax', amount:1860,
+                     acct:'USAAC', kind:'expense', repeat:'once', date: isoOf(oneOff) });
+
+  /* ---- ownership rules -------------------------------------------------- */
+  state.rules = SAMPLE_RULES.map(r => ({...r}));
+  applyRules();
+
+  /* ---- an import history to match --------------------------------------- */
+  state.imports = ['USAAC','AMEX','PenFed','WellsFargo'].map((id, i) => ({
+    file: `sample-${id.toLowerCase()}-${isoOf(anchor).slice(0,7)}.csv`,
+    acct: id,
+    count: state.rows.filter(r => r.acct === id).length,
+    at: anchorAt - i * 36e5,
+  }));
+
+  state.files = [];
 }
+
+/** Swap the demo household in, keeping the real ledger safe. */
+async function loadSample(){
+  if (state.sample){ toast('Sample data is already loaded'); return; }
+  /* Stash what is really on file — sealed the same way the ledger is,
+     so turning on the sample never downgrades the encryption at rest. */
+  try {
+    await writeStash(JSON.stringify(ledgerPayload()));
+  } catch(_){
+    toast("Couldn't set the real ledger aside — nothing changed"); return;
+  }
+  buildSample();
+  state.sample = true;
+  await save();
+  render();
+  logLine(`Sample data loaded — ${state.rows.length} rows, ${state.bills.length} bills, your ledger set aside`, 'ok');
+  toast('Sample data loaded');
+}
+
+/** Put the real ledger back exactly as it was. */
+async function clearSample(){
+  if (!state.sample){ toast('No sample data loaded'); return; }
+  let restored = false;
+  try {
+    const raw = await readStash();
+    if (raw){ applyPayload(JSON.parse(raw)); restored = true; }
+  } catch(_){ /* fall through to the empty ledger below */ }
+  if (!restored){
+    state.rows = []; state.balances = {}; state.opens = {}; state.imports = [];
+    state.rules = []; state.loans = {}; state.files = []; state.bills = [];
+  }
+  state.sample = false;
+  await storeSet(SAMPLE_KEY, '');
+  await save();
+  render();
+  logLine(restored ? 'Sample data cleared — your ledger is back' : 'Sample data cleared', 'warn');
+  toast(restored ? 'Sample cleared — ledger restored' : 'Sample data cleared');
+}
+
+/** Keep both sample controls telling the truth. */
+function renderSampleRow(){
+  const on = state.sample;
+  const tag = $('#sampleTag');
+  if (tag) tag.textContent = on ? 'on' : 'off';
+  const note = $('#sampleNote');
+  if (note) note.textContent = on
+    ? `Standing in for your ledger — ${state.rows.length} rows, ${state.bills.length} bills, ${Object.keys(state.loans).length} loan terms. Clearing puts your own data back untouched.`
+    : 'Fills every screen with a made-up household so features can be tried out. Whatever you already have is set aside first and comes back when you clear it.';
+  const loadBtn = $('#sampleLoad'), clearBtn = $('#sampleClear');
+  if (loadBtn) loadBtn.disabled = on;
+  if (clearBtn) clearBtn.disabled = !on;
+  const intake = $('#sampleBtn');
+  if (intake) intake.textContent = on ? 'Clear sample data' : 'Load sample data';
+}
+
 
 function ledgerSummary(){
   const t = totals();
@@ -2189,8 +2432,9 @@ const FOLDBARS = [];
    depends on markup that no longer exists. */
 const FOLDBAR_ACTIONS = {
   'scr-intake': [
-    { label:'Clear all', arm:'Tap to wipe', tone:'wipe',
-      aria:'Clear every imported row, balance and opening figure', run:() => clearLedger() },
+    { label:'Clear imports', arm:'Tap to wipe', tone:'wipe',
+      aria:'Clear imported rows and statement balances — figures you set by hand are kept',
+      run:() => clearLedger() },
   ],
 };
 
@@ -2267,13 +2511,43 @@ function initFolds(){
   });
 }
 
-/** Wipe every imported row, balance and opening figure. */
+/** Wipe what the statements brought in, and nothing else.
+
+   Everything on this screen arrived from a file: the rows, the balance
+   an export stamped on an account, the import history. Those go. What
+   the household typed by hand — a figure set on a card, an opening
+   balance, loan terms, calendar bills, ownership rules, saved schedules
+   — is work that no re-import can recreate, so it stays put. */
 function clearLedger(){
-  if (!state.rows.length && !Object.keys(state.balances).length && !Object.keys(state.opens).length){
-    toast('Nothing to clear'); return;
+  if (state.sample){
+    toast('Sample data is loaded — clear it from Position first'); return;
   }
-  state.rows = []; state.balances = {}; state.opens = {}; state.imports = [];
-  save(); render(); logLine('Ledger cleared','warn'); toast('Ledger cleared');
+  const stmtIds = Object.keys(state.balances).filter(id => {
+    const b = state.balances[id];
+    return b && b.source !== 'manual';
+  });
+  if (!state.rows.length && !stmtIds.length && !state.imports.length){
+    toast('Nothing imported to clear'); return;
+  }
+
+  const rowCount = state.rows.length;
+  const kept = Object.keys(state.balances).length - stmtIds.length;
+
+  state.rows = [];
+  stmtIds.forEach(id => { delete state.balances[id]; });
+  state.imports = [];
+  /* state.opens, state.loans, state.bills, state.rules and state.files
+     are deliberately untouched — all of it was entered by hand. */
+
+  save(); render();
+  const heldBack = [
+    kept ? `${kept} hand-set balance${kept === 1 ? '' : 's'}` : '',
+    Object.keys(state.opens).length ? `${Object.keys(state.opens).length} opening figure${Object.keys(state.opens).length === 1 ? '' : 's'}` : '',
+    state.bills.length ? `${state.bills.length} bill${state.bills.length === 1 ? '' : 's'}` : '',
+    state.rules.length ? `${state.rules.length} rule${state.rules.length === 1 ? '' : 's'}` : '',
+  ].filter(Boolean).join(', ');
+  logLine(`Imports cleared — ${rowCount} row${rowCount === 1 ? '' : 's'} removed${heldBack ? `; kept ${heldBack}` : ''}`, 'warn');
+  toast(heldBack ? 'Imports cleared — manual entries kept' : 'Imports cleared');
 }
 
 /** Re-count a screen's folds after its content is rebuilt. */
@@ -2372,6 +2646,7 @@ let instOpen = Object.create(null);
 const INST_TINT = {
   'USAA':'#3F7288', 'Ameriprise':'#5B7F6A', 'AMEX':'#6E6B93',
   'PenFed':'#8A6A2F', 'Wells Fargo':'#A23E36',
+  'TSP':'#2F6E6B', 'DC Appleseed':'#8A4F6E',
 };
 function instTint(name){
   if (INST_TINT[name]) return INST_TINT[name];
@@ -2559,7 +2834,7 @@ function openBalance(id){
     : a.side === 'liability'
       ? 'Enter what you still owe as a positive number — it counts against the net position.'
       : a.manual
-        ? 'This account has no export to read. Enter the value from your statement or the Ameriprise app.'
+        ? `This account has no export to read. Enter the value from ${a.via || 'your latest statement'}.`
         : 'Enter what the account holds. A minus sign marks it overdrawn.';
   /* Default the date to this account's newest row — not the newest row
      in the whole ledger, which used to stamp USAA with an AMEX date. */
@@ -3843,7 +4118,7 @@ function initSchemaJump(){
   renderSchemaDetail();
 }
 
-function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderFamily(); renderTable(); renderFiles(); }
+function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderFamily(); renderTable(); renderFiles(); renderSampleRow(); }
 
 /* ---------- log + toast ---------- */
 function logLine(text, kind='ok'){
@@ -4083,7 +4358,7 @@ async function shareSite(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-03j';
+const BUILD = '2026-08-04c';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -4255,9 +4530,11 @@ function wire(){
   $('#lockReset').addEventListener('click', async () => {
     if (!confirm('This erases the ledger and removes the lock so the app can be used again. Erase everything?')) return;
     state.rows = []; state.balances = {}; state.opens = {}; state.imports = []; state.rules = []; state.bills = []; state.loans = {}; state.files = [];
+    state.sample = false;
     lock.meta = null; lock.cryptoKey = null; lock.unlocked = true;
     await storeSet(LOCK_KEY, '');
     await storeSet(STORE_KEY, '');
+    await storeSet(SAMPLE_KEY, '');
     toast('App reset — lock removed, ledger erased');
     renderLockRow(); render();
   });
@@ -4285,7 +4562,14 @@ function wire(){
   $('#search').addEventListener('input', e => { state.filter.q = e.target.value; shownCount = 40; renderTable(); });
   $('#moreBtn').addEventListener('click', () => { shownCount += 60; renderTable(); });
 
-  $('#sampleBtn').addEventListener('click', () => { sampleLedger(); toast('Sample ledger loaded'); goTo(0); });
+  $('#sampleBtn').addEventListener('click', async () => {
+    if (state.sample) await clearSample(); else { await loadSample(); goTo(0); }
+  });
+  $('#sampleLoad').addEventListener('click', () => loadSample());
+  $('#sampleClear').addEventListener('click', () => {
+    if (!confirm('Clear the sample data and put your own ledger back?')) return;
+    clearSample();
+  });
 
   $('#ledgerClose').addEventListener('click', closeLedger);
   attachMoneyInput($('#balAmount'));
