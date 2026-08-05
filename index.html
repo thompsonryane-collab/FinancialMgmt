@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#14301F">
+<script>try{if(localStorage.getItem('tf-theme')==='dark')document.documentElement.dataset.theme='dark';}catch(_){}</script>
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
@@ -46,7 +47,37 @@
   --bar:#14301F; --bar-deep:#0C2115; --bar-edge:#0A1B10;
   --bar-ink:#E9F0E4; --bar-muted:#9CB59B;
   --shadow:0 18px 44px -26px rgba(23,30,20,.5);
+  /* gloss strengths, so night mode can dim the sheen without
+     rewriting every surface rule */
+  --gloss-hi:.40; --gloss-mid:.14; --gloss-lo:.07;
+  --edge-hi:.55; --edge-lo:.09;
 }
+
+/* ---------- MOONLIGHT ----------
+   The same desk after dark. The money green survives as the banner
+   both ways; everything else deepens: near-black green page, soft
+   sage ink, and the chrome flips from the lightest planes to the
+   darkest so it still reads as a frame. */
+html[data-theme="dark"]{
+  --ink:#131A12; --slab:#1D261C; --rise:#273327; --rule:#3C4A39;
+  --paper:#D9E0D3; --muted:#8CA085;
+  --asset:#6FBF8C; --owe:#C9A25A; --accent:#7FA868; --accent-deep:#9DC287; --danger:#D96A5E;
+  --dock:#0E140D; --dock-sheet:#1A231A; --dock-edge:#324030;
+  --bar:#122A1C; --bar-deep:#0A1A10; --bar-edge:#050D08;
+  --shadow:0 18px 44px -26px rgba(0,0,0,.85);
+  --gloss-hi:.05; --gloss-mid:.02; --gloss-lo:.16;
+  --edge-hi:.07; --edge-lo:.35;
+}
+html[data-theme="dark"] body{background:var(--ink)}
+/* tab hues were cut for a light dock — lift them toward white at night */
+html[data-theme="dark"] .tabdock button[data-i],
+html[data-theme="dark"] .tabdock button[data-act]{
+  color:color-mix(in srgb, var(--tabc,var(--accent)) 55%, #E8EFE4);
+}
+html[data-theme="dark"] .tripcard__pick[aria-checked="true"]{color:#F6E9EE}
+html[data-theme="dark"] .tb-ico,
+html[data-theme="dark"] .topbar .btn{background:rgba(255,255,255,.07)}
+html[data-theme="dark"] .lamp{background:var(--rise)}
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%}
 body{
@@ -101,6 +132,16 @@ input,select,textarea{font-size:16px}
 .splash__ledger{position:absolute;inset:0;pointer-events:none;opacity:.45;
   background-image:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(122,136,114,.5) 31px 32px);
   mask-image:linear-gradient(to bottom,transparent,#000 20%,#000 68%,transparent);}
+.theme-flip{
+  position:absolute;top:14px;right:14px;z-index:2;
+  width:38px;height:38px;display:grid;place-items:center;padding:0;
+  border:1px solid var(--rule);border-radius:50%;
+  background:var(--rise);color:var(--muted);cursor:pointer;
+}
+.theme-flip svg{width:18px;height:18px;grid-area:1/1;transition:opacity .25s,transform .35s cubic-bezier(.22,1,.36,1)}
+.theme-flip__moon{opacity:0;transform:rotate(-40deg) scale(.7)}
+html[data-theme="dark"] .theme-flip__moon{opacity:1;transform:none}
+html[data-theme="dark"] .theme-flip__sun{opacity:0;transform:rotate(40deg) scale(.7)}
 .cover{
   position:relative;width:100%;max-width:430px;margin:auto 0 0;
   background:rgba(225,230,219,.86);backdrop-filter:blur(8px);
@@ -122,7 +163,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .cover .btn{width:100%;min-height:50px}
 #lockRow{display:grid;gap:8px}
 #lockRow[hidden]{display:none}
-.fineprint{margin:14px 0 0;font-size:12px;color:#5F6C5B;line-height:1.5}
 .cover__foot{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;border-top:1px solid var(--rule);padding-top:12px;align-items:center}
 .cover__foot span{font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#5F6C5B}
 .stamp{margin-left:auto;background:none;border:0;padding:4px 0;cursor:pointer;
@@ -149,16 +189,13 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 }
 /* the lamp: green only while ARIA can actually reach Claude */
 .lamp{
-  flex:none;display:inline-flex;align-items:center;gap:6px;
-  padding:4px 9px 4px 7px;border-radius:999px;
+  flex:none;display:grid;place-items:center;
+  width:26px;height:26px;border-radius:50%;
   border:1px solid var(--rule);background:var(--rise);
-  font-family:var(--data);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--muted);white-space:nowrap;
 }
 .lamp i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--danger);
   transition:background .25s,box-shadow .25s}
-.lamp b{font-weight:500}
-.lamp[data-state="live"]{color:var(--accent-deep);border-color:rgba(57,96,40,.5)}
+.lamp[data-state="live"]{border-color:rgba(57,96,40,.5)}
 .lamp[data-state="live"] i{background:#2E8B45;box-shadow:0 0 0 3px rgba(46,139,69,.18),0 0 7px rgba(46,139,69,.7)}
 .lamp[data-state="offline"] i,.lamp[data-state="local"] i{
   background:#B33A2E;box-shadow:0 0 0 3px rgba(179,58,46,.15)}
@@ -678,11 +715,12 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
    its left edge, the buttons ride its right, so with no folds it is
    simply the spacer that keeps the lamp on the corner */
 .topbar__tools{flex:1;min-width:0;display:flex;align-items:center}
-.foldbar{flex:1;min-width:0;display:flex;align-items:center;gap:8px;margin:0}
+.foldbar{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0}
 .foldbar[hidden]{display:none}
-.topbar .foldbar__state{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
 /* banner buttons run compact so the row holds on a phone */
 .topbar .foldbar .btn{min-height:32px;padding:5px 10px;font-size:12px;border-radius:9px}
+.btn--ico{width:32px;min-width:32px;padding:0 !important;display:grid;place-items:center}
+.btn--ico svg{width:16px;height:16px;display:block}
 .topbar__globals{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
 .foldbar .foldbar__globals{margin-left:0;display:inline-flex;gap:6px}
 .tb-ico{
@@ -695,7 +733,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .tb-ico svg{width:16px;height:16px}
 .tb-ico:active{background-color:rgba(255,255,255,.18)}
 /* everything on the banner reads light on the money green */
-.topbar .foldbar__state{color:var(--bar-muted)}
 .topbar .btn{
   background:rgba(255,255,255,.09);border-color:rgba(233,240,228,.28);color:var(--bar-ink);
   background-image:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.12));
@@ -703,17 +740,15 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 }
 .topbar .btn--wipe{color:#F0938A;border-color:rgba(240,147,138,.45)}
 .topbar .btn--wipe.is-armed{background:var(--danger);background-image:none;color:#FBEDEB;border-color:var(--danger)}
-.topbar .lamp{background:rgba(255,255,255,.08);border-color:rgba(233,240,228,.24);color:var(--bar-muted);
+.topbar .lamp{background:rgba(255,255,255,.08);border-color:rgba(233,240,228,.24);
   background-image:linear-gradient(180deg,rgba(255,255,255,.09),rgba(0,0,0,.1));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
-.topbar .lamp[data-state="live"]{color:#8FD9A0;border-color:rgba(143,217,160,.45)}
+.topbar .lamp[data-state="live"]{border-color:rgba(143,217,160,.45)}
 .topbar .lamp[data-state="live"] i{background:#4CC06A;box-shadow:0 0 0 3px rgba(76,192,106,.2),0 0 8px rgba(76,192,106,.8)}
 .topbar .lamp[data-state="offline"] i,.topbar .lamp[data-state="local"] i{
   background:#E06156;box-shadow:0 0 0 3px rgba(224,97,86,.18)}
 /* The count holds the left edge; every control groups on the right, so
    a screen can hang its own action next to Expand all. */
-.foldbar__state{font-family:var(--data);font-size:10.5px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--muted);margin-right:auto;white-space:nowrap}
 .foldbar .btn{margin-left:0;white-space:nowrap}
 .foldbar .btn--wipe{color:var(--danger);border-color:color-mix(in srgb, var(--danger) 34%, var(--rule))}
 .foldbar .btn--wipe.is-armed{background:var(--danger);color:var(--paper);border-color:var(--danger)}
@@ -741,10 +776,10 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
    ============================================================ */
 .panel,.card,.acc,.fold,.cover,.sheet,.drawer__head,.seg,.rules li{
   background-image:linear-gradient(180deg,
-    rgba(255,255,255,.40) 0%, rgba(255,255,255,.14) 36%,
-    rgba(0,0,0,0) 58%, rgba(23,30,20,.07) 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),
-             inset 0 -1px 0 rgba(23,30,20,.09),
+    rgba(255,255,255,var(--gloss-hi)) 0%, rgba(255,255,255,var(--gloss-mid)) 36%,
+    rgba(0,0,0,0) 58%, rgba(0,0,0,var(--gloss-lo)) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,var(--edge-hi)),
+             inset 0 -1px 0 rgba(0,0,0,var(--edge-lo)),
              0 12px 26px -20px rgba(23,30,20,.5);
 }
 .cover{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),
@@ -857,7 +892,20 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <svg class="crest crest--hero" role="img" aria-labelledby="coverTitle"><use href="#tf-crest"/></svg>
     <h1 class="sr-only" id="coverTitle">Thompson Finances</h1>
     <p class="eyebrow" style="text-align:center">Household balance sheet</p>
-    <p class="lede">The Thompson household ledger. <span id="ledeCount">—</span> accounts, one number.</p>
+    <button class="theme-flip" id="themeFlip" type="button" role="switch" aria-checked="false"
+            aria-label="Switch between the daylight and moonlight themes">
+      <svg class="theme-flip__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.4"/><path d="M12 19.1v2.4"/>
+        <path d="M4.6 4.6l1.7 1.7"/><path d="M17.7 17.7l1.7 1.7"/>
+        <path d="M2.5 12h2.4"/><path d="M19.1 12h2.4"/>
+        <path d="M4.6 19.4l1.7-1.7"/><path d="M17.7 6.3l1.7-1.7"/>
+      </svg>
+      <svg class="theme-flip__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20.4 14.2A8.2 8.2 0 1 1 9.8 3.6a6.6 6.6 0 0 0 10.6 10.6z"/>
+      </svg>
+    </button>
 
     <fieldset>
       <legend id="modeLegend">Choose how to work</legend>
@@ -881,15 +929,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         Lock with Face ID
       </button>
       <button class="btn btn--ghost" id="lockDisable" type="button" hidden>Turn off Face ID lock</button>
-      <button class="btn btn--ghost" id="lockReset" type="button" hidden style="color:var(--danger)">Can't unlock? Reset app data</button>
     </div>
-    <button class="btn btn--ghost" id="shareBtn" type="button" style="margin-top:8px">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
-      Share with the family
-    </button>
-    <p class="fineprint">Tap the intake screen to pull USAA, Ameriprise, AMEX, PenFed and Wells Fargo exports (.xlsx, .xls, .csv, .pdf) from the Files app. Thompson Finances maps the columns to the right account and keeps the running position. Accounts that arrive without an export — the Ameriprise side — take their value by hand: tap the figure on the card.</p>
     <div class="cover__foot">
-      <span id="footAccts">— accounts</span><span>8 screens</span><span>swipe to pan</span>
       <button class="stamp" id="buildStamp" type="button" title="Check for a newer build">build —</button>
     </div>
   </section>
@@ -921,7 +962,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       </span></div>
       <input type="file" id="restoreInput" accept=".json,application/json" class="sr-only" aria-hidden="true" tabindex="-1">
       <span class="lamp" id="netDot" data-state="local" role="status" aria-live="polite"
-            aria-label="ARIA running locally"><i></i><b id="netDotLabel">Local</b></span>
+            aria-label="ARIA running locally"><i></i></span>
     </div>
   </header>
 
@@ -3838,12 +3879,22 @@ const FOLDBARS = [];
 const FOLDBAR_ACTIONS = {
   'scr-intake': [
     { label:'Clear imports', arm:'Tap to wipe', tone:'wipe',
-      aria:'Clear imported rows and statement balances — figures you set by hand are kept',
+      aria:'Clear imported rows and statement balances — figures you set by hand are kept; tap twice',
+      icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M4 6.4h16"/><path d="M9 6.4V4.6a1.6 1.6 0 0 1 1.6-1.6h2.8A1.6 1.6 0 0 1 15 4.6v1.8"/>'
+        + '<path d="M6.2 6.4 7 19a2 2 0 0 0 2 1.9h6a2 2 0 0 0 2-1.9l.8-12.6"/>'
+        + '<path d="M10 10.6v6"/><path d="M14 10.6v6"/></svg>',
       run:() => clearLedger() },
   ],
   'scr-trip': [
     { label:'Trip Analysis',
       aria:'Write the checked trips up as a shareable analysis',
+      icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M13.6 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.4Z"/>'
+        + '<path d="M13.6 3v5.4H19"/>'
+        + '<path d="M12.2 11.6l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
       run:() => runTripAnalysis() },
   ],
 };
@@ -3855,11 +3906,9 @@ function initFolds(){
 
     const bar = document.createElement('div');
     bar.className = 'foldbar';
-    bar.innerHTML = `<span class="foldbar__state"></span>
-      <span class="foldbar__globals" data-globals></span>
-      <button class="btn btn--sm btn--fold" type="button">Expand all</button>`;
+    bar.innerHTML = `<span class="foldbar__globals" data-globals></span>
+      <button class="btn btn--sm btn--ico btn--fold" type="button"></button>`;
     const btn = bar.querySelector('.btn--fold');
-    const state = bar.querySelector('.foldbar__state');
 
     /* Screens can hang an action on their own foldbar. Intake keeps the
        wipe here rather than buried in a section, because it is the one
@@ -3867,9 +3916,10 @@ function initFolds(){
     (FOLDBAR_ACTIONS[screen.id] || []).forEach(act => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'btn btn--sm' + (act.tone ? ' btn--' + act.tone : '');
-      b.textContent = act.label;
+      b.className = 'btn btn--sm btn--ico' + (act.tone ? ' btn--' + act.tone : '');
+      b.innerHTML = act.icon || esc(act.label);
       b.setAttribute('aria-label', act.aria || act.label);
+      b.title = act.label;
       if (act.arm){
         /* Sitting on the bar, this is a thumb's width from Expand all.
            One tap arms it and says so; the second does the damage. It
@@ -3877,13 +3927,11 @@ function initFolds(){
         let armed = null;
         const disarm = () => {
           clearTimeout(armed); armed = null;
-          b.textContent = act.label;
           b.classList.remove('is-armed');
           b.setAttribute('aria-label', act.aria || act.label);
         };
         b.addEventListener('click', () => {
           if (armed){ disarm(); act.run(); return; }
-          b.textContent = act.arm;
           b.classList.add('is-armed');
           b.setAttribute('aria-label', `${act.aria || act.label} — tap again to confirm`);
           armed = setTimeout(disarm, 4000);
@@ -3894,12 +3942,16 @@ function initFolds(){
       btn.before(b);
     });
 
+    const CHEV_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+      + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      + '<path d="M6 6.6l6 6 6-6"/><path d="M6 12.6l6 6 6-6"/></svg>';
+    const CHEV_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+      + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      + '<path d="M6 17.4l6-6 6 6"/><path d="M6 11.4l6-6 6 6"/></svg>';
     const sync = () => {
       const f = folds();
-      const open = f.filter(d => d.open).length;
-      state.textContent = `${open}/${f.length} open`;
-      const allOpen = f.length > 0 && open === f.length;
-      btn.textContent = allOpen ? 'Collapse all' : 'Expand all';
+      const allOpen = f.length > 0 && f.every(d => d.open);
+      btn.innerHTML = allOpen ? CHEV_UP : CHEV_DOWN;
       btn.setAttribute('aria-label', `${allOpen ? 'Collapse' : 'Expand'} all sections on ${screen.dataset.title}`);
     };
 
@@ -6065,24 +6117,6 @@ function closeDrawer(){
    native iOS share sheet. Only the link travels: the app ships
    empty, and each phone keeps its own ledger.
    ============================================================ */
-async function shareSite(){
-  const url = location.href.split('#')[0];
-  const payload = {
-    title: 'Thompson Finances',
-    text: 'The Thompson household ledger — accounts, spending, and projections. Your data stays on your phone.',
-    url,
-  };
-  if (navigator.share){
-    try { await navigator.share(payload); return; }
-    catch(err){ if (err && err.name === 'AbortError') return; /* user closed the sheet */ }
-  }
-  if (navigator.clipboard && navigator.clipboard.writeText){
-    try { await navigator.clipboard.writeText(url); toast('Link copied — paste it to anyone in Contacts'); return; }
-    catch(_){}
-  }
-  toast(url);  /* last resort: show the address itself */
-}
-
 /* ============================================================
    SERVICE WORKER — the Home Screen icon updates itself
    The worker answers every request for the app from the network
@@ -6093,7 +6127,7 @@ async function shareSite(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-04t';
+const BUILD = '2026-08-05c';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -6111,8 +6145,6 @@ function applyUpdateWhenIdle(){
 
 function initServiceWorker(){
   $('#buildStamp').textContent = 'build ' + BUILD;
-  $('#ledeCount').textContent = ACCOUNTS.length;
-  $('#footAccts').textContent = `${ACCOUNTS.length} accounts`;
   $('#buildStamp').addEventListener('click', checkForUpdate);
   if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
 
@@ -6161,8 +6193,6 @@ function setLamp(){
   const on   = navigator.onLine !== false;
   const mark = api ? (on ? 'live' : 'offline') : 'local';
   el.dataset.state = mark;
-  $('#netDotLabel').textContent = mark === 'live' ? 'Live'
-    : mark === 'offline' ? 'Offline' : 'Local';
   el.setAttribute('aria-label', mark === 'live' ? 'ARIA is connected to Claude'
     : mark === 'offline' ? 'ARIA cannot reach Claude — this device is offline'
     : 'ARIA is running locally on this device');
@@ -6189,7 +6219,6 @@ function renderLockRow(){
     $('#lockRow').hidden = !ok && !lock.meta;
     $('#lockEnroll').hidden = !ok || Boolean(lock.meta);
     $('#lockDisable').hidden = !(lock.meta && lock.unlocked);
-    $('#lockReset').hidden = !(lock.meta && !lock.unlocked);
     $('#enterBtn').textContent = lock.meta && !lock.unlocked
       ? 'Unlock with Face ID'
       : (state.mode === 'api' ? 'Connect and open the ledger' : 'Open the ledger');
@@ -6265,7 +6294,6 @@ function wire(){
     });
   });
   $('#enterBtn').addEventListener('click', enterApp);
-  $('#shareBtn').addEventListener('click', shareSite);
   $('#lockEnroll').addEventListener('click', async () => {
     try {
       const prf = await enrollFaceId();
@@ -6280,18 +6308,22 @@ function wire(){
     toast('Face ID lock off');
     renderLockRow();
   });
-  $('#lockReset').addEventListener('click', async () => {
-    if (!confirm('This erases the ledger and removes the lock so the app can be used again. Erase everything?')) return;
-    state.rows = []; state.balances = {}; state.opens = {}; state.imports = []; state.rules = []; state.bills = []; state.loans = {}; state.files = [];
-    state.sample = false;
-    lock.meta = null; lock.cryptoKey = null; lock.unlocked = true;
-    await storeSet(LOCK_KEY, '');
-    await storeSet(STORE_KEY, '');
-    await storeSet(SAMPLE_KEY, '');
-    toast('App reset — lock removed, ledger erased');
-    renderLockRow(); render();
-  });
   $('#apiKey').addEventListener('keydown', e => { if (e.key === 'Enter') enterApp(); });
+
+  /* daylight <-> moonlight; remembered outside the sealed ledger so it
+     applies before the splash even asks for Face ID */
+  const themeBtn = $('#themeFlip');
+  const syncTheme = () => themeBtn.setAttribute('aria-checked',
+    String(document.documentElement.dataset.theme === 'dark'));
+  themeBtn.addEventListener('click', () => {
+    const dark = document.documentElement.dataset.theme !== 'dark';
+    if (dark) document.documentElement.dataset.theme = 'dark';
+    else delete document.documentElement.dataset.theme;
+    try { localStorage.setItem('tf-theme', dark ? 'dark' : 'light'); } catch(_){}
+    syncTheme();
+    toast(dark ? 'Moonlight' : 'Daylight');
+  });
+  syncTheme();
 
   const drop = $('#drop'), input = $('#fileInput');
   drop.addEventListener('click', () => input.click());
