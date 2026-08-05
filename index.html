@@ -105,10 +105,6 @@ input,select,textarea{font-size:16px}
 .btn--primary{background:var(--accent);border-color:var(--accent-deep);color:#0E1808;font-weight:600}
 .btn--sm{min-height:38px;padding:7px 12px;font-size:13.5px;border-radius:10px}
 .btn--ghost{background:transparent}
-.samplerow{display:flex;gap:8px;margin-top:10px}
-.samplerow .btn{flex:1 1 0;min-width:0}
-.samplerow .btn--wipe{color:var(--danger);border-color:color-mix(in srgb, var(--danger) 34%, var(--rule))}
-.samplerow .btn:disabled{opacity:.42;pointer-events:none}
 .btn[disabled]{opacity:.45}
 
 .crest{display:block}
@@ -590,8 +586,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .tripspend .x{border:0;background:none;color:var(--muted);opacity:.6;cursor:pointer;padding:2px 4px;flex:none}
 .tripform{display:grid;grid-template-columns:1fr 108px;gap:8px;margin-bottom:8px}
 .tripform .wide{grid-column:1/3}
-#tripDelete.is-armed{background:var(--danger);color:#FBEDEB;border-color:var(--danger)}
-#acctDelete.is-armed{background:var(--danger);color:#FBEDEB;border-color:var(--danger)}
+.btn--dangerghost{color:var(--danger)}
+#tripDelete.is-armed,#acctDelete.is-armed{background:var(--danger);color:#FBEDEB;border-color:var(--danger)}
 .card__amort{min-height:36px;padding:6px 12px;font-size:12.5px;border-radius:10px;gap:6px}
 .card__amort svg{flex:none;opacity:.7}
 
@@ -871,11 +867,15 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <line x1="24" y1="64" x2="72" y2="64"/>
         <line x1="24" y1="76" x2="66" y2="76"/>
       </g>
-      <!-- monogram: T carries f on its shoulder -->
-      <g stroke="var(--paper)" stroke-linecap="round" fill="none">
-        <path d="M26 32 H54" stroke-width="7"/>
-        <path d="M40 32 V80" stroke-width="7"/>
-        <path d="M69 41 C69 32.5 61.5 30.5 57 34 M63 36.5 V78 M55 52 H71" stroke-width="5.6" stroke="var(--accent-deep)"/>
+      <!-- monogram: a bright-green T with a small gold f tucked under its arm -->
+      <g stroke-linecap="round" fill="none">
+        <g stroke="#33B45E">
+          <path d="M28 30 H60" stroke-width="7"/>
+          <path d="M44 30 V80" stroke-width="7"/>
+        </g>
+        <g stroke="#D4A72C" transform="translate(56.5,58) scale(.72) translate(-63,-54)">
+          <path d="M69 41 C69 32.5 61.5 30.5 57 34 M63 36.5 V78 M55 52 H71" stroke-width="5.6"/>
+        </g>
       </g>
       <!-- gloss sweep -->
       <path d="M14 17 L48 6.5 L82 17 V30 C58 42 32 40 14 28 Z" fill="rgba(255,255,255,.5)"/>
@@ -1009,19 +1009,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
           <span class="fold__tag num" id="budgetChip">&mdash;</span>
           <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
         <div class="fold__body" id="budgetBody"></div>
-      </details>
-
-      <details class="fold" data-fold>
-        <summary><span class="fold__dot" style="background:var(--muted)"></span>Sample data
-          <span class="fold__tag" id="sampleTag">off</span>
-          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
-        <div class="fold__body">
-          <p class="hint" id="sampleNote" style="margin:0"></p>
-          <div class="samplerow">
-            <button class="btn btn--sm" id="sampleLoad" type="button">Load sample data</button>
-            <button class="btn btn--ghost btn--sm btn--wipe" id="sampleClear" type="button">Clear sample data</button>
-          </div>
-        </div>
       </details>
 
       <p class="balhint">Accounts sit under the institution that holds them — tap a banner to open it. Tap a card to open its ledger. Tap the figure to set that balance by hand — the debts also take a rate, a term and a start date, and hand back an amortization schedule.</p>
@@ -1565,8 +1552,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <button class="btn" id="tripCancel" type="button">Cancel</button>
       <button class="btn btn--primary" id="tripSave" type="button">Plan it</button>
     </div>
-    <button class="btn btn--ghost" id="tripDelete" type="button"
-            style="width:100%;margin-top:10px;color:var(--danger)" hidden>Delete this trip</button>
+    <button class="btn btn--ghost btn--dangerghost" id="tripDelete" type="button"
+            style="width:100%;margin-top:10px" hidden>Delete this trip</button>
   </div>
 </div>
 
@@ -1640,8 +1627,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <button class="btn" id="acctCancel" type="button">Cancel</button>
       <button class="btn btn--primary" id="acctSave" type="button">Add account</button>
     </div>
-    <button class="btn btn--ghost" id="acctDelete" type="button"
-            style="width:100%;margin-top:10px;color:var(--danger)" hidden>Delete this account</button>
+    <button class="btn btn--ghost btn--dangerghost" id="acctDelete" type="button"
+            style="width:100%;margin-top:10px" hidden>Delete this account</button>
   </div>
 </div>
 
@@ -2774,19 +2761,10 @@ async function clearSample(){
 }
 
 /** Keep both sample controls telling the truth. */
+/** The sample toggle now lives on Intake alone; this keeps its label honest. */
 function renderSampleRow(){
-  const on = state.sample;
-  const tag = $('#sampleTag');
-  if (tag) tag.textContent = on ? 'on' : 'off';
-  const note = $('#sampleNote');
-  if (note) note.textContent = on
-    ? `Standing in for your ledger — ${state.rows.length} rows, ${state.bills.length} bills, ${Object.keys(state.loans).length} loan terms. Clearing puts your own data back untouched.`
-    : 'Fills every screen with a made-up household so features can be tried out. Whatever you already have is set aside first and comes back when you clear it.';
-  const loadBtn = $('#sampleLoad'), clearBtn = $('#sampleClear');
-  if (loadBtn) loadBtn.disabled = on;
-  if (clearBtn) clearBtn.disabled = !on;
   const intake = $('#sampleBtn');
-  if (intake) intake.textContent = on ? 'Clear sample data' : 'Load sample data';
+  if (intake) intake.textContent = state.sample ? 'Clear sample data' : 'Load sample data';
 }
 
 
@@ -4009,7 +3987,7 @@ function showFoldbar(){
    — is work that no re-import can recreate, so it stays put. */
 function clearLedger(){
   if (state.sample){
-    toast('Sample data is loaded — clear it from Position first'); return;
+    toast('Sample data is loaded — clear it from Intake first'); return;
   }
   const stmtIds = Object.keys(state.balances).filter(id => {
     const b = state.balances[id];
@@ -4639,7 +4617,7 @@ function deleteAcctEditor(){
     return;
   }
   disarmAcctDelete();
-  if (state.sample){ toast('Sample data is loaded — clear it from Position first'); return; }
+  if (state.sample){ toast('Sample data is loaded — clear it from Intake first'); return; }
 
   const rows = state.rows.filter(r => r.acct === id).length;
   state.rows = state.rows.filter(r => r.acct !== id);
@@ -6127,7 +6105,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-05c';
+const BUILD = '2026-08-05f';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -6349,14 +6327,11 @@ function wire(){
   $('#moreBtn').addEventListener('click', () => { shownCount += 60; renderTable(); });
 
   $('#sampleBtn').addEventListener('click', async () => {
-    if (state.sample) await clearSample(); else { await loadSample(); goTo(0); }
+    if (state.sample){
+      if (!confirm('Clear the sample data and put your own ledger back?')) return;
+      await clearSample();
+    } else { await loadSample(); goTo(0); }
   });
-  $('#sampleLoad').addEventListener('click', () => loadSample());
-  $('#sampleClear').addEventListener('click', () => {
-    if (!confirm('Clear the sample data and put your own ledger back?')) return;
-    clearSample();
-  });
-
   $('#ledgerClose').addEventListener('click', closeLedger);
   attachMoneyInput($('#balAmount'));
   attachMoneyInput($('#openAmount'));
