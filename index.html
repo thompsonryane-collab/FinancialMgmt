@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#C7CCC2">
+<meta name="theme-color" content="#14301F">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
@@ -37,7 +37,14 @@
   --r:12px;
   --sat:env(safe-area-inset-top,0px);
   --sab:env(safe-area-inset-bottom,0px);
-  --topbar:52px; --dots:38px;
+  --topbar:52px; --dots:56px;
+  /* Chrome sits above every card: the dock and the top bar are the
+     lightest planes in the app so they read as a frame, not a panel. */
+  --dock:#F0F3EC; --dock-sheet:#D7D9D4; --dock-edge:#8E9B85;
+  /* The banner is the one dark plane in the daylight build — a deep
+     money green that frames the page from the top. */
+  --bar:#14301F; --bar-deep:#0C2115; --bar-edge:#0A1B10;
+  --bar-ink:#E9F0E4; --bar-muted:#9CB59B;
   --shadow:0 18px 44px -26px rgba(23,30,20,.5);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
@@ -129,17 +136,34 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .app{position:fixed;inset:0;display:flex;flex-direction:column}
 .app[hidden]{display:none}
 .topbar{
-  flex:none;display:flex;align-items:center;gap:10px;
+  flex:none;display:flex;flex-direction:column;align-items:stretch;
   padding:calc(var(--sat) + 8px) 14px 8px;min-height:calc(var(--topbar) + var(--sat));
-  background:rgba(199,204,194,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule);
+  background:linear-gradient(180deg,var(--bar),var(--bar-deep));
+  border-bottom:1px solid var(--bar-edge);color:var(--bar-ink);
 }
-.screen-jump{
-  flex:1;min-width:0;appearance:none;-webkit-appearance:none;
-  background:var(--slab) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2352604D' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
-  border:1px solid var(--rule);border-radius:11px;min-height:40px;padding:6px 32px 6px 12px;
-  font-family:var(--data);font-size:13px;letter-spacing:.04em;color:var(--paper);
+.topbar__main{display:flex;align-items:center;gap:8px}
+.topbar__title{
+  flex:none;min-width:0;max-width:36vw;margin:0;
+  font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.02em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
+/* the lamp: green only while ARIA can actually reach Claude */
+.lamp{
+  flex:none;display:inline-flex;align-items:center;gap:6px;
+  padding:4px 9px 4px 7px;border-radius:999px;
+  border:1px solid var(--rule);background:var(--rise);
+  font-family:var(--data);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap;
+}
+.lamp i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--danger);
+  transition:background .25s,box-shadow .25s}
+.lamp b{font-weight:500}
+.lamp[data-state="live"]{color:var(--accent-deep);border-color:rgba(57,96,40,.5)}
+.lamp[data-state="live"] i{background:#2E8B45;box-shadow:0 0 0 3px rgba(46,139,69,.18),0 0 7px rgba(46,139,69,.7)}
+.lamp[data-state="offline"] i,.lamp[data-state="local"] i{
+  background:#B33A2E;box-shadow:0 0 0 3px rgba(179,58,46,.15)}
+.lamp[data-state="live"] i{animation:lampPulse 2.6s ease-in-out infinite}
+@keyframes lampPulse{50%{box-shadow:0 0 0 4px rgba(46,139,69,.1),0 0 10px rgba(46,139,69,.55)}}
 .chip{font-family:var(--data);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
 .chip--live{color:var(--accent-deep);border-color:rgba(99,140,79,.65)}
 
@@ -156,22 +180,103 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   padding:16px 16px calc(var(--dots) + var(--sab) + 18px);
   overscroll-behavior-y:contain;
 }
-.screen > .eyebrow{margin-bottom:4px}
-.screen h1{font-family:var(--display);font-size:24px;font-weight:800;letter-spacing:-.03em;margin:0 0 14px}
 
-.dots{
+/* ---------- the tab dock: a panning icon rail + a caret sheet ----------
+   The rail scrolls sideways so the bar never crowds as screens are
+   added; the caret lifts a sheet showing every screen at once. */
+.tabdock{
   position:absolute;left:0;right:0;bottom:0;z-index:20;
-  display:flex;gap:14px;align-items:center;justify-content:center;
-  padding:8px 0 calc(var(--sab) + 8px);
-  background:linear-gradient(to top,rgba(199,204,194,.95) 55%,transparent);
+  display:flex;flex-direction:column;justify-content:flex-end;
   pointer-events:none;
 }
-.dots button{
-  pointer-events:auto;width:26px;height:26px;border:0;background:none;cursor:pointer;
-  display:grid;place-items:center;padding:0;
+.tabdock__bar{
+  pointer-events:auto;
+  display:flex;align-items:stretch;
+  padding:5px 0 calc(var(--sab) + 5px);
+  background:var(--dock);
+  border-top:1px solid var(--dock-edge);
 }
-.dots i{width:7px;height:7px;border-radius:50%;background:var(--rule);transition:all .2s;display:block}
-.dots button[aria-current="true"] i{background:var(--accent);width:20px;border-radius:4px}
+
+.tabdock__rail{
+  flex:1;min-width:0;display:flex;align-items:stretch;gap:2px;
+  padding:0 6px;
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+  overscroll-behavior-x:contain;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);
+          mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);
+}
+.tabdock__rail::-webkit-scrollbar{display:none}
+
+.tabdock button[data-i],.tabdock button[data-act]{
+  border:0;background:none;cursor:pointer;padding:0;color:var(--tabc,var(--muted));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  border-radius:12px;transition:color .2s,background-color .2s;
+}
+.tabdock__rail button{flex:1 0 52px;max-width:70px;height:44px}
+.tabdock svg.mark{
+  width:21px;height:21px;display:block;opacity:.6;
+  filter:drop-shadow(0 0 4px color-mix(in srgb, currentColor 60%, transparent));
+  transition:opacity .2s,transform .22s cubic-bezier(.22,1,.36,1),filter .22s;
+}
+.tabdock i{width:4px;height:4px;border-radius:50%;background:transparent;display:block;transition:background .2s}
+.tabdock button[aria-current="true"]{
+  color:var(--tabc,var(--accent));
+  background-color:rgba(23,30,20,.06);
+  background-color:color-mix(in srgb, var(--tabc,var(--accent)) 13%, transparent);
+}
+.tabdock button[aria-current="true"] svg.mark{opacity:1;transform:translateY(-1px) scale(1.08)}
+.tabdock button[aria-current="true"] i{background:var(--tabc,var(--accent))}
+.tabdock button[data-i]:active svg.mark,
+.tabdock button[data-act]:active svg.mark,
+.tabdock button[aria-current="true"]:active svg.mark{transform:scale(.9)}
+
+.tabdock__caret,.tabdock__side{
+  pointer-events:auto;flex:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border:0;background:none;color:var(--muted);cursor:pointer;padding:0;
+}
+.tabdock__caret{width:42px;border-left:1px solid rgba(142,155,133,.55)}
+.tabdock__side{width:52px;border-right:1px solid rgba(142,155,133,.55);color:var(--accent-deep)}
+.tabdock__side svg{width:21px;height:21px;transition:transform .2s}
+.tabdock__side .wordmark{
+  font-family:var(--data);font-size:8px;font-weight:600;letter-spacing:.14em;line-height:1;
+}
+.tabdock__side:active svg{transform:scale(.9)}
+.tabdock__side[aria-expanded="true"]{
+  background-color:color-mix(in srgb, var(--accent-deep) 13%, transparent);
+  border-radius:0 12px 12px 0;
+}
+.tabdock__caret svg{width:19px;height:19px;transition:transform .26s cubic-bezier(.22,1,.36,1)}
+.tabdock.is-open .tabdock__caret{color:var(--accent-deep)}
+.tabdock.is-open .tabdock__caret svg{transform:rotate(180deg)}
+
+/* the sheet that rises above the rail */
+.tabdock__sheet{
+  pointer-events:auto;margin:0 8px 6px;
+  background:var(--dock-sheet);border:1px solid var(--dock-edge);border-radius:18px;
+  padding:10px 8px 12px;box-shadow:0 -2px 26px -12px rgba(23,30,20,.5), var(--shadow);
+  max-height:min(50vh,320px);overflow-y:auto;overscroll-behavior:contain;
+  transform-origin:bottom center;
+  transition:opacity .22s,transform .22s cubic-bezier(.22,1,.36,1),visibility .22s;
+}
+.tabdock:not(.is-open) .tabdock__sheet{
+  opacity:0;visibility:hidden;transform:translateY(12px) scale(.97);pointer-events:none;
+}
+.tabdock__sheetHead{margin:2px 0 8px 8px}
+.tabdock__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.tabdock__grid button{padding:10px 3px 8px;min-width:0}
+.tabdock__grid .lbl{
+  font-family:var(--data);font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  line-height:1.2;text-align:center;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.tabdock__veil{
+  position:absolute;inset:auto 0 0;height:100vh;bottom:0;z-index:-1;
+  background:rgba(23,30,20,.18);pointer-events:auto;
+  opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s;
+}
+.tabdock.is-open .tabdock__veil{opacity:1;visibility:visible}
 
 /* ---------- shared blocks ---------- */
 .panel{background:var(--slab);border:1px solid var(--rule);border-radius:16px;padding:16px;margin-bottom:14px}
@@ -407,12 +512,53 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
 /* the amortize button that sits on every card */
 .card__acts{grid-column:1/3;display:flex;justify-content:flex-end;margin-top:9px}
+.card__edit{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;margin:-6px 0 -6px 2px;padding:0;vertical-align:middle;
+  border:0;border-radius:8px;background:none;color:var(--muted);opacity:.65;cursor:pointer;
+}
+.card__edit:active{opacity:1;background:rgba(23,30,20,.08)}
+.acct-add{width:100%;margin-top:10px;border-style:dashed;color:var(--muted);justify-content:center}
+
+/* ---------- trip screen ---------- */
+.tripcard{background:var(--slab);border:1px solid var(--rule);border-radius:14px;padding:13px 14px;
+  margin-bottom:10px;cursor:pointer;display:grid;grid-template-columns:1fr auto auto auto;gap:2px 10px;align-items:center}
+.tripcard[aria-current="true"]{border-color:#8C2645;box-shadow:inset 0 0 0 1px #8C2645}
+.tripcard__name{font-family:var(--display);font-weight:600;font-size:15px}
+.tripcard__dest{font-size:12.5px;color:var(--muted)}
+.tripcard__num{grid-row:1/3;font-family:var(--data);font-size:16px;font-weight:600;text-align:right}
+.tripcard__pick{grid-row:1/3;width:30px;height:30px;display:grid;place-items:center;padding:0;
+  border:1.6px solid var(--rule);border-radius:50%;background:var(--rise);color:transparent;cursor:pointer;
+  transition:border-color .16s,background .16s,color .16s}
+.tripcard__pick svg{width:15px;height:15px}
+.tripcard__pick[aria-checked="true"]{border-color:#8C2645;background:#8C2645;color:#F6E9EE}
+.tripcard__when{grid-column:1/3;font-family:var(--data);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);margin-top:5px}
+.tripcard__edit{grid-row:1/3;grid-column:4;width:28px;height:28px;display:grid;place-items:center;
+  border:0;border-radius:8px;background:none;color:var(--muted);opacity:.65;cursor:pointer;padding:0}
+.tripbar{height:10px;border-radius:5px;overflow:hidden;background:var(--ink);border:1px solid var(--rule);margin:6px 0 2px}
+.tripbar i{display:block;height:100%;background-color:#8C2645;transition:width .4s}
+.tripbar i.is-over{background-color:var(--danger)}
+.tripcat{display:grid;grid-template-columns:1fr 96px 26px;gap:8px;align-items:center;margin-bottom:8px}
+.tripcat b{font-weight:500;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tripcat .sub{display:block;font-family:var(--data);font-size:10.5px;color:var(--muted);font-weight:400}
+.tripcat input{text-align:right}
+.tripcat .x{width:26px;height:26px;border:0;border-radius:8px;background:none;color:var(--muted);
+  opacity:.6;cursor:pointer;padding:0;font-size:15px;line-height:1}
+.tripspend{display:flex;align-items:baseline;gap:8px;padding:8px 2px;border-bottom:1px solid rgba(26,33,22,.08)}
+.tripspend .d{font-family:var(--data);font-size:11px;color:var(--muted);flex:none}
+.tripspend .who{width:8px;height:8px;border-radius:3px;flex:none;align-self:center}
+.tripspend .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
+.tripspend .a{font-family:var(--data);font-weight:600;font-size:13.5px;flex:none}
+.tripspend .x{border:0;background:none;color:var(--muted);opacity:.6;cursor:pointer;padding:2px 4px;flex:none}
+.tripform{display:grid;grid-template-columns:1fr 108px;gap:8px;margin-bottom:8px}
+.tripform .wide{grid-column:1/3}
+#tripDelete.is-armed{background:var(--danger);color:#FBEDEB;border-color:var(--danger)}
+#acctDelete.is-armed{background:var(--danger);color:#FBEDEB;border-color:var(--danger)}
 .card__amort{min-height:36px;padding:6px 12px;font-size:12.5px;border-radius:10px;gap:6px}
 .card__amort svg{flex:none;opacity:.7}
 
 /* the chrome-bar file button */
-.topbtn{width:40px;padding:0;flex:none;min-height:40px}
-.topbtn svg{flex:none}
 
 /* the schedule's own input form */
 .amort__form{background:var(--slab);border:1px solid var(--rule);border-radius:16px;padding:14px;margin-bottom:14px}
@@ -498,6 +644,14 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   border-radius:20px 20px 0 0;padding:18px 18px calc(var(--sab) + 18px);
 }
 .sheet__grab{width:38px;height:4px;border-radius:2px;background:var(--rule);margin:0 auto 14px}
+.sheet{position:relative}
+.sheet__x{
+  position:absolute;top:12px;right:12px;z-index:2;
+  width:34px;height:34px;display:grid;place-items:center;padding:0;
+  border:1px solid var(--rule);border-radius:50%;
+  background:var(--rise);color:var(--muted);cursor:pointer;
+}
+.sheet__x:active{background:var(--ink);color:var(--paper)}
 .sheet h2{font-family:var(--display);font-size:19px;margin:6px 0 4px;letter-spacing:-.02em}
 .sheet .file{font-family:var(--data);font-size:12px;color:var(--muted);word-break:break-all}
 .maprows{display:grid;grid-template-columns:1fr;gap:10px;margin:14px 0}
@@ -520,7 +674,42 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 /* ============================================================
    FOLDS — every screen splits into collapsible sections
    ============================================================ */
-.foldbar{display:flex;align-items:center;gap:8px;margin:0 2px 12px}
+/* the tools slot IS the row's flexible middle: the open-count holds
+   its left edge, the buttons ride its right, so with no folds it is
+   simply the spacer that keeps the lamp on the corner */
+.topbar__tools{flex:1;min-width:0;display:flex;align-items:center}
+.foldbar{flex:1;min-width:0;display:flex;align-items:center;gap:8px;margin:0}
+.foldbar[hidden]{display:none}
+.topbar .foldbar__state{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+/* banner buttons run compact so the row holds on a phone */
+.topbar .foldbar .btn{min-height:32px;padding:5px 10px;font-size:12px;border-radius:9px}
+.topbar__globals{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.foldbar .foldbar__globals{margin-left:0;display:inline-flex;gap:6px}
+.tb-ico{
+  width:32px;height:32px;flex:none;display:grid;place-items:center;padding:0;
+  border:1px solid rgba(233,240,228,.28);border-radius:9px;cursor:pointer;
+  background:rgba(255,255,255,.09);color:var(--bar-ink);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.12));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+.tb-ico svg{width:16px;height:16px}
+.tb-ico:active{background-color:rgba(255,255,255,.18)}
+/* everything on the banner reads light on the money green */
+.topbar .foldbar__state{color:var(--bar-muted)}
+.topbar .btn{
+  background:rgba(255,255,255,.09);border-color:rgba(233,240,228,.28);color:var(--bar-ink);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.12));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+.topbar .btn--wipe{color:#F0938A;border-color:rgba(240,147,138,.45)}
+.topbar .btn--wipe.is-armed{background:var(--danger);background-image:none;color:#FBEDEB;border-color:var(--danger)}
+.topbar .lamp{background:rgba(255,255,255,.08);border-color:rgba(233,240,228,.24);color:var(--bar-muted);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.09),rgba(0,0,0,.1));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+.topbar .lamp[data-state="live"]{color:#8FD9A0;border-color:rgba(143,217,160,.45)}
+.topbar .lamp[data-state="live"] i{background:#4CC06A;box-shadow:0 0 0 3px rgba(76,192,106,.2),0 0 8px rgba(76,192,106,.8)}
+.topbar .lamp[data-state="offline"] i,.topbar .lamp[data-state="local"] i{
+  background:#E06156;box-shadow:0 0 0 3px rgba(224,97,86,.18)}
 /* The count holds the left edge; every control groups on the right, so
    a screen can hang its own action next to Expand all. */
 .foldbar__state{font-family:var(--data);font-size:10.5px;letter-spacing:.14em;
@@ -591,25 +780,28 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .bars .row .track{box-shadow:inset 0 1px 2px rgba(23,30,20,.15)}
 
 /* controls: dropdowns, inputs, chips */
-.select,.search,.input,.screen-jump,.composer textarea{
+.select,.search,.input,.composer textarea{
   background-image:linear-gradient(180deg,rgba(23,30,20,.07),rgba(0,0,0,0) 44%,rgba(255,255,255,.28));
   box-shadow:inset 0 1.5px 3px rgba(23,30,20,.12), inset 0 -1px 0 rgba(255,255,255,.4);
 }
-.screen-jump{background-image:
-  linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.14) 52%,rgba(23,30,20,.07)),
-  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2352604D' stroke-width='1.6'/%3E%3C/svg%3E");
-  background-repeat:no-repeat,no-repeat;
-  background-position:0 0,right 12px center;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(23,30,20,.1);
-}
+.lamp{background-image:linear-gradient(180deg,rgba(255,255,255,.55),rgba(23,30,20,.04));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
 .chip{background-image:linear-gradient(180deg,rgba(255,255,255,.38),rgba(23,30,20,.05));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 .seg__opt[aria-checked="true"]{
   background-image:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.16) 58%,rgba(23,30,20,.06));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.65), inset 0 0 0 1px var(--rule), 0 2px 5px -2px rgba(23,30,20,.35);
 }
-.dots button[aria-current="true"] i{box-shadow:0 0 6px rgba(57,96,40,.45),
-  inset 0 1px 0 rgba(255,255,255,.35)}
+.tabdock button[aria-current="true"] svg.mark{
+  filter:drop-shadow(0 0 3px color-mix(in srgb, var(--tabc,var(--accent)) 85%, transparent))
+         drop-shadow(0 0 9px color-mix(in srgb, var(--tabc,var(--accent)) 55%, transparent));
+}
+.tabdock button[aria-current="true"] i{box-shadow:0 0 6px var(--tabc,var(--accent)), 0 0 12px color-mix(in srgb, var(--tabc,var(--accent)) 50%, transparent)}
+/* the assistant's seat and the caret carry the same light */
+.tabdock__side svg{filter:drop-shadow(0 0 4px color-mix(in srgb, currentColor 55%, transparent))}
+.tabdock__caret svg{filter:drop-shadow(0 0 3px color-mix(in srgb, currentColor 40%, transparent))}
+.tabdock__bar{box-shadow:0 -1px 0 rgba(255,255,255,.75) inset, 0 -8px 22px -14px rgba(23,30,20,.45)}
+.tabdock__sheet{background-image:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 46%)}
 
 /* message bubbles + drop zone */
 .msg--aria,.msg--you{box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 3px 8px -6px rgba(23,30,20,.4)}
@@ -620,7 +812,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
 /* ambient: a soft ceiling light on every screen */
 .screen{background:radial-gradient(120% 55% at 50% -12%, rgba(99,140,79,.12), rgba(0,0,0,0) 60%)}
-.topbar{box-shadow:0 1px 0 rgba(255,255,255,.4) inset, 0 8px 20px -18px rgba(23,30,20,.5)}
+.topbar{box-shadow:0 1px 0 rgba(255,255,255,.08) inset, 0 10px 26px -16px rgba(10,27,16,.75)}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
@@ -706,29 +898,37 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 <!-- ============ APP ============ -->
 <div class="app" id="app" hidden>
   <header class="topbar">
-    <button class="crest-btn" id="crestHome" type="button" aria-label="Back to the splash screen">
-      <svg class="crest crest--bar" aria-hidden="true"><use href="#tf-crest"/></svg>
-    </button>
-    <label class="sr-only" for="screenJump">Go to screen</label>
-    <select class="screen-jump" id="screenJump"></select>
-    <span class="chip" id="modeChip">Guest</span>
-    <button class="btn btn--sm topbtn" id="filesBtn" type="button" aria-label="Files — saved schedules">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/>
-        <path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>
-      </svg>
-    </button>
-    <button class="btn btn--sm" id="ariaToggle" type="button" aria-expanded="false" aria-controls="ariaDrawer">ARIA</button>
+    <div class="topbar__main">
+      <button class="crest-btn" id="crestHome" type="button" aria-label="Back to the splash screen">
+        <svg class="crest crest--bar" aria-hidden="true"><use href="#tf-crest"/></svg>
+      </button>
+      <h2 class="topbar__title" id="screenTitle">Position</h2>
+      <div class="topbar__tools" id="foldDock"><span class="topbar__globals" id="tbGlobals">
+        <button class="tb-ico" id="restoreBtn" type="button" aria-label="Restore — reload a backup file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 3v5h-5"/>
+          </svg>
+        </button>
+        <button class="tb-ico" id="backupBtn" type="button" aria-label="Back up — save everything to a file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="5" rx="1.4"/>
+            <path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/>
+            <path d="M12 12v6"/><path d="M9.4 15.4 12 18l2.6-2.6"/>
+          </svg>
+        </button>
+      </span></div>
+      <input type="file" id="restoreInput" accept=".json,application/json" class="sr-only" aria-hidden="true" tabindex="-1">
+      <span class="lamp" id="netDot" data-state="local" role="status" aria-live="polite"
+            aria-label="ARIA running locally"><i></i><b id="netDotLabel">Local</b></span>
+    </div>
   </header>
 
   <div class="pager" id="pager">
 
     <!-- 1 · POSITION -->
     <section class="screen" id="scr-position" aria-label="Position" data-title="Position" tabindex="-1">
-      <p class="eyebrow">Where the household stands</p>
-      <h1>Position</h1>
-
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>Net position
           <span class="fold__tag num" id="netTag">$0</span>
@@ -751,14 +951,16 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
         <summary><span class="fold__dot" style="background:var(--asset)"></span>Assets
           <span class="fold__tag num tone-asset" id="colAssets">$0</span>
           <span class="fold__chev" aria-hidden="true">▸</span></summary>
-        <div class="fold__body"><div class="cards" id="assetCards"></div></div>
+        <div class="fold__body"><div class="cards" id="assetCards"></div>
+          <button class="btn btn--sm acct-add" id="addAsset" type="button">＋ Add an asset account</button></div>
       </details>
 
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--owe)"></span>Liabilities
           <span class="fold__tag num tone-owe" id="colOwed">$0</span>
           <span class="fold__chev" aria-hidden="true">▸</span></summary>
-        <div class="fold__body"><div class="cards" id="liabCards"></div></div>
+        <div class="fold__body"><div class="cards" id="liabCards"></div>
+          <button class="btn btn--sm acct-add" id="addLiab" type="button">＋ Add a liability account</button></div>
       </details>
 
       <details class="fold" data-fold>
@@ -786,8 +988,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
     <!-- 2 · INTAKE -->
     <section class="screen" id="scr-intake" aria-label="Intake" data-title="Intake" tabindex="-1">
-      <p class="eyebrow">Statements in</p>
-      <h1>Intake</h1>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf" multiple class="sr-only">
 
       <details class="fold" data-fold>
@@ -819,8 +1019,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
     <!-- 3 · FLOW -->
     <section class="screen" id="scr-flow" aria-label="Flow" data-title="Flow" tabindex="-1">
-      <p class="eyebrow">Money in, money out</p>
-      <h1>Flow</h1>
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>By month
           <span class="fold__tag" id="flowNote"></span>
@@ -856,8 +1054,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
     <!-- 4 · PROJECTIONS -->
     <section class="screen" id="scr-project" aria-label="Projections" data-title="Projections" tabindex="-1">
-      <p class="eyebrow">If the pattern holds</p>
-      <h1>Projections</h1>
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>Net position, 12 months out
           <span class="fold__tag">line</span>
@@ -898,9 +1094,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
     <!-- 5 · CALENDAR -->
     <section class="screen" id="scr-calendar" aria-label="Calendar" data-title="Calendar" tabindex="-1">
-      <p class="eyebrow">What lands, and when</p>
-      <h1>Calendar</h1>
-
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>Month
           <span class="fold__tag" id="calMonthTag">&mdash;</span>
@@ -978,10 +1171,45 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <p class="hint" style="padding:0 4px">Due dates live beside the ledger, not inside it — nothing here changes a balance until the real transaction imports.</p>
     </section>
 
+    <!-- TRIP -->
+    <section class="screen" id="scr-trip" aria-label="Trip" data-title="Trip" tabindex="-1">
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#8C2645"></span>Trips
+          <span class="fold__tag num" id="tripCount">0</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <div id="tripList"></div>
+          <button class="btn btn--sm acct-add" id="addTrip" type="button">＋ Plan a trip</button>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Budget
+          <span class="fold__tag num" id="tripPlanTag">&mdash;</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body" id="tripPlanBody"></div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>Spending
+          <span class="fold__tag num" id="tripSpendTag">&mdash;</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body" id="tripSpendBody"></div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#3F7288"></span>The math
+          <span class="fold__tag num" id="tripMathTag">&mdash;</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body" id="tripMathBody"></div>
+      </details>
+
+      <p class="hint" style="padding:0 4px">Trip money lives beside the ledger — logging a spend here plans the pot, and the real charge still imports through Intake as usual.</p>
+    </section>
+
     <!-- 6 · THE FAMILY -->
     <section class="screen" id="scr-family" aria-label="The Family" data-title="The Family" tabindex="-1">
-      <p class="eyebrow">Who spent what</p>
-      <h1>The Family</h1>
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>Who you're looking at
           <span class="fold__tag" id="famWho">Whole household</span>
@@ -1039,23 +1267,42 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
     <!-- 7 · CATEGORIES -->
     <section class="screen" id="scr-categories" aria-label="Categories" data-title="Categories" tabindex="-1">
-      <p class="eyebrow">Sorting the outflows</p>
-      <h1>Categories</h1>
-      <p class="hint" style="margin:-6px 4px 14px">Six groups, ready to take rules and budgets. Open any one — they're empty for now; we'll fill them together next.</p>
+      <p class="hint" style="margin:0 4px 14px">Six groups, ready to take rules and budgets. Open any one — they're empty for now; we'll fill them together next.</p>
       <div id="catList"></div>
     </section>
 
     <!-- 8 · FILES -->
     <section class="screen" id="scr-files" aria-label="Files" data-title="Files" tabindex="-1">
-      <p class="eyebrow">Saved from the schedule</p>
-      <h1>Files</h1>
       <div id="fileList"></div>
       <p class="hint" style="padding:0 4px">A saved file keeps the numbers you ran — amount, rate, term and start date — so the schedule redraws exactly as it was. Nothing here changes a balance.</p>
     </section>
 
   </div>
 
-  <nav class="dots" id="dots" aria-label="Screens"></nav>
+  <nav class="tabdock" id="tabdock" aria-label="Screens">
+    <div class="tabdock__veil" id="tabVeil"></div>
+    <div class="tabdock__sheet" id="tabSheet" role="group" aria-label="All screens">
+      <p class="eyebrow tabdock__sheetHead">Jump to a screen</p>
+      <div class="tabdock__grid" id="tabGrid"></div>
+    </div>
+    <div class="tabdock__bar">
+      <button class="tabdock__side" id="ariaTab" type="button" aria-expanded="false"
+              aria-controls="ariaDrawer" aria-label="Open ARIA, the ledger assistant">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.6 12a8.2 8.2 0 0 1-11.9 7.4L3.4 20.6l1.3-4.9A8.2 8.2 0 1 1 20.6 12z"/>
+          <path d="M12 7.9l1 2.7 2.7 1-2.7 1-1 2.7-1-2.7-2.7-1 2.7-1z"/>
+        </svg>
+        <span class="wordmark">ARIA</span>
+      </button>
+      <div class="tabdock__rail" id="tabRail"></div>
+      <button class="tabdock__caret" id="tabCaret" type="button" aria-expanded="false"
+              aria-controls="tabSheet" aria-label="Show all screens">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
+    </div>
+  </nav>
 </div>
 
 <!-- ============ ARIA DRAWER ============ -->
@@ -1064,6 +1311,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   <div class="drawer__head">
     <h2 class="drawer__title" id="ariaTitle"><b>ARIA</b> · ledger assistant</h2>
     <span class="chip" id="ariaChip">Local</span>
+    <button class="btn btn--sm" id="ariaReport" type="button"
+            aria-label="Write the household up as a Word document">Report</button>
     <button class="drawer__close" id="ariaClose" type="button" aria-label="Close ARIA">✕</button>
   </div>
   <div class="thread" id="thread" role="log" aria-live="polite" aria-relevant="additions"></div>
@@ -1079,6 +1328,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 <div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="sheet">
     <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="modalX" type="button" aria-label="Skip this file and close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></button>
     <p class="eyebrow">Confirm import</p>
     <h2 id="modalTitle">Check the mapping</h2>
     <p class="file" id="modalFile"></p>
@@ -1172,6 +1422,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 <div class="modal" id="balModal" hidden role="dialog" aria-modal="true" aria-labelledby="balTitle">
   <div class="sheet">
     <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="balX" type="button" aria-label="Close without saving"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></button>
     <p class="eyebrow" id="balSide">Balance</p>
     <h2 id="balTitle">Set balance</h2>
     <p class="file" id="balAcct"></p>
@@ -1236,6 +1487,123 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   </div>
 </div>
 
+<!-- ============ PLAN / EDIT A TRIP ============ -->
+<div class="modal" id="tripModal" hidden role="dialog" aria-modal="true" aria-labelledby="tripTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="tripX" type="button" aria-label="Close without saving"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></button>
+    <p class="eyebrow" id="tripSheetKind">Trip</p>
+    <h2 id="tripTitle">Plan a trip</h2>
+
+    <div class="field" style="margin-top:16px">
+      <label for="tripName">Name</label>
+      <input class="input" id="tripName" type="text" placeholder="e.g. Spring break" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="tripDest">Destination</label>
+      <input class="input" id="tripDest" type="text" placeholder="e.g. Orlando, FL" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="terms">
+      <div class="field">
+        <label for="tripStart">Starts</label>
+        <input class="input" id="tripStart" type="date">
+      </div>
+      <div class="field">
+        <label for="tripEnd">Ends</label>
+        <input class="input" id="tripEnd" type="date">
+      </div>
+    </div>
+    <div class="field">
+      <label for="tripBudget">Total budget</label>
+      <input class="input" id="tripBudget" type="text" inputmode="decimal" placeholder="$0.00"
+             autocomplete="off" autocorrect="off" spellcheck="false">
+      <p class="hint">The whole pot. The Budget section splits it across categories once the trip exists.</p>
+    </div>
+
+    <div class="sheet__actions">
+      <button class="btn" id="tripCancel" type="button">Cancel</button>
+      <button class="btn btn--primary" id="tripSave" type="button">Plan it</button>
+    </div>
+    <button class="btn btn--ghost" id="tripDelete" type="button"
+            style="width:100%;margin-top:10px;color:var(--danger)" hidden>Delete this trip</button>
+  </div>
+</div>
+
+<!-- ============ REPORT READY ============ -->
+<div class="modal" id="reportModal" hidden role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="reportX" type="button" aria-label="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></button>
+    <p class="eyebrow">Report ready</p>
+    <h2 id="reportTitle">The household, written up</h2>
+    <p class="file" id="reportName"></p>
+    <p class="hint" id="reportMeta" style="margin:4px 0 16px"></p>
+    <button class="btn btn--primary" id="reportShare" type="button" style="width:100%">Share&hellip;</button>
+    <div class="sheet__actions">
+      <button class="btn" id="reportDownload" type="button">Download</button>
+      <button class="btn" id="reportSave" type="button">Save to Files</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADD / EDIT AN ACCOUNT ============ -->
+<div class="modal" id="acctModal" hidden role="dialog" aria-modal="true" aria-labelledby="acctTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="acctX" type="button" aria-label="Close without saving"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></button>
+    <p class="eyebrow" id="acctSide">Account</p>
+    <h2 id="acctTitle">Add an account</h2>
+
+    <div class="field" style="margin-top:16px">
+      <label for="acctAlias">Alias</label>
+      <input class="input" id="acctAlias" type="text" placeholder="e.g. CHASE"
+             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+             aria-describedby="acctAliasHint">
+      <p class="hint" id="acctAliasHint">Short and unique — the ledger files every row under it, so it can't change later.</p>
+    </div>
+    <div class="field">
+      <label for="acctName">Name</label>
+      <input class="input" id="acctName" type="text" placeholder="e.g. Chase Freedom"
+             autocomplete="off" spellcheck="false">
+    </div>
+    <div class="terms">
+      <div class="field">
+        <label for="acctInst">Institution</label>
+        <input class="input" id="acctInst" type="text" placeholder="e.g. Chase"
+               autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="acctKind">Type</label>
+        <input class="input" id="acctKind" type="text" placeholder="e.g. Credit card"
+               autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="field">
+      <label id="acctSideLbl">Side of the balance sheet</label>
+      <div class="seg" role="radiogroup" aria-labelledby="acctSideLbl" id="acctSideSeg">
+        <button type="button" class="seg__opt" data-side="asset" role="radio" aria-checked="true">Asset</button>
+        <button type="button" class="seg__opt" data-side="liability" role="radio" aria-checked="false">Liability</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="acctSchema">Statement shape</label>
+      <select class="select" id="acctSchema" style="width:100%">
+        <option value="bank">Bank export — deposits and withdrawals</option>
+        <option value="card">Card export — charges land negative</option>
+        <option value="loan">Loan export — principal, interest, balance</option>
+      </select>
+      <p class="hint">How this account's files read at Intake. Cards flip their sign so charges count against you.</p>
+    </div>
+
+    <div class="sheet__actions">
+      <button class="btn" id="acctCancel" type="button">Cancel</button>
+      <button class="btn btn--primary" id="acctSave" type="button">Add account</button>
+    </div>
+    <button class="btn btn--ghost" id="acctDelete" type="button"
+            style="width:100%;margin-top:10px;color:var(--danger)" hidden>Delete this account</button>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -1247,7 +1615,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
    Sign convention across the whole app: negative = money leaves
    your pocket, positive = money arrives or debt is paid down.
    ============================================================ */
-const ACCOUNTS = [
+const BASE_ACCOUNTS = [
   { id:'USAAC', name:'USAA Checking', inst:'USAA', side:'asset', kind:'Checking',
     schema:'bank', flip:false,
     match:[{re:/usaa/i,w:3},{re:/check|chk|usaac/i,w:4}] },
@@ -1300,7 +1668,43 @@ const ACCOUNTS = [
     schema:'loan', flip:false,
     match:[{re:/wells|\bwf\b/i,w:4},{re:/heloc|equity|\bline\b/i,w:6}] },
 ];
-const ACCT = Object.fromEntries(ACCOUNTS.map(a => [a.id, a]));
+/* The registry the app actually reads. Starts as the shipped table;
+   rebuildRegistry() folds in the household's additions, renames and
+   removals, so every renderer picks up account changes for free. */
+let ACCOUNTS = BASE_ACCOUNTS.slice();
+let ACCT = Object.fromEntries(ACCOUNTS.map(a => [a.id, a]));
+
+/** Build intake matchers for an account the household typed in:
+    the alias and each distinctive word of the name become clues. */
+function matchersFor(id, name){
+  const m = [{ re: new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), w: 6 }];
+  String(name || '').toLowerCase().split(/[^a-z0-9]+/)
+    .filter(w => w.length > 2 && !['the','and','for','account'].includes(w))
+    .slice(0, 3)
+    .forEach(w => m.push({ re: new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), w: 3 }));
+  return m;
+}
+
+function rebuildRegistry(){
+  const ed = state.acctEdits || { added: [], changed: {}, removed: [] };
+  const out = [];
+  BASE_ACCOUNTS.forEach(base => {
+    if (ed.removed.includes(base.id)) return;
+    const c = ed.changed[base.id];
+    out.push(c ? { ...base, name: c.name, inst: c.inst, kind: c.kind,
+                   side: c.side, schema: c.schema,
+                   flip: c.schema === 'card', manual: base.manual } : base);
+  });
+  ed.added.forEach(c => {
+    if (ed.removed.includes(c.id)) return;
+    out.push({ id: c.id, name: c.name, inst: c.inst, kind: c.kind,
+               side: c.side, schema: c.schema, flip: c.schema === 'card',
+               manual: true, via: 'manual entry',
+               match: matchersFor(c.id, c.name) });
+  });
+  ACCOUNTS = out;
+  ACCT = Object.fromEntries(out.map(a => [a.id, a]));
+}
 
 /* ============================================================
    2. SCHEMAS
@@ -1355,6 +1759,9 @@ const state = {
   routeAcct:'',          // '' = auto-detect; else force imports to this account
   rules:[],              // ownership rules: {q, acct, person} — first match wins
   loans:{},              // acctId -> {rate, years, start} for the amortising accounts
+  acctEdits:{ added:[], changed:{}, removed:[] },  // the household's registry changes
+  trips:[],              // {id, name, dest, start, end, budget, cats:[{id,name,plan}], spends:[{id,cat,desc,amount,date,person}]}
+  tripSel:'',            // which trip the screen is looking at
   files:[],              // saved schedules: {id, name, acct, params, summary, savedAt}
   bills:[],              // scheduled due dates: {id, name, date, acct, kind, amount, repeat}
   sample:false,          // true while the demo ledger is standing in for the real one
@@ -2004,6 +2411,9 @@ function ledgerPayload(){
     loans: state.loans,
     files: state.files,
     bills: state.bills,
+    acctEdits: state.acctEdits,
+    trips: state.trips,
+    tripSel: state.tripSel,
     sample: state.sample,
   };
 }
@@ -2027,7 +2437,17 @@ function applyPayload(data){
   state.loans = data.loans || {};
   state.files = data.files || [];
   state.bills = data.bills || [];
-  state.sample = Boolean(data.sample);
+  state.trips = data.trips || [];
+  state.tripSel = data.tripSel || '';
+  if (state.tripSel && !state.trips.some(t => t.id === state.tripSel)) state.tripSel = '';
+  state.acctEdits = data.acctEdits || { added:[], changed:{}, removed:[] };
+  state.acctEdits.added   = state.acctEdits.added   || [];
+  state.acctEdits.changed = state.acctEdits.changed || {};
+  state.acctEdits.removed = state.acctEdits.removed || [];
+  rebuildRegistry();
+  /* rows can reference an account deleted on another day — drop them
+     rather than let every renderer trip over a missing entry */
+  state.rows = state.rows.filter(r => ACCT[r.acct]);
   return state.rows.length > 0 || state.bills.length > 0;
 }
 
@@ -2228,6 +2648,49 @@ function buildSample(){
   }));
 
   state.files = [];
+
+  /* ---- trips: one ahead and part-funded, one already wrapped ------------ */
+  const dep = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 23);
+  const ret = new Date(dep.getFullYear(), dep.getMonth(), dep.getDate() + 6);
+  const stamp = (d, off) => isoOf(new Date(d.getFullYear(), d.getMonth(), d.getDate() + off));
+  const ahead = {
+    id:'ST-orlando', name:'Orlando with the kids', dest:'Orlando, FL',
+    start: isoOf(dep), end: isoOf(ret), budget: 3600,
+    cats: [
+      { id:'c0', name:'Travel',     plan: 900 },
+      { id:'c1', name:'Lodging',    plan:1200 },
+      { id:'c2', name:'Food',       plan: 700 },
+      { id:'c3', name:'Activities', plan: 600 },
+      { id:'c4', name:'Shopping',   plan: 200 },
+      { id:'c5', name:'Other',      plan:   0 },
+    ],
+    spends: [
+      { id:'SS1', cat:'c1', desc:'Hotel deposit',        amount:420, date: stamp(today,-12), person:'Vanessa' },
+      { id:'SS2', cat:'c0', desc:'Flights × 4',     amount:868, date: stamp(today,-9),  person:'Ryan' },
+      { id:'SS3', cat:'c3', desc:'Park tickets × 2 days', amount:512, date: stamp(today,-4), person:'Ryan' },
+    ],
+  };
+  const backDep = new Date(today.getFullYear(), today.getMonth() - 3, 9);
+  const backRet = new Date(backDep.getFullYear(), backDep.getMonth(), backDep.getDate() + 3);
+  const wrapped = {
+    id:'ST-shen', name:'Shenandoah weekend', dest:'Luray, VA',
+    start: isoOf(backDep), end: isoOf(backRet), budget: 800,
+    cats: [
+      { id:'c0', name:'Travel',     plan:120 },
+      { id:'c1', name:'Lodging',    plan:340 },
+      { id:'c2', name:'Food',       plan:220 },
+      { id:'c3', name:'Activities', plan:120 },
+    ],
+    spends: [
+      { id:'SW1', cat:'c1', desc:'Cabin, 3 nights',   amount:356, date: stamp(backDep,-20), person:'Vanessa' },
+      { id:'SW2', cat:'c0', desc:'Fuel out and back', amount: 92, date: stamp(backDep, 0),  person:'Ryan' },
+      { id:'SW3', cat:'c2', desc:'Groceries for the cabin', amount:118, date: stamp(backDep, 0), person:'Vanessa' },
+      { id:'SW4', cat:'c3', desc:'Caverns tour',      amount:112, date: stamp(backDep, 1),  person:'Vivian' },
+      { id:'SW5', cat:'c2', desc:'Diner on the drive home', amount: 64, date: stamp(backRet, 0), person:'Cooper' },
+    ],
+  };
+  state.trips = [ahead, wrapped];
+  state.tripSel = ahead.id;
 }
 
 /** Swap the demo household in, keeping the real ledger safe. */
@@ -2259,6 +2722,7 @@ async function clearSample(){
   if (!restored){
     state.rows = []; state.balances = {}; state.opens = {}; state.imports = [];
     state.rules = []; state.loans = {}; state.files = []; state.bills = [];
+    state.trips = []; state.tripSel = '';
   }
   state.sample = false;
   await storeSet(SAMPLE_KEY, '');
@@ -2420,6 +2884,947 @@ async function askClaude(q){
 }
 
 
+
+
+/* ============================================================
+   REPORTS — ARIA writes the household up as a Word document.
+   A .docx is a zip of XML, so the whole file is authored here
+   on the phone: JSZip (lazy, cached by the service worker like
+   the other libraries) does the zipping, and the XML below does
+   the Word. Local mode ships the full numeric report; Live mode
+   asks Claude for a written analysis and binds it in.
+   ============================================================ */
+const JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+let jszipReady = null;
+function loadJSZip(){
+  if (jszipReady) return jszipReady;
+  jszipReady = new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = JSZIP_URL;
+    el.onload = () => resolve(window.JSZip);
+    el.onerror = () => { jszipReady = null; reject(new Error('needs the document writer, which failed to load — check the connection once and it caches for offline use')); };
+    document.head.appendChild(el);
+  });
+  return jszipReady;
+}
+
+/* ---------- WordprocessingML, by hand ---------- */
+const X = s2 => String(s2 ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+
+function wRun(text, o = {}){
+  const pr = [];
+  if (o.b) pr.push('<w:b/>');
+  if (o.i) pr.push('<w:i/>');
+  if (o.color) pr.push(`<w:color w:val="${o.color}"/>`);
+  if (o.size) pr.push(`<w:sz w:val="${o.size}"/><w:szCs w:val="${o.size}"/>`);
+  return `<w:r>${pr.length ? '<w:rPr>' + pr.join('') + '</w:rPr>' : ''}<w:t xml:space="preserve">${X(text)}</w:t></w:r>`;
+}
+
+function wP(text, o = {}){
+  const pr = [];
+  if (o.style) pr.push(`<w:pStyle w:val="${o.style}"/>`);
+  if (o.bullet) pr.push('<w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>');
+  if (o.before || o.after) pr.push(`<w:spacing w:before="${o.before || 0}" w:after="${o.after ?? 120}"/>`);
+  const runs = Array.isArray(text) ? text.join('') : wRun(text, o);
+  return `<w:p>${pr.length ? '<w:pPr>' + pr.join('') + '</w:pPr>' : ''}${runs}</w:p>`;
+}
+
+/** A bordered table. cols = [{w, head, right?}], rows = string[][].
+    Every width is DXA and the grid sums to the table width, which is
+    what keeps Word and Pages agreeing about the layout. */
+function wTable(cols, rows){
+  const total = cols.reduce((t,c) => t + c.w, 0);
+  const cell = (txt, c, head) =>
+    `<w:tc><w:tcPr><w:tcW w:w="${c.w}" w:type="dxa"/>` +
+    (head ? '<w:shd w:val="clear" w:color="auto" w:fill="14301F"/>' : '') +
+    `</w:tcPr><w:p><w:pPr><w:spacing w:before="30" w:after="30"/>` +
+    `${c.right ? '<w:jc w:val="right"/>' : ''}</w:pPr>` +
+    wRun(txt, head ? {b:1, color:'FFFFFF', size:19} : {size:19}) + '</w:p></w:tc>';
+  const border = t => `<w:${t} w:val="single" w:sz="4" w:space="0" w:color="A0AB97"/>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/>` +
+    `<w:tblBorders>${['top','left','bottom','right','insideH','insideV'].map(border).join('')}</w:tblBorders>` +
+    `<w:tblLayout w:type="fixed"/></w:tblPr>` +
+    `<w:tblGrid>${cols.map(c => `<w:gridCol w:w="${c.w}"/>`).join('')}</w:tblGrid>` +
+    `<w:tr>${cols.map(c => cell(c.head, c, true)).join('')}</w:tr>` +
+    rows.map(r => `<w:tr>${r.map((v,i) => cell(v, cols[i], false)).join('')}</w:tr>`).join('') +
+    '</w:tbl><w:p><w:pPr><w:spacing w:after="60"/></w:pPr></w:p>';
+}
+
+const DOCX_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults><w:rPrDefault><w:rPr>
+    <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>
+    <w:sz w:val="21"/><w:szCs w:val="21"/><w:color w:val="1A2116"/>
+  </w:rPr></w:rPrDefault>
+  <w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+  <w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/>
+    <w:pPr><w:spacing w:after="40"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/><w:color w:val="14301F"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/>
+    <w:pPr><w:spacing w:before="280" w:after="100"/><w:outlineLvl w:val="0"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="27"/><w:szCs w:val="27"/><w:color w:val="14301F"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/>
+    <w:pPr><w:spacing w:before="180" w:after="80"/><w:outlineLvl w:val="1"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="23"/><w:szCs w:val="23"/><w:color w:val="396028"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Meta"><w:name w:val="Meta"/><w:basedOn w:val="Normal"/>
+    <w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/><w:color w:val="52604D"/></w:rPr></w:style>
+</w:styles>`;
+
+const DOCX_NUMBERING = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/>
+    <w:numFmt w:val="bullet"/><w:lvlText w:val="\u2022"/><w:lvlJc w:val="left"/>
+    <w:pPr><w:ind w:left="360" w:hanging="200"/></w:pPr></w:lvl></w:abstractNum>
+  <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
+</w:numbering>`;
+
+/* ---------- what goes in the report ---------- */
+function reportData(){
+  const t = totals();
+  const months = byMonth();
+  const side = sd => ACCOUNTS.filter(a => a.side === sd)
+    .map(a => ({a, bal: balanceOf(a.id), rows: rowsFor(a.id).length}));
+  const monthsN = new Set(months.map(x=>x.k)).size || 1;
+  const runway = ACCOUNTS.filter(a => a.side === 'liability').map(a => {
+    const bal = balanceOf(a.id).value;
+    if (bal <= 0) return null;
+    const paid = rowsFor(a.id).filter(r => r.amount > 0).reduce((s2,r) => s2 + r.amount, 0);
+    const spent = rowsFor(a.id).filter(r => r.amount < 0).reduce((s2,r) => s2 - r.amount, 0);
+    const netDown = (paid - spent) / monthsN;
+    return { name: a.name, bal, mo: netDown > 0 ? bal / netDown : null };
+  }).filter(Boolean);
+  return { t, months, assets: side('asset'), liabs: side('liability'),
+           top: topSpend(8), fam: FAMILY.map(f => ({ name: f.id,
+             out: state.rows.filter(r => r.amount < 0 && r.person === f.id)
+               .reduce((x2,r) => x2 - r.amount, 0) })),
+           proj: projectionSeries(), runway, budget: budgetPlan() };
+}
+
+/** Live mode only: Claude reads the same summary ARIA chats from and
+    returns a written analysis in labelled plain-text sections. */
+async function reportAnalysis(){
+  const body = {
+    model: MODEL, max_tokens: 1200,
+    system: SYSTEM_PROMPT + '\n\nLedger summary:\n' + JSON.stringify(ledgerSummary()),
+    messages: [{role:'user', content:
+      'Write the analysis section of a household financial report from this ledger. ' +
+      'Respond in plain text only, no markdown, in exactly three labelled sections:\n' +
+      'SUMMARY: two or three sentences on the overall position.\n' +
+      'OBSERVATIONS: three to five short lines, one point each, starting each line with "- ".\n' +
+      'CAUTIONS: one to three short lines of the same shape on risks worth watching.'}],
+  };
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key': state.apiKey,
+      'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error('Claude returned ' + res.status);
+  const data = await res.json();
+  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  const grabSec = name => {
+    const m = text.match(new RegExp(name + ':\\s*([\\s\\S]*?)(?=\\n[A-Z]{4,}:|$)'));
+    return m ? m[1].trim() : '';
+  };
+  const lines = sec => sec.split('\n').map(l => l.replace(/^[-\u2022]\s*/, '').trim()).filter(Boolean);
+  const out = { summary: grabSec('SUMMARY'), observations: lines(grabSec('OBSERVATIONS')),
+                cautions: lines(grabSec('CAUTIONS')) };
+  if (!out.summary && !out.observations.length) return { summary: text, observations: [], cautions: [] };
+  return out;
+}
+
+/* ---------- the document ---------- */
+async function buildReportDocx(analysis){
+  const JSZip = await loadJSZip();
+  const d = reportData();
+  const now = new Date();
+  const body = [];
+
+  body.push(wP('Thompson Finances', {style:'Title'}));
+  body.push(wP('Household financial report \u00b7 ' +
+    now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}), {style:'Meta'}));
+  body.push(wP(analysis
+    ? 'Figures compiled on this device; written analysis by ARIA with Claude.'
+    : 'Figures compiled on this device by ARIA, working locally.', {style:'Meta', after:200}));
+
+  body.push(wP('Position', {style:'Heading1'}));
+  body.push(wP([
+    wRun('Net position: ', {}), wRun(money(d.t.net), {b:1, color: d.t.net >= 0 ? '2A7049' : '9A4520'}),
+    wRun('  \u2014  ' + money(d.t.assets) + ' held against ' + money(d.t.owed) + ' owed.', {}),
+  ]));
+
+  const acctRows = list => list.map(x => [
+    x.a.id, x.a.name, x.a.kind || '', x.bal.source === 'empty' ? '\u2014' : money(x.bal.value)]);
+  body.push(wP('Assets', {style:'Heading2'}));
+  body.push(wTable(
+    [{w:1560,head:'Alias'},{w:3480,head:'Account'},{w:2400,head:'Type'},{w:1920,head:'Balance',right:1}],
+    acctRows(d.assets).concat([['','','Total', money(d.t.assets)]])));
+  body.push(wP('Liabilities', {style:'Heading2'}));
+  body.push(wTable(
+    [{w:1560,head:'Alias'},{w:3480,head:'Account'},{w:2400,head:'Type'},{w:1920,head:'Balance',right:1}],
+    acctRows(d.liabs).concat([['','','Total', money(d.t.owed)]])));
+
+  if (analysis){
+    body.push(wP('Analysis by ARIA', {style:'Heading1'}));
+    if (analysis.summary) body.push(wP(analysis.summary));
+    if (analysis.observations.length){
+      body.push(wP('Observations', {style:'Heading2'}));
+      analysis.observations.forEach(l => body.push(wP(l, {bullet:1, after:40})));
+    }
+    if (analysis.cautions.length){
+      body.push(wP('Worth watching', {style:'Heading2'}));
+      analysis.cautions.forEach(l => body.push(wP(l, {bullet:1, after:40})));
+    }
+  }
+
+  if (d.months.length){
+    body.push(wP('Monthly flow', {style:'Heading1'}));
+    body.push(wTable(
+      [{w:2340,head:'Month'},{w:2340,head:'Money in',right:1},{w:2340,head:'Money out',right:1},{w:2340,head:'Net',right:1}],
+      d.months.slice(-12).map(m => [ monthLabel(m.k), money(m.in), money(m.out),
+        (m.in - m.out >= 0 ? '+' : '\u2212') + money(Math.abs(m.in - m.out)) ])));
+  }
+
+  if (d.top.length){
+    body.push(wP('Largest outflows', {style:'Heading1'}));
+    d.top.forEach(s2 => body.push(wP(`${s2.label} \u2014 ${money(s2.total)}`, {bullet:1, after:40})));
+  }
+
+  const famRows = d.fam.filter(f => f.out > 0);
+  if (famRows.length){
+    body.push(wP('Spending by person', {style:'Heading1'}));
+    body.push(wTable([{w:4680,head:'Person'},{w:4680,head:'Outflow on file',right:1}],
+      famRows.map(f => [f.name, money(f.out)])));
+  }
+
+  if (d.proj){
+    body.push(wP('Projection', {style:'Heading1'}));
+    body.push(wP(`Average net per month across ${d.proj.hist.length} months on file: ` +
+      `${d.proj.avgNet >= 0 ? '+' : '\u2212'}${money(Math.abs(d.proj.avgNet))}. ` +
+      `If the pattern holds, the net position lands near ${money(d.proj.end)} twelve months out.`));
+  }
+
+  if (d.runway.length){
+    body.push(wP('Debt runway', {style:'Heading1'}));
+    d.runway.forEach(r => body.push(wP(
+      `${r.name} \u2014 ${money(r.bal)} \u00b7 ` + (r.mo == null ? 'balance holding or growing at the current pace'
+        : r.mo > 360 ? `roughly ${(r.mo/12).toFixed(0)} years at the current pace`
+        : r.mo >= 24 ? `roughly ${(r.mo/12).toFixed(1)} years at the current pace`
+        : `roughly ${Math.ceil(r.mo)} months at the current pace`), {bullet:1, after:40})));
+  }
+
+  if (d.budget){
+    body.push(wP('Weekly budget', {style:'Heading1'}));
+    body.push(wP(`Working income ${money(d.budget.income)} a month (${d.budget.basis}), ` +
+      `less ${money(d.budget.committed)} already committed across ${d.budget.billCount} scheduled bills` +
+      (d.budget.rebuild > 0 ? ` and ${money(d.budget.rebuild)} set aside toward the cash cushion` : '') +
+      (d.budget.debt > 0 ? ` and ${money(d.budget.debt)} pointed at debt` : '') +
+      `, leaves ${money(d.budget.spendable)} discretionary \u2014 about ${money(d.budget.weekly)} a week.`));
+  }
+
+  body.push(wP('Raw statements never leave the phone; this report was assembled on the device' +
+    (analysis ? ', with a numeric summary shared to Claude for the written analysis.' : '.'),
+    {style:'Meta', before:300}));
+
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body.join('')}
+<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>
+<w:pgMar w:top="1240" w:right="1240" w:bottom="1240" w:left="1240" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
+</Types>`);
+  zip.file('_rels/.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+  zip.file('word/_rels/document.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>
+</Relationships>`);
+  zip.file('word/styles.xml', DOCX_STYLES);
+  zip.file('word/numbering.xml', DOCX_NUMBERING);
+  zip.file('word/document.xml', doc);
+  return zip.generateAsync({ type:'blob', mimeType: DOCX_MIME,
+    compression:'DEFLATE', compressionOptions:{level:6} });
+}
+
+/* ============================================================
+   BACKUP + RESTORE — the whole ledger as one JSON file.
+   Backup wraps ledgerPayload() (every row, balance, opening
+   figure, rule, loan term, bill, saved file and account edit)
+   and hands it to the iOS share sheet, where Save to Files puts
+   it in any folder. Restore reads that file back and the app
+   stands exactly where it stood.
+   ============================================================ */
+function runBackup(){
+  const wrap = { app:'thompson-finances', version:1, build:BUILD,
+                 savedAt:new Date().toISOString(), payload: ledgerPayload() };
+  const name = 'Thompson-Backup-' + isoOf(new Date()) + '.json';
+  const blob = new Blob([JSON.stringify(wrap)], { type:'application/json' });
+  const file = new File([blob], name, { type:'application/json' });
+  const done = () => {
+    const n = state.rows.length;
+    logLine(`Backup written — ${n.toLocaleString()} row${n === 1 ? '' : 's'}, ${(blob.size/1024).toFixed(0)} KB`, 'ok');
+  };
+  if (navigator.canShare && navigator.canShare({ files:[file] })){
+    navigator.share({ files:[file] }).then(done).catch(err => {
+      if (err && err.name === 'AbortError') return;
+      downloadBlob(blob, name); done();
+    });
+    return;
+  }
+  downloadBlob(blob, name); done();
+}
+
+function runRestore(file){
+  const r = new FileReader();
+  r.onerror = () => toast('That file could not be read');
+  r.onload = () => {
+    let data;
+    try { data = JSON.parse(String(r.result)); }
+    catch(_){ toast('That is not a backup file'); return; }
+    /* accept the wrapped form or a bare payload */
+    const payload = data && data.app === 'thompson-finances' ? data.payload : data;
+    if (!payload || typeof payload !== 'object' || (!payload.rows && !payload.balances && !payload.bills)){
+      toast('That is not a Thompson Finances backup'); return;
+    }
+    applyPayload(payload);
+    applyRules();
+    save(); render(); refreshAcctSelects(); showFoldbar();
+    const when = data && data.savedAt ? ` from ${fmtDate(new Date(data.savedAt))}` : '';
+    logLine(`Backup restored${when} — ${state.rows.length.toLocaleString()} rows, ${state.bills.length} bills, ${Object.keys(state.balances).length} balances`, 'ok');
+    toast(`Backup restored${when}`);
+  };
+  r.readAsText(file);
+}
+
+/* ---------- delivery ---------- */
+let lastReport = null;   /* {blob, name, live} while the sheet is open */
+let reportBusy = false;
+
+async function runReport(){
+  if (reportBusy) return;
+  if (!state.rows.length && !Object.keys(state.balances).length && !Object.keys(state.opens).length){
+    toast('Nothing on file yet — import a statement or load the sample first'); return;
+  }
+  reportBusy = true;
+  const btn = $('#ariaReport');
+  if (btn) btn.disabled = true;
+  toast('Writing the report\u2026');
+  try {
+    let analysis = null, note = '';
+    if (state.mode === 'api'){
+      try { analysis = await reportAnalysis(); }
+      catch(_){ note = 'Claude could not be reached, so this run carries the figures without the written analysis.'; }
+    }
+    const blob = await buildReportDocx(analysis);
+    const name = 'Thompson-Report-' + isoOf(new Date()) + '.docx';
+    lastReport = { blob, name, live: Boolean(analysis) };
+    $('#reportTitle').textContent = 'The household, written up';
+    $('#reportName').textContent = name;
+    $('#reportMeta').textContent = `${(blob.size/1024).toFixed(0)} KB \u00b7 ` +
+      (analysis ? 'figures + written analysis by Claude' : 'figures compiled locally') +
+      (note ? ' \u00b7 ' + note : '');
+    $('#reportModal').hidden = false;
+    document.addEventListener('keydown', reportKeys);
+  } catch(err){
+    toast(err && err.message ? err.message : 'The report could not be written');
+  } finally {
+    reportBusy = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+function reportKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeReport(); } }
+function closeReport(){
+  $('#reportModal').hidden = true;
+  document.removeEventListener('keydown', reportKeys);
+  lastReport = null;
+}
+
+function downloadBlob(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function shareDocx(blob, name){
+  const file = new File([blob], name, { type: DOCX_MIME });
+  if (navigator.canShare && navigator.canShare({ files:[file] })){
+    try { await navigator.share({ files:[file] }); return; }        /* the full iOS sheet */
+    catch(err){ if (err && err.name === 'AbortError') return; }     /* they closed it \u2014 not an error */
+  }
+  downloadBlob(blob, name);
+  toast('Sharing is not available here \u2014 downloaded instead');
+}
+
+function shareReport(){
+  if (!lastReport) return;
+  shareDocx(lastReport.blob, lastReport.name);
+}
+
+function saveReportToFiles(){
+  if (!lastReport) return;
+  const r = new FileReader();
+  r.onload = () => {
+    state.files.push({ id: 'R-' + Date.now(), kind:'report', name: lastReport.name,
+      savedAt: Date.now(), size: lastReport.blob.size, live: lastReport.live,
+      data: String(r.result).split(',')[1] });
+    save(); renderFiles();
+    toast(`${lastReport.name} saved to Files`);
+    closeReport();
+  };
+  r.readAsDataURL(lastReport.blob);
+}
+
+function reportBlobFrom(f){
+  const bin = atob(f.data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: DOCX_MIME });
+}
+
+/* ============================================================
+   TRIP — a pot of money with a departure date. Each trip holds
+   a total budget split across categories, a log of spends, and
+   the math: countdown, the daily allowance while away, and the
+   weekly set-aside that funds it before the wheels leave.
+   ============================================================ */
+const TRIP_CATS = ['Travel','Lodging','Food','Activities','Shopping','Other'];
+
+const tripOf = () => state.trips.find(t => t.id === state.tripSel) || null;
+const tripDays = t => {
+  const a = new Date(t.start + 'T00:00'), b = new Date(t.end + 'T00:00');
+  return Math.max(1, Math.round((b - a) / 86400000) + 1);
+};
+const tripSpent = t => t.spends.reduce((s2, x) => s2 + x.amount, 0);
+
+let tripTarget = null, tripDeleteArmed = null;
+
+function openTripEditor(id){
+  tripTarget = id || null;
+  const t = id ? state.trips.find(x => x.id === id) : null;
+  $('#tripSheetKind').textContent = t ? 'Edit trip' : 'New trip';
+  $('#tripTitle').textContent = t ? t.name : 'Plan a trip';
+  $('#tripName').value = t ? t.name : '';
+  $('#tripDest').value = t ? (t.dest || '') : '';
+  const today = startOfToday();
+  $('#tripStart').value = t ? t.start : isoOf(new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()));
+  $('#tripEnd').value = t ? t.end : isoOf(new Date(today.getFullYear(), today.getMonth() + 1, today.getDate() + 6));
+  $('#tripBudget').value = t && t.budget ? formatMoneyField(String(t.budget)) : '';
+  $('#tripSave').textContent = t ? 'Save changes' : 'Plan it';
+  $('#tripDelete').hidden = !t;
+  disarmTripDelete();
+  $('#tripModal').hidden = false;
+  document.addEventListener('keydown', tripKeys);
+  setTimeout(() => $('#tripName').focus(), 60);
+}
+
+function closeTripEditor(){
+  $('#tripModal').hidden = true;
+  disarmTripDelete();
+  document.removeEventListener('keydown', tripKeys);
+  tripTarget = null;
+}
+
+function tripKeys(e){
+  if (e.key === 'Escape'){ e.preventDefault(); closeTripEditor(); }
+  if (e.key === 'Enter' && e.target.closest('#tripModal') && e.target.tagName === 'INPUT'
+      && e.target.type !== 'date'){ e.preventDefault(); saveTripEditor(); }
+}
+
+function saveTripEditor(){
+  const name = $('#tripName').value.trim();
+  if (!name){ toast('Give the trip a name'); $('#tripName').focus(); return; }
+  const start = $('#tripStart').value, end = $('#tripEnd').value;
+  if (!start || !end){ toast('Set both dates'); return; }
+  if (end < start){ toast('The trip cannot end before it starts'); return; }
+  const budget = Math.max(0, toNumber($('#tripBudget').value) || 0);
+  const dest = $('#tripDest').value.trim();
+
+  if (tripTarget){
+    const t = state.trips.find(x => x.id === tripTarget);
+    if (t) Object.assign(t, { name, dest, start, end, budget });
+    logLine(`Trip updated — ${name}`, 'ok');
+  } else {
+    const t = { id:'T-' + Date.now(), name, dest, start, end, budget,
+      cats: TRIP_CATS.map((n2,i) => ({ id:'c' + i, name:n2, plan:0 })), spends:[] };
+    state.trips.push(t);
+    state.tripSel = t.id;
+    logLine(`Trip planned — ${name}`, 'ok');
+    toast(`${name} is on the board`);
+  }
+  save(); renderTrip();
+  closeTripEditor();
+}
+
+function disarmTripDelete(){
+  clearTimeout(tripDeleteArmed); tripDeleteArmed = null;
+  const b = $('#tripDelete');
+  b.textContent = 'Delete this trip';
+  b.classList.remove('is-armed');
+}
+
+function deleteTripEditor(){
+  if (!tripTarget) return;
+  const t = state.trips.find(x => x.id === tripTarget);
+  if (!t) return;
+  const b = $('#tripDelete');
+  if (!tripDeleteArmed){
+    const n = t.spends.length;
+    b.textContent = n ? `Tap again — removes ${t.name} and ${n} spend${n === 1 ? '' : 's'}` : `Tap again to remove ${t.name}`;
+    b.classList.add('is-armed');
+    tripDeleteArmed = setTimeout(disarmTripDelete, 5000);
+    return;
+  }
+  disarmTripDelete();
+  state.trips = state.trips.filter(x => x.id !== tripTarget);
+  if (state.tripSel === tripTarget) state.tripSel = state.trips.length ? state.trips[0].id : '';
+  save(); renderTrip();
+  logLine(`Trip removed — ${t.name}`, 'warn');
+  toast(`${t.name} removed`);
+  closeTripEditor();
+}
+
+/* Which trips ride the next analysis. A session choice, not ledger
+   data, so it lives here rather than in state. */
+const tripPick = new Set();
+
+/* ---------- trip analysis: numbers -> words -> a .docx ---------- */
+function tripFacts(t){
+  const today = startOfToday();
+  const a = new Date(t.start + 'T00:00'), b = new Date(t.end + 'T00:00');
+  const days = tripDays(t);
+  const spent = tripSpent(t);
+  const planned = t.cats.reduce((s2,c) => s2 + c.plan, 0);
+  const cats = t.cats.map(c => ({ name:c.name, plan:c.plan,
+    spent: t.spends.filter(x => x.cat === c.id).reduce((s2,x) => s2 + x.amount, 0) }));
+  const people = FAMILY.map(f => ({ name:f.id,
+    spent: t.spends.filter(x => x.person === f.id).reduce((s2,x) => s2 + x.amount, 0) }))
+    .filter(x => x.spent > 0);
+  const phase = today < a ? 'ahead' : today <= b ? 'underway' : 'wrapped';
+  const out = { name:t.name, dest:t.dest, start:t.start, end:t.end, days,
+    budget:t.budget, planned, spent, left: t.budget - spent, cats, people, phase };
+  if (phase === 'ahead'){
+    out.daysOut = Math.ceil((a - today) / 86400000);
+    out.weeksOut = Math.max(1, Math.ceil(out.daysOut / 7));
+    out.perWeek = Math.max(0, out.left) / out.weeksOut;
+  }
+  if (phase === 'underway'){
+    out.daysLeft = Math.max(1, Math.round((b - today) / 86400000) + 1);
+    out.daily = Math.max(0, out.left) / out.daysLeft;
+  }
+  return out;
+}
+
+/** The local writer: the same judgements ARIA would make, from the
+    figures alone, so the analysis works with the phone in a pocket
+    with no signal. */
+function tripNarrativeLocal(facts){
+  const parts = [];
+  facts.forEach(f => {
+    const line = [];
+    if (f.phase === 'ahead'){
+      line.push(`${f.name} leaves in ${f.daysOut} day${f.daysOut === 1 ? '' : 's'} with ${money(f.spent)} of the ${money(f.budget)} pot already down.`);
+      line.push(f.left > 0
+        ? `Funding the rest takes about ${money(f.perWeek)} a week for ${f.weeksOut} week${f.weeksOut === 1 ? '' : 's'}.`
+        : 'The pot is fully covered before departure.');
+      const overPlan = f.cats.filter(c => c.plan > 0 && c.spent > c.plan);
+      if (overPlan.length) line.push(`${overPlan.map(c => c.name).join(' and ')} ${overPlan.length === 1 ? 'is' : 'are'} already past ${overPlan.length === 1 ? 'its' : 'their'} planned amount.`);
+      if (f.planned > f.budget) line.push(`The category plan runs ${money(f.planned - f.budget)} past the pot itself — worth trimming before the spending starts.`);
+    } else if (f.phase === 'underway'){
+      line.push(`${f.name} is underway with ${f.daysLeft} day${f.daysLeft === 1 ? '' : 's'} left and ${money(f.spent)} spent of ${money(f.budget)}.`);
+      line.push(f.left >= 0
+        ? `That leaves about ${money(f.daily)} a day from here.`
+        : `The pot is ${money(-f.left)} behind — every day from here adds to it.`);
+    } else {
+      line.push(`${f.name} wrapped at ${money(f.spent)} against a ${money(f.budget)} pot — ${f.spent <= f.budget ? money(f.budget - f.spent) + ' under' : money(f.spent - f.budget) + ' over'}.`);
+      const heavy = f.cats.filter(c => c.spent > 0).sort((x,y) => y.spent - x.spent)[0];
+      if (heavy) line.push(`${heavy.name} carried the most at ${money(heavy.spent)}.`);
+      const who = f.people.slice().sort((x,y) => y.spent - x.spent)[0];
+      if (who) line.push(`${who.name} logged the largest share of the spending.`);
+    }
+    parts.push(line.join(' '));
+  });
+  if (facts.length > 1){
+    const total = facts.reduce((s2,f) => s2 + f.spent, 0);
+    const pots = facts.reduce((s2,f) => s2 + f.budget, 0);
+    const daily = facts.map(f => ({ n:f.name, d: f.days ? f.spent / f.days : 0 }))
+      .sort((x,y) => y.d - x.d)[0];
+    parts.push(`Across the ${facts.length} trips together: ${money(total)} spent against ${money(pots)} in pots.` +
+      (daily && daily.d > 0 ? ` ${daily.n} runs the heaviest per day at about ${money(daily.d)}.` : ''));
+  }
+  return parts.join('\n\n');
+}
+
+async function tripNarrativeClaude(facts){
+  const body = {
+    model: MODEL, max_tokens: 1000,
+    system: SYSTEM_PROMPT,
+    messages: [{role:'user', content:
+      'Write the analysis section of a trip-budget review for this household. Plain text only, no markdown. ' +
+      'One short paragraph per trip covering pace, funding or final tally, and anything worth adjusting; ' +
+      (facts.length > 1 ? 'then one closing paragraph comparing the trips. ' : '') +
+      'Keep it grounded in these figures only:\n' + JSON.stringify(facts)}],
+  };
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key': state.apiKey,
+      'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error('Claude returned ' + res.status);
+  const data = await res.json();
+  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  if (!text) throw new Error('empty reply');
+  return text;
+}
+
+async function buildTripDocx(facts, narrative, live){
+  const JSZip = await loadJSZip();
+  const now = new Date();
+  const body = [];
+  body.push(wP('Trip Analysis', {style:'Title'}));
+  body.push(wP('Thompson Finances \u00b7 ' +
+    now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}), {style:'Meta'}));
+  body.push(wP((live ? 'Written by ARIA with Claude' : 'Written by ARIA, working locally') +
+    ` \u00b7 ${facts.length} trip${facts.length === 1 ? '' : 's'}.`, {style:'Meta', after:200}));
+
+  narrative.split(/\n{2,}/).map(x2 => x2.trim()).filter(Boolean).forEach(para => {
+    if (/^[-\u2022]\s/.test(para)) body.push(wP(para.replace(/^[-\u2022]\s*/, ''), {bullet:1, after:40}));
+    else body.push(wP(para));
+  });
+
+  facts.forEach(f => {
+    body.push(wP(f.name, {style:'Heading1'}));
+    const a = new Date(f.start + 'T00:00'), b2 = new Date(f.end + 'T00:00');
+    body.push(wP(`${f.dest ? f.dest + ' \u00b7 ' : ''}${fmtDate(a)} \u2013 ${fmtDate(b2)} \u00b7 ${f.days} day${f.days === 1 ? '' : 's'} \u00b7 ` +
+      (f.phase === 'ahead' ? `${f.daysOut} days out` : f.phase === 'underway' ? 'underway' : 'wrapped'), {style:'Meta'}));
+    body.push(wP([
+      wRun('Pot ' + money(f.budget) + '  \u00b7  ', {}),
+      wRun('spent ' + money(f.spent), {b:1, color: f.spent <= f.budget ? '2A7049' : '9A4520'}),
+      wRun(f.budget > 0 ? `  \u00b7  ${f.left >= 0 ? money(f.left) + ' left' : money(-f.left) + ' over'}` : '', {}),
+    ]));
+    const catRows = f.cats.filter(c => c.plan > 0 || c.spent > 0);
+    if (catRows.length){
+      body.push(wTable(
+        [{w:3540,head:'Category'},{w:1940,head:'Planned',right:1},{w:1940,head:'Spent',right:1},{w:1940,head:'Difference',right:1}],
+        catRows.map(c => [c.name, money(c.plan), money(c.spent),
+          (c.plan - c.spent >= 0 ? '+' : '\u2212') + money(Math.abs(c.plan - c.spent))])));
+    }
+    if (f.people.length){
+      body.push(wP('By person', {style:'Heading2'}));
+      f.people.forEach(x2 => body.push(wP(`${x2.name} \u2014 ${money(x2.spent)}`, {bullet:1, after:40})));
+    }
+  });
+
+  body.push(wP('Assembled on the device from the trip logs' +
+    (live ? '; a numeric summary was shared to Claude for the writing.' : '; nothing left the phone.'),
+    {style:'Meta', before:300}));
+
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body.join('')}
+<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>
+<w:pgMar w:top="1240" w:right="1240" w:bottom="1240" w:left="1240" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
+</Types>`);
+  zip.file('_rels/.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+  zip.file('word/_rels/document.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>
+</Relationships>`);
+  zip.file('word/styles.xml', DOCX_STYLES);
+  zip.file('word/numbering.xml', DOCX_NUMBERING);
+  zip.file('word/document.xml', doc);
+  return zip.generateAsync({ type:'blob', mimeType: DOCX_MIME,
+    compression:'DEFLATE', compressionOptions:{level:6} });
+}
+
+let tripAnalysisBusy = false;
+
+async function runTripAnalysis(){
+  if (tripAnalysisBusy) return;
+  const picked = state.trips.filter(t => tripPick.has(t.id));
+  const trips = picked.length ? picked : state.trips.filter(t => t.id === state.tripSel);
+  if (!trips.length){ toast('Check a trip \u2014 or plan one \u2014 and try again'); return; }
+  tripAnalysisBusy = true;
+  toast(`Writing up ${trips.length} trip${trips.length === 1 ? '' : 's'}\u2026`);
+  try {
+    const facts = trips.map(tripFacts);
+    let narrative, live = false, note = '';
+    if (state.mode === 'api'){
+      try { narrative = await tripNarrativeClaude(facts); live = true; }
+      catch(_){ narrative = tripNarrativeLocal(facts);
+        note = 'Claude could not be reached, so ARIA wrote this one locally.'; }
+    } else {
+      narrative = tripNarrativeLocal(facts);
+    }
+    const blob = await buildTripDocx(facts, narrative, live);
+    const name = 'Trip-Analysis-' + isoOf(new Date()) + '.docx';
+    lastReport = { blob, name, live };
+    $('#reportTitle').textContent = trips.length === 1
+      ? `${trips[0].name}, written up` : 'The trips, written up';
+    $('#reportName').textContent = name;
+    $('#reportMeta').textContent = `${(blob.size/1024).toFixed(0)} KB \u00b7 ` +
+      (live ? 'analysis by Claude' : 'analysis written locally') + (note ? ' \u00b7 ' + note : '');
+    $('#reportModal').hidden = false;
+    document.addEventListener('keydown', reportKeys);
+  } catch(err){
+    toast(err && err.message ? err.message : 'The analysis could not be written');
+  } finally {
+    tripAnalysisBusy = false;
+  }
+}
+
+function renderTrip(){
+  const list = $('#tripList');
+  if (!list) return;
+  const today = startOfToday();
+  $('#tripCount').textContent = String(state.trips.length);
+
+  /* ---- the trip cards ---- */
+  list.innerHTML = state.trips.length ? state.trips.map(t => {
+    const spent = tripSpent(t);
+    const pct = t.budget > 0 ? Math.min(100, spent / t.budget * 100) : (spent > 0 ? 100 : 0);
+    const over = t.budget > 0 && spent > t.budget;
+    const a = new Date(t.start + 'T00:00'), b2 = new Date(t.end + 'T00:00');
+    const when = today < a ? `${Math.ceil((a - today) / 86400000)} days out`
+      : today <= b2 ? 'underway' : 'wrapped';
+    return `<article class="tripcard" data-trip="${esc(t.id)}" role="button" tabindex="0"
+        aria-current="${t.id === state.tripSel}"
+        aria-label="${esc(t.name)} — ${esc(money(spent))} of ${esc(money(t.budget))}, ${esc(when)}">
+      <div class="tripcard__name">${esc(t.name)}</div>
+      <div class="tripcard__num ${over ? 'tone-owe' : ''}">${moneyShort(spent)}<span class="sub" style="display:block;font-size:10.5px;font-weight:400;color:var(--muted)">of ${moneyShort(t.budget)}</span></div>
+      <button type="button" class="tripcard__pick" data-trippick="${esc(t.id)}"
+              role="checkbox" aria-checked="${tripPick.has(t.id)}"
+              aria-label="Include ${esc(t.name)} in the analysis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+      </button>
+      <button type="button" class="tripcard__edit" data-tripedit="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+      ${t.dest ? `<div class="tripcard__dest">${esc(t.dest)}</div>` : ''}
+      <div class="tripcard__when" style="grid-column:1/5">${fmtDate(a)} → ${fmtDate(b2)} · ${esc(when)}
+        <div class="tripbar"><i class="${over ? 'is-over' : ''}" style="width:${pct}%"></i></div>
+      </div>
+    </article>`;
+  }).join('') : '<div class="empty">Nowhere on the books yet. Plan a trip and the budget, spending log and countdown build themselves.</div>';
+
+  $$('#tripList .tripcard').forEach(c => {
+    const pick = () => { state.tripSel = c.dataset.trip; save(); renderTrip(); };
+    c.addEventListener('click', pick);
+    c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pick(); } });
+  });
+  $$('#tripList [data-tripedit]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); openTripEditor(b.dataset.tripedit);
+  }));
+  $$('#tripList [data-trippick]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    const id = b.dataset.trippick;
+    if (tripPick.has(id)) tripPick.delete(id); else tripPick.add(id);
+    b.setAttribute('aria-checked', String(tripPick.has(id)));
+  }));
+
+  const t = tripOf();
+
+  /* ---- budget by category ---- */
+  const planBody = $('#tripPlanBody');
+  if (!t){
+    $('#tripPlanTag').textContent = '—';
+    planBody.innerHTML = '<div class="empty">Pick or plan a trip above.</div>';
+  } else {
+    const planned = t.cats.reduce((s2,c) => s2 + c.plan, 0);
+    const loose = t.budget - planned;
+    $('#tripPlanTag').textContent = moneyShort(t.budget);
+    const spentBy = id => t.spends.filter(x => x.cat === id).reduce((s2,x) => s2 + x.amount, 0);
+    planBody.innerHTML = t.cats.map(c => {
+      const sp = spentBy(c.id);
+      return `<div class="tripcat">
+        <b>${esc(c.name)}<span class="sub">${money(sp)} spent${c.plan > 0 && sp > c.plan ? ' · over' : ''}</span></b>
+        <input class="input" data-catplan="${esc(c.id)}" type="text" inputmode="decimal"
+               value="${c.plan ? esc(formatMoneyField(String(c.plan))) : ''}" placeholder="$0"
+               aria-label="Planned amount for ${esc(c.name)}">
+        <button type="button" class="x" data-catdel="${esc(c.id)}" aria-label="Remove ${esc(c.name)}">×</button>
+      </div>`;
+    }).join('') + `
+      <div class="tripform" style="margin-top:6px">
+        <input class="input" id="tripCatName" type="text" placeholder="Add a category…" autocomplete="off" spellcheck="false">
+        <button class="btn btn--sm" id="tripCatAdd" type="button">Add</button>
+      </div>
+      <div class="calc" style="margin-top:8px">
+        <div class="calc__row"><b>Planned across categories</b><span class="v">${money(planned)}</span></div>
+        <div class="calc__row calc__row--sum"><b>${loose >= 0 ? 'Still loose in the pot' : 'Planned past the pot'}</b>
+          <span class="v ${loose >= 0 ? 'tone-asset' : 'tone-owe'}">${money(Math.abs(loose))}</span></div>
+      </div>`;
+
+    $$('#tripPlanBody [data-catplan]').forEach(inp => {
+      attachMoneyInput(inp);
+      inp.addEventListener('change', () => {
+        const c = t.cats.find(x => x.id === inp.dataset.catplan);
+        if (c){ c.plan = Math.max(0, toNumber(inp.value) || 0); save(); renderTrip(); }
+      });
+    });
+    $$('#tripPlanBody [data-catdel]').forEach(b => b.addEventListener('click', () => {
+      const c = t.cats.find(x => x.id === b.dataset.catdel);
+      if (!c) return;
+      t.cats = t.cats.filter(x => x.id !== b.dataset.catdel);
+      t.spends.forEach(x => { if (x.cat === c.id) x.cat = ''; });
+      save(); renderTrip();
+    }));
+    const addCat = () => {
+      const n2 = $('#tripCatName').value.trim();
+      if (!n2) return;
+      t.cats.push({ id:'c' + Date.now(), name:n2, plan:0 });
+      save(); renderTrip();
+    };
+    $('#tripCatAdd').addEventListener('click', addCat);
+    $('#tripCatName').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); addCat(); } });
+  }
+
+  /* ---- the spending log ---- */
+  const spendBody = $('#tripSpendBody');
+  if (!t){
+    $('#tripSpendTag').textContent = '—';
+    spendBody.innerHTML = '<div class="empty">Pick or plan a trip above.</div>';
+  } else {
+    const spent = tripSpent(t);
+    $('#tripSpendTag').textContent = moneyShort(spent);
+    const catOpts = t.cats.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    const famOpts = '<option value="">Anyone</option>' + FAMILY.map(f => `<option value="${esc(f.id)}">${esc(f.id)}</option>`).join('');
+    spendBody.innerHTML = `
+      <div class="tripform">
+        <input class="input wide" id="tspDesc" type="text" placeholder="What was it?" autocomplete="off" spellcheck="false">
+        <input class="input" id="tspAmt" type="text" inputmode="decimal" placeholder="$0.00" autocomplete="off" spellcheck="false">
+        <select class="select" id="tspCat" aria-label="Category">${catOpts}</select>
+        <select class="select" id="tspWho" aria-label="Who spent it">${famOpts}</select>
+        <button class="btn btn--primary" id="tspAdd" type="button">Log it</button>
+      </div>
+      <div id="tspList">${t.spends.length ? t.spends.slice().sort((a2,b3) => b3.date.localeCompare(a2.date)).map(x => {
+        const c = t.cats.find(y => y.id === x.cat);
+        const f = x.person && PERSON[x.person];
+        return `<div class="tripspend">
+          <span class="d">${esc(x.date.slice(5))}</span>
+          ${f ? `<span class="who" style="background:${f.color}" title="${esc(x.person)}"></span>` : ''}
+          <span class="t">${esc(x.desc)}${c ? ` · ${esc(c.name)}` : ''}</span>
+          <span class="a">${money(x.amount)}</span>
+          <button type="button" class="x" data-spdel="${esc(x.id)}" aria-label="Remove ${esc(x.desc)}">×</button>
+        </div>`;
+      }).join('') : '<div class="empty">Nothing logged yet — deposits and bookings count too.</div>'}</div>`;
+
+    attachMoneyInput($('#tspAmt'));
+    const logSpend = () => {
+      const desc = $('#tspDesc').value.trim();
+      const amt = Math.abs(toNumber($('#tspAmt').value) || 0);
+      if (!desc){ toast('Say what it was'); $('#tspDesc').focus(); return; }
+      if (!amt){ toast('And what it cost'); $('#tspAmt').focus(); return; }
+      t.spends.push({ id:'S-' + Date.now(), cat:$('#tspCat').value, desc, amount:amt,
+        date: isoOf(startOfToday()), person: $('#tspWho').value });
+      save(); renderTrip();
+    };
+    $('#tspAdd').addEventListener('click', logSpend);
+    $$('#tripSpendBody input').forEach(i2 => i2.addEventListener('keydown', e => {
+      if (e.key === 'Enter'){ e.preventDefault(); logSpend(); } }));
+    $$('#tspList [data-spdel]').forEach(b => b.addEventListener('click', () => {
+      t.spends = t.spends.filter(x => x.id !== b.dataset.spdel);
+      save(); renderTrip();
+    }));
+  }
+
+  /* ---- the math ---- */
+  const mathBody = $('#tripMathBody');
+  if (!t){
+    $('#tripMathTag').textContent = '—';
+    mathBody.innerHTML = '<div class="empty">Pick or plan a trip above.</div>';
+  } else {
+    const a = new Date(t.start + 'T00:00'), b2 = new Date(t.end + 'T00:00');
+    const spent = tripSpent(t), left = t.budget - spent;
+    const days = tripDays(t);
+    const rows = [];
+    let tag = '—';
+    if (today < a){
+      const out = Math.ceil((a - today) / 86400000);
+      tag = `${out}d`;
+      rows.push(['Departure', `${out} day${out === 1 ? '' : 's'} out`, fmtDate(a)]);
+      rows.push(['Trip length', `${days} day${days === 1 ? '' : 's'}`, `${fmtDate(a)} → ${fmtDate(b2)}`]);
+      if (t.budget > 0) rows.push(['Planned daily pace', money(t.budget / days), 'the pot spread across the days']);
+      if (left > 0){
+        const weeks = Math.max(1, Math.ceil(out / 7));
+        const perWeek = left / weeks;
+        rows.push(['Still to fund', money(left), spent > 0 ? `after ${money(spent)} already down` : 'nothing set aside yet']);
+        rows.push(['Set aside per week', money(perWeek), `${weeks} week${weeks === 1 ? '' : 's'} until wheels up`]);
+        const bp = budgetPlan();
+        if (bp && bp.weekly > 0){
+          rows.push([perWeek <= bp.weekly ? 'The weekly budget covers it' : 'Past the weekly budget',
+            money(bp.weekly) + '/wk free',
+            perWeek <= bp.weekly
+              ? `${money(bp.weekly - perWeek)} a week still loose after the set-aside`
+              : `short ${money(perWeek - bp.weekly)} a week at the current pace`]);
+        }
+      } else if (t.budget > 0){
+        rows.push(['Funded', money(spent), 'the pot is covered before departure']);
+      }
+    } else if (today <= b2){
+      const daysLeft = Math.max(1, Math.round((b2 - today) / 86400000) + 1);
+      tag = 'live';
+      rows.push(['Underway', `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`, `home ${fmtDate(b2)}`]);
+      rows.push(['Spent so far', money(spent), t.budget > 0 ? `of the ${money(t.budget)} pot` : 'no pot set']);
+      if (t.budget > 0) rows.push([left >= 0 ? 'Daily allowance from here' : 'Past the pot',
+        left >= 0 ? money(left / daysLeft) : money(Math.abs(left)),
+        left >= 0 ? `${money(left)} across ${daysLeft} day${daysLeft === 1 ? '' : 's'}` : 'every day from here adds to it']);
+    } else {
+      tag = 'done';
+      rows.push(['Wrapped', fmtDate(b2), `${days} day${days === 1 ? '' : 's'} away`]);
+      rows.push(['Final tally', money(spent), t.budget > 0
+        ? (spent <= t.budget ? `${money(t.budget - spent)} under the pot` : `${money(spent - t.budget)} over the pot`)
+        : 'no pot was set']);
+      const heavy = t.cats.map(c => ({ c, v: t.spends.filter(x => x.cat === c.id).reduce((s2,x) => s2 + x.amount, 0) }))
+        .filter(x => x.v > 0).sort((x,y) => y.v - x.v)[0];
+      if (heavy) rows.push(['Heaviest category', esc(heavy.c.name), money(heavy.v)]);
+    }
+    $('#tripMathTag').textContent = tag;
+    const last = rows.length - 1;
+    mathBody.innerHTML = '<div class="calc">' + rows.map(([k,v,why], i2) =>
+      `<div class="calc__row${i2 === last ? ' calc__row--sum' : ''}"><b>${k}</b><span class="v">${v}</span>` +
+      (why ? `<span class="why">${why}</span>` : '') + '</div>').join('') + '</div>';
+  }
+
+  syncFoldbar('scr-trip');
+}
+
 /* ============================================================
    FOLDS — each screen is split into collapsible sections, and
    each screen carries its own expand/collapse-all control. Every
@@ -2436,6 +3841,11 @@ const FOLDBAR_ACTIONS = {
       aria:'Clear imported rows and statement balances — figures you set by hand are kept',
       run:() => clearLedger() },
   ],
+  'scr-trip': [
+    { label:'Trip Analysis',
+      aria:'Write the checked trips up as a shareable analysis',
+      run:() => runTripAnalysis() },
+  ],
 };
 
 function initFolds(){
@@ -2446,6 +3856,7 @@ function initFolds(){
     const bar = document.createElement('div');
     bar.className = 'foldbar';
     bar.innerHTML = `<span class="foldbar__state"></span>
+      <span class="foldbar__globals" data-globals></span>
       <button class="btn btn--sm btn--fold" type="button">Expand all</button>`;
     const btn = bar.querySelector('.btn--fold');
     const state = bar.querySelector('.foldbar__state');
@@ -2486,7 +3897,7 @@ function initFolds(){
     const sync = () => {
       const f = folds();
       const open = f.filter(d => d.open).length;
-      state.textContent = `${open} of ${f.length} open`;
+      state.textContent = `${open}/${f.length} open`;
       const allOpen = f.length > 0 && open === f.length;
       btn.textContent = allOpen ? 'Collapse all' : 'Expand all';
       btn.setAttribute('aria-label', `${allOpen ? 'Collapse' : 'Expand'} all sections on ${screen.dataset.title}`);
@@ -2504,11 +3915,37 @@ function initFolds(){
       if (e.target.matches && e.target.matches('details[data-fold]')) sync();
     }, true);
 
-    const anchor = screen.querySelector('h1');
-    if (anchor) anchor.after(bar); else screen.prepend(bar);
+    /* the bar rides the banner, not the screen — one strip of tools
+       that swaps as you pan, so content starts at the very top */
+    bar.dataset.screen = screen.id;
+    bar.hidden = true;
+    $('#foldDock').append(bar);
     FOLDBARS.push({screen, sync});
     sync();
   });
+  showFoldbar();
+}
+
+/** Reveal the foldbar belonging to the active screen; hide the row
+    entirely on screens that have no folds. */
+function showFoldbar(){
+  const dock = $('#foldDock');
+  if (!dock) return;
+  const id = SCREENS[activeScreen] && SCREENS[activeScreen].id;
+  let live = null;
+  Array.from(dock.children).forEach(b => {
+    if (!b.dataset.screen) return;              /* the cluster, not a bar */
+    b.hidden = b.dataset.screen !== id;
+    if (!b.hidden) live = b;
+  });
+  /* Backup and Restore ride whichever bar is up — one element, one set
+     of listeners, moved rather than cloned. A screen with no folds
+     hosts them directly on the dock so they never disappear. */
+  const g = $('#tbGlobals');
+  if (!g) return;
+  const slot = live && live.querySelector('[data-globals]');
+  if (slot){ if (g.parentElement !== slot) slot.appendChild(g); }
+  else if (g.parentElement !== dock) dock.appendChild(g);
 }
 
 /** Wipe what the statements brought in, and nothing else.
@@ -2565,6 +4002,60 @@ function collapseAllFolds(){
 /* ============================================================
    PAGER — swipe to pan, dropdown to jump, dots to track
    ============================================================ */
+/* ---------- tab glyphs: one mark and one hue per screen ----------
+   Adding a screen? Drop its id in here with a color and an icon
+   body; anything missing falls back to a neutral mark and the rail
+   simply grows another pannable slot. */
+const TABS = {
+  /* balance scale — assets weighed against what we owe */
+  'scr-position':    {color:'#2A7049', icon:
+    '<path d="M12 5.2v14.4"/><path d="M4.6 8.2h14.8"/><path d="M8.4 20h7.2"/>'
+    + '<path d="M4.6 8.2 1.9 14.1h5.4z"/><path d="M19.4 8.2l-2.7 5.9h5.4z"/>'},
+  /* tray with a descending arrow — statements coming in */
+  'scr-intake':      {color:'#0F6A63', icon:
+    '<path d="M12 3.4v9.8"/><path d="M8.4 9.8 12 13.4l3.6-3.6"/>'
+    + '<path d="M4 15.4v3a2.2 2.2 0 0 0 2.2 2.2h11.6A2.2 2.2 0 0 0 20 18.4v-3"/>'},
+  /* arrows out and back — money moving through the month */
+  'scr-flow':        {color:'#175E82', icon:
+    '<path d="M3.6 8.4h13"/><path d="M13.4 5.2l3.2 3.2-3.2 3.2"/>'
+    + '<path d="M20.4 15.6h-13"/><path d="M10.6 12.4 7.4 15.6l3.2 3.2"/>'},
+  /* rising trend — twelve months out */
+  'scr-project':     {color:'#33509B', icon:
+    '<path d="M3.4 16.8 9 11.2l3.6 3.6L20.4 7"/><path d="M15.4 7h5v5"/>'
+    + '<path d="M3.4 20.6h17.2"/>'},
+  /* wall calendar with a marked day — what falls due when */
+  'scr-calendar':    {color:'#5B3E96', icon:
+    '<rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.4"/>'
+    + '<path d="M3.4 10h17.2"/><path d="M8.2 3.2v3.6"/><path d="M15.8 3.2v3.6"/>'
+    + '<path d="M8.2 13.8h.02"/><path d="M12 13.8h.02"/><path d="M15.8 17.2h.02"/>'},
+  /* suitcase — the pot set aside for going somewhere */
+  'scr-trip':       {color:'#8C2645', icon:
+    '<rect x="4.2" y="7.6" width="15.6" height="12.2" rx="2.2"/>'
+    + '<path d="M9.2 7.6V5.6a2 2 0 0 1 2-2h1.6a2 2 0 0 1 2 2v2"/>'
+    + '<path d="M8.8 11.2v5.2"/><path d="M15.2 11.2v5.2"/>'},
+  /* two figures — who the money belongs to */
+  'scr-family':      {color:'#8B3568', icon:
+    '<circle cx="9.2" cy="8" r="3.1"/><path d="M3.2 20.4c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/>'
+    + '<circle cx="17.4" cy="9.6" r="2.2"/><path d="M16.4 14.9c2.5.1 4.4 2 4.4 4.6"/>'},
+  /* four bins — where each dollar gets filed */
+  'scr-categories':  {color:'#9A4520', icon:
+    '<rect x="3.6" y="3.6" width="7.2" height="7.2" rx="1.8"/>'
+    + '<rect x="13.2" y="3.6" width="7.2" height="7.2" rx="1.8"/>'
+    + '<rect x="3.6" y="13.2" width="7.2" height="7.2" rx="1.8"/>'
+    + '<rect x="13.2" y="13.2" width="7.2" height="7.2" rx="1.8"/>'},
+  /* folder — schedules put away for later */
+  'scr-files':       {color:'#6E5312', icon:
+    '<path d="M3.4 7.4a2.2 2.2 0 0 1 2.2-2.2h3.5l2.1 2.6h7.2a2.2 2.2 0 0 1 2.2 2.2v8.4a2.2 2.2 0 0 1-2.2 2.2H5.6a2.2 2.2 0 0 1-2.2-2.2z"/>'
+    + '<path d="M3.4 11.4h17.2"/>'},
+  /* ruled book — the full ledger, kept for any screen without a mark */
+  _fallback:        {color:'#4A5A45', icon:
+    '<path d="M4.4 5.4A2.2 2.2 0 0 1 6.6 3.2H20v17.6H6.6a2.2 2.2 0 0 1-2.2-2.2z"/>'
+    + '<path d="M8.2 8h7.4"/><path d="M8.2 12h7.4"/><path d="M8.2 16h4.6"/>'}
+};
+const tabMark = id => TABS[id] || TABS._fallback;
+const tabSvg = t => `<svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" `
+  + `stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${t.icon}</svg>`;
+
 const SCREENS = [];
 let activeScreen = 0;
 
@@ -2572,17 +4063,27 @@ function initPager(){
   const pager = $('#pager');
   $$('.screen', pager).forEach((el, i) => SCREENS.push({el, id:el.id, title:el.dataset.title}));
 
-  $('#screenJump').innerHTML = SCREENS.map((s,i) =>
-    `<option value="${i}">${esc(s.title)}</option>`).join('')
-    + '<option value="ledger">Ledger — full view</option>';
-  $('#screenJump').addEventListener('change', e => {
-    if (e.target.value === 'ledger'){ e.target.value = String(activeScreen); openLedger(''); return; }
-    goTo(+e.target.value);
-  });
+  $('#tabRail').innerHTML = SCREENS.map((s,i) => {
+    const t = tabMark(s.id);
+    return `<button type="button" data-i="${i}" style="--tabc:${t.color}" `
+         + `aria-label="${esc(s.title)}" aria-current="${i===0}">${tabSvg(t)}<i></i></button>`;
+  }).join('');
+  $('#tabGrid').innerHTML = SCREENS.map((s,i) => {
+    const t = tabMark(s.id);
+    return `<button type="button" data-i="${i}" style="--tabc:${t.color}" `
+         + `aria-current="${i===0}">${tabSvg(t)}<span class="lbl">${esc(s.title)}</span></button>`;
+  }).join('')
+  /* the ledger is a full-bleed view rather than a screen, so it rides
+     in the sheet where the old dropdown used to keep it */
+  + `<button type="button" data-act="ledger" style="--tabc:#4A5A45" `
+  + `aria-label="Ledger — full view">${tabSvg(TABS._fallback)}<span class="lbl">Ledger</span></button>`;
+  $$('#tabdock button[data-i]').forEach(b =>
+    b.addEventListener('click', () => { goTo(+b.dataset.i); setTabSheet(false); }));
+  const ledgerTile = $('#tabGrid').querySelector('[data-act="ledger"]');
+  if (ledgerTile) ledgerTile.addEventListener('click', () => { setTabSheet(false); openLedger(''); });
 
-  $('#dots').innerHTML = SCREENS.map((s,i) =>
-    `<button type="button" data-i="${i}" aria-label="${esc(s.title)}" aria-current="${i===0}"><i></i></button>`).join('');
-  $$('#dots button').forEach(b => b.addEventListener('click', () => goTo(+b.dataset.i)));
+  $('#tabCaret').addEventListener('click', () => setTabSheet(!tabSheetOpen()));
+  $('#tabVeil').addEventListener('click', () => setTabSheet(false));
 
   /* track which screen is in view as the user pans */
   let raf = null;
@@ -2591,27 +4092,58 @@ function initPager(){
     raf = requestAnimationFrame(() => {
       raf = null;
       const i = Math.round(pager.scrollLeft / pager.clientWidth);
-      if (i !== activeScreen) setActive(i);
+      if (i !== activeScreen){ setActive(i); setTabSheet(false); }
     });
   }, {passive:true});
 
   /* left/right arrows pan too (external keyboards, accessibility) */
   document.addEventListener('keydown', e => {
     if (e.target.closest('input,textarea,select') || !$('#modal').hidden || !$('#balModal').hidden
+        || !$('#acctModal').hidden || !$('#reportModal').hidden || !$('#tripModal').hidden
         || ledgerOpen() || amortOpen() || $('#ariaDrawer').classList.contains('is-open')) return;
     if (e.key === 'ArrowRight') goTo(activeScreen + 1);
     if (e.key === 'ArrowLeft')  goTo(activeScreen - 1);
+    if (e.key === 'Escape' && tabSheetOpen()) setTabSheet(false);
   });
 
   window.addEventListener('resize', () => {
     pager.scrollTo({left: activeScreen * pager.clientWidth});
+    railTo(activeScreen);
   });
+
+  railTo(0);
+}
+
+/* the caret sheet — every screen at once, no panning required */
+function tabSheetOpen(){ return $('#tabdock').classList.contains('is-open'); }
+
+function setTabSheet(open){
+  const dock = $('#tabdock');
+  if (!dock || dock.classList.contains('is-open') === open) return;
+  dock.classList.toggle('is-open', open);
+  $('#tabCaret').setAttribute('aria-expanded', String(open));
+  $('#tabCaret').setAttribute('aria-label', open ? 'Hide all screens' : 'Show all screens');
+}
+
+/* pan the rail so the live mark is centred, without touching the pager */
+function railTo(i){
+  const rail = $('#tabRail');
+  if (!rail) return;
+  const b = rail.children[i];
+  if (!b) return;
+  const target = b.offsetLeft - (rail.clientWidth - b.offsetWidth) / 2;
+  const max = Math.max(0, rail.scrollWidth - rail.clientWidth);
+  rail.scrollTo({left: Math.max(0, Math.min(max, target)), behavior:'smooth'});
 }
 
 function setActive(i){
   activeScreen = Math.max(0, Math.min(SCREENS.length - 1, i));
-  $('#screenJump').value = String(activeScreen);
-  $$('#dots button').forEach((b,j) => b.setAttribute('aria-current', String(j === activeScreen)));
+  const title = SCREENS[activeScreen] && SCREENS[activeScreen].title;
+  if (title) $('#screenTitle').textContent = title;
+  $$('#tabdock button[data-i]').forEach(b =>
+    b.setAttribute('aria-current', String(+b.dataset.i === activeScreen)));
+  railTo(activeScreen);
+  showFoldbar();
 }
 
 function goTo(i){
@@ -2685,7 +4217,14 @@ function renderCards(){
     bucket.cards.push(`
       <article class="card${bare ? ' card--empty' : ''}" data-acct="${a.id}" role="button" tabindex="0"
                aria-label="${esc(a.name)} — open the ledger for this account">
-        <div><div class="card__alias">${esc(a.id)}</div><p class="card__name">${esc(a.name)}</p></div>
+        <div><div class="card__alias">${esc(a.id)}
+          <button type="button" class="card__edit" data-edit="${a.id}"
+                  aria-label="Edit or delete ${esc(a.name)}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+            </svg>
+          </button></div><p class="card__name">${esc(a.name)}</p></div>
         <button type="button" class="card__bal ${a.side==='asset'?'tone-asset':'tone-owe'}${byHand?' card__bal--set':''}"
                 data-acct="${a.id}"
                 aria-label="${bal.source === 'empty'
@@ -2752,6 +4291,13 @@ function renderCards(){
   $$('.card__amort').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
     openAmort(b.dataset.amort);
+  }));
+  $$('.card__edit').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    openAcctEditor(b.dataset.edit);
+  }));
+  $$('.card__edit').forEach(b => b.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
   }));
 }
 
@@ -2917,6 +4463,175 @@ function closeBalance(){
   document.removeEventListener('keydown', balKeys);
   balTarget = null;
   if (balReturnFocus && balReturnFocus.focus) balReturnFocus.focus();
+}
+
+/* ============================================================
+   ADD / CHANGE / DELETE AN ACCOUNT
+   The registry belongs to the household now. Adding creates a
+   manual-entry account that Intake can still learn to recognise;
+   editing renames in place; deleting asks twice and then takes
+   the account's rows, balances, terms, bills and rules with it.
+   ============================================================ */
+let acctTarget = null;      /* null = adding; else the id being edited */
+let acctSide = 'asset';
+let acctReturnFocus = null;
+let acctDeleteArmed = null;
+
+function setAcctSide(side){
+  acctSide = side;
+  $$('#acctSideSeg .seg__opt').forEach(b =>
+    b.setAttribute('aria-checked', String(b.dataset.side === side)));
+}
+
+function openAcctEditor(id, side){
+  acctTarget = id || null;
+  acctReturnFocus = document.activeElement;
+  const a = id ? ACCT[id] : null;
+  $('#acctSide').textContent = a ? 'Edit account' : 'New account';
+  $('#acctTitle').textContent = a ? a.name : 'Add an account';
+  $('#acctAlias').value = a ? a.id : '';
+  $('#acctAlias').disabled = Boolean(a);
+  $('#acctAliasHint').textContent = a
+    ? 'The alias is the key every row files under, so it stays as it is.'
+    : "Short and unique — the ledger files every row under it, so it can't change later.";
+  $('#acctName').value = a ? a.name : '';
+  $('#acctInst').value = a ? (a.inst || '') : '';
+  $('#acctKind').value = a ? (a.kind || '') : '';
+  $('#acctSchema').value = a ? a.schema : (side === 'liability' ? 'card' : 'bank');
+  setAcctSide(a ? a.side : (side || 'asset'));
+  $('#acctSave').textContent = a ? 'Save changes' : 'Add account';
+  $('#acctDelete').hidden = !a;
+  disarmAcctDelete();
+  $('#acctModal').hidden = false;
+  document.addEventListener('keydown', acctKeys);
+  setTimeout(() => $(a ? '#acctName' : '#acctAlias').focus(), 60);
+}
+
+function closeAcctEditor(){
+  $('#acctModal').hidden = true;
+  disarmAcctDelete();
+  document.removeEventListener('keydown', acctKeys);
+  acctTarget = null;
+  if (acctReturnFocus && acctReturnFocus.focus) acctReturnFocus.focus();
+}
+
+function acctKeys(e){
+  if (e.key === 'Escape'){ e.preventDefault(); closeAcctEditor(); }
+  if (e.key === 'Enter' && e.target.closest('#acctModal') && e.target.tagName === 'INPUT'){
+    e.preventDefault(); saveAcctEditor();
+  }
+}
+
+function saveAcctEditor(){
+  const name = $('#acctName').value.trim();
+  const inst = $('#acctInst').value.trim();
+  const kind = $('#acctKind').value.trim() || (acctSide === 'liability' ? 'Liability' : 'Account');
+  const schema = $('#acctSchema').value;
+
+  if (acctTarget){
+    if (!name){ toast('The account needs a name'); $('#acctName').focus(); return; }
+    const rec = { name, inst, kind, side: acctSide, schema };
+    const isBase = BASE_ACCOUNTS.some(b => b.id === acctTarget);
+    if (isBase){
+      state.acctEdits.changed[acctTarget] = rec;
+    } else {
+      const row = state.acctEdits.added.find(a => a.id === acctTarget);
+      if (row) Object.assign(row, rec);
+    }
+    rebuildRegistry(); save(); render(); refreshAcctSelects();
+    logLine(`Account updated — ${acctTarget}`, 'ok');
+    toast(`${acctTarget} updated`);
+    closeAcctEditor();
+    return;
+  }
+
+  const alias = $('#acctAlias').value.trim().replace(/\s+/g, '');
+  if (!alias){ toast('Give the account an alias'); $('#acctAlias').focus(); return; }
+  if (!/^[A-Za-z0-9_-]{2,20}$/.test(alias)){
+    toast('Alias: 2–20 letters or numbers, no spaces'); $('#acctAlias').focus(); return;
+  }
+  if (ACCT[alias] || BASE_ACCOUNTS.some(b => b.id === alias && !state.acctEdits.removed.includes(b.id))){
+    toast(`${alias} is already on the sheet`); $('#acctAlias').focus(); return;
+  }
+  if (!name){ toast('The account needs a name'); $('#acctName').focus(); return; }
+
+  /* re-adding an alias that was deleted revives the slot cleanly */
+  state.acctEdits.removed = state.acctEdits.removed.filter(id => id !== alias);
+  state.acctEdits.added.push({ id: alias, name, inst, kind, side: acctSide, schema });
+  rebuildRegistry(); save(); render(); refreshAcctSelects();
+  logLine(`Account added — ${alias} (${acctSide})`, 'ok');
+  toast(`${alias} added to ${acctSide === 'asset' ? 'assets' : 'liabilities'}`);
+  closeAcctEditor();
+}
+
+function disarmAcctDelete(){
+  clearTimeout(acctDeleteArmed); acctDeleteArmed = null;
+  const b = $('#acctDelete');
+  b.textContent = 'Delete this account';
+  b.classList.remove('is-armed');
+}
+
+/** Deleting takes everything filed under the alias with it — rows,
+    balances, opening figures, loan terms, bills, rules and saved
+    schedules — because none of them mean anything without the account.
+    Two taps, like Clear imports: the first arms and says so. */
+function deleteAcctEditor(){
+  const id = acctTarget;
+  if (!id) return;
+  const b = $('#acctDelete');
+  if (!acctDeleteArmed){
+    const n = state.rows.filter(r => r.acct === id).length;
+    b.textContent = n ? `Tap again — removes ${id} and ${n} row${n === 1 ? '' : 's'}` : `Tap again to remove ${id}`;
+    b.classList.add('is-armed');
+    acctDeleteArmed = setTimeout(disarmAcctDelete, 5000);
+    return;
+  }
+  disarmAcctDelete();
+  if (state.sample){ toast('Sample data is loaded — clear it from Position first'); return; }
+
+  const rows = state.rows.filter(r => r.acct === id).length;
+  state.rows = state.rows.filter(r => r.acct !== id);
+  delete state.balances[id];
+  delete state.opens[id];
+  delete state.loans[id];
+  const bills = state.bills.filter(x => x.acct === id).length;
+  state.bills = state.bills.filter(x => x.acct !== id);
+  state.rules = state.rules.filter(x => x.acct !== id);
+  const files = state.files.filter(f => f.acct === id).length;
+  state.files = state.files.filter(f => f.acct !== id);
+  if (state.routeAcct === id) state.routeAcct = '';
+  if (state.filter.acct === id) state.filter.acct = '';
+
+  if (BASE_ACCOUNTS.some(b2 => b2.id === id)){
+    state.acctEdits.removed.push(id);
+    delete state.acctEdits.changed[id];
+  } else {
+    state.acctEdits.added = state.acctEdits.added.filter(a => a.id !== id);
+  }
+  rebuildRegistry(); save(); render(); refreshAcctSelects();
+  const took = [rows ? `${rows} row${rows === 1 ? '' : 's'}` : '',
+                bills ? `${bills} bill${bills === 1 ? '' : 's'}` : '',
+                files ? `${files} saved schedule${files === 1 ? '' : 's'}` : '']
+    .filter(Boolean).join(', ');
+  logLine(`Account removed — ${id}${took ? `; took ${took}` : ''}`, 'warn');
+  toast(`${id} removed${took ? ' with its ' + took : ''}`);
+  closeAcctEditor();
+}
+
+/** Every dropdown that lists accounts, rebuilt after a registry change. */
+function refreshAcctSelects(){
+  $('#billAcct').innerHTML = ACCOUNTS.map(a =>
+    `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+  $('#acctFilter').innerHTML = '<option value="">All accounts</option>' +
+    ACCOUNTS.map(a => `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+  $('#acctFilter').value = state.filter.acct || '';
+  const sel = $('#schemaJump');
+  if (sel){
+    sel.innerHTML = '<option value="">Auto-detect from the file</option>' +
+      ACCOUNTS.map(a => `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+    sel.value = state.routeAcct || '';
+    renderSchemaDetail();
+  }
 }
 
 /* Either field alone is enough. An opening balance is the figure you
@@ -3383,8 +5098,23 @@ function renderFiles(){
     return;
   }
   host.innerHTML = state.files.map(f => {
-    const plan = amortize(f.params);
     const when = new Date(f.savedAt);
+    if (f.kind === 'report'){
+      return `<details class="fold" data-fold data-file="${esc(f.id)}">
+      <summary><span class="fold__dot" style="background:#A84D06"></span>${esc(f.name)}
+        <span class="fold__tag num">${(f.size/1024).toFixed(0)} KB</span>
+        <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+      <div class="fold__body">
+        <p class="file__meta">report · saved ${when.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} at ${when.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} · ${f.live ? 'with written analysis by Claude' : 'figures compiled locally'}</p>
+        <div class="file__acts">
+          <button class="btn" type="button" data-rshare="${esc(f.id)}">Share&hellip;</button>
+          <button class="btn" type="button" data-rdl="${esc(f.id)}">Download</button>
+          <button class="btn btn--ghost" type="button" data-del="${esc(f.id)}" style="color:var(--danger)">Delete</button>
+        </div>
+      </div>
+    </details>`;
+    }
+    const plan = amortize(f.params);
     return `<details class="fold" data-fold data-file="${esc(f.id)}">
       <summary><span class="fold__dot" style="background:var(--accent)"></span>${esc(f.name)}
         <span class="fold__tag num">${plan ? money(plan.payment) : '—'}</span>
@@ -3401,6 +5131,14 @@ function renderFiles(){
     </details>`;
   }).join('');
 
+  $$('#fileList [data-rshare]').forEach(b => b.addEventListener('click', () => {
+    const f = state.files.find(x => x.id === b.dataset.rshare);
+    if (f) shareDocx(reportBlobFrom(f), f.name);
+  }));
+  $$('#fileList [data-rdl]').forEach(b => b.addEventListener('click', () => {
+    const f = state.files.find(x => x.id === b.dataset.rdl);
+    if (f) downloadBlob(reportBlobFrom(f), f.name);
+  }));
   $$('#fileList [data-open]').forEach(b => b.addEventListener('click', () => {
     const f = state.files.find(x => x.id === b.dataset.open);
     if (f) openAmort(f.acct || null, f.params);
@@ -3438,10 +5176,6 @@ function initAmort(){
     save();
     closeBalance();
     openAmort(id);
-  });
-  $('#filesBtn').addEventListener('click', () => {
-    const i = SCREENS.findIndex(x => x.id === 'scr-files');
-    if (i > -1) goTo(i);
   });
 }
 
@@ -3674,6 +5408,7 @@ function initLedgerRotation(){
   const onChange = e => {
     if (e.matches){
       const idle = $('#splash').hidden && $('#modal').hidden && $('#balModal').hidden
+        && $('#acctModal').hidden && $('#reportModal').hidden && $('#tripModal').hidden
         && !$('#ariaDrawer').classList.contains('is-open') && !ledgerOpen() && !amortOpen();
       if (idle && !ledgerRotateLock) openLedger(state.filter.acct);
     } else {
@@ -4118,7 +5853,7 @@ function initSchemaJump(){
   renderSchemaDetail();
 }
 
-function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderFamily(); renderTable(); renderFiles(); renderSampleRow(); }
+function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTrip(); renderFamily(); renderTable(); renderFiles(); renderSampleRow(); }
 
 /* ---------- log + toast ---------- */
 function logLine(text, kind='ok'){
@@ -4307,7 +6042,7 @@ function trapFocus(e){
 function openDrawer(){
   const d = $('#ariaDrawer');
   d.classList.add('is-open'); d.setAttribute('aria-hidden','false'); d.removeAttribute('inert');
-  $('#ariaToggle').setAttribute('aria-expanded','true');
+  $('#ariaTab').setAttribute('aria-expanded','true');
   const scrim = $('#scrim');
   scrim.hidden = false; requestAnimationFrame(() => scrim.classList.add('is-open'));
   document.addEventListener('keydown', trapFocus);
@@ -4316,12 +6051,12 @@ function openDrawer(){
 function closeDrawer(){
   const d = $('#ariaDrawer');
   d.classList.remove('is-open'); d.setAttribute('aria-hidden','true'); d.setAttribute('inert','');
-  $('#ariaToggle').setAttribute('aria-expanded','false');
+  $('#ariaTab').setAttribute('aria-expanded','false');
   const scrim = $('#scrim');
   scrim.classList.remove('is-open');
   setTimeout(() => { scrim.hidden = true; }, 220);
   document.removeEventListener('keydown', trapFocus);
-  $('#ariaToggle').focus();
+  $('#ariaTab').focus();
 }
 
 
@@ -4358,7 +6093,7 @@ async function shareSite(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-04c';
+const BUILD = '2026-08-04t';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -4416,8 +6151,26 @@ async function checkForUpdate(){
 /* ============================================================
    SPLASH
    ============================================================ */
+/** The lamp is green only when ARIA has a live line to Claude: an API
+    key selected AND the device actually on the network. Anything else
+    is red, with the word underneath saying which kind of red it is. */
+function setLamp(){
+  const el = $('#netDot');
+  if (!el) return;
+  const api  = state.mode === 'api';
+  const on   = navigator.onLine !== false;
+  const mark = api ? (on ? 'live' : 'offline') : 'local';
+  el.dataset.state = mark;
+  $('#netDotLabel').textContent = mark === 'live' ? 'Live'
+    : mark === 'offline' ? 'Offline' : 'Local';
+  el.setAttribute('aria-label', mark === 'live' ? 'ARIA is connected to Claude'
+    : mark === 'offline' ? 'ARIA cannot reach Claude — this device is offline'
+    : 'ARIA is running locally on this device');
+}
+
 function setMode(mode){
   state.mode = mode;
+  setLamp();
   $$('#modeGroup .seg__opt').forEach(b => {
     const on = b.dataset.mode === mode;
     b.setAttribute('aria-checked', String(on));
@@ -4460,6 +6213,7 @@ async function enterApp(){
       await unlockFaceId();
       const restored = await load();          /* sealed ledger opens only now */
       if (restored){ applyRules(); logLine(`${state.rows.length} rows unlocked and restored`,'ok'); }
+      refreshAcctSelects();
     } catch(err){
       toast(err && err.name === 'NotAllowedError' ? 'Face ID not verified' : 'Unlock failed — try again');
       renderLockRow();
@@ -4482,8 +6236,7 @@ async function enterApp(){
   $('#app').hidden = false;
   collapseAllFolds();          /* every screen opens as a closed menu */
   const live = state.mode === 'api';
-  $('#modeChip').textContent = live ? 'Claude' : 'Guest';
-  $('#modeChip').className = 'chip' + (live ? ' chip--live' : '');
+  setLamp();
   $('#ariaChip').textContent = live ? 'Claude' : 'Local';
   $('#ariaChip').className = 'chip' + (live ? ' chip--live' : '');
   if (lastGreetMode !== state.mode){
@@ -4551,6 +6304,7 @@ function wire(){
 
   $('#modalConfirm').addEventListener('click', confirmImport);
   $('#modalCancel').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
+  $('#modalX').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
   ['#mapAccount','#mapDate','#mapDesc','#mapAmount','#mapCategory','#mapBalance','#mapFlip'].forEach(sel => {
     $(sel).addEventListener('change', () => {
       if (sel === '#mapAccount') $('#mapFlip').checked = ACCT[$('#mapAccount').value].flip;
@@ -4575,6 +6329,36 @@ function wire(){
   attachMoneyInput($('#balAmount'));
   attachMoneyInput($('#openAmount'));
   $('#balCancel').addEventListener('click', closeBalance);
+  $('#balX').addEventListener('click', closeBalance);
+  $('#addAsset').addEventListener('click', () => openAcctEditor(null, 'asset'));
+  $('#addLiab').addEventListener('click', () => openAcctEditor(null, 'liability'));
+  $('#acctCancel').addEventListener('click', closeAcctEditor);
+  $('#addTrip').addEventListener('click', () => openTripEditor(null));
+  $('#tripCancel').addEventListener('click', closeTripEditor);
+  $('#tripX').addEventListener('click', closeTripEditor);
+  $('#tripSave').addEventListener('click', saveTripEditor);
+  $('#tripDelete').addEventListener('click', deleteTripEditor);
+  $('#tripModal').addEventListener('click', e => { if (e.target === $('#tripModal')) closeTripEditor(); });
+  attachMoneyInput($('#tripBudget'));
+  $('#ariaReport').addEventListener('click', runReport);
+  $('#backupBtn').addEventListener('click', runBackup);
+  $('#restoreBtn').addEventListener('click', () => $('#restoreInput').click());
+  $('#restoreInput').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';                       /* the same file can be picked twice */
+    if (f) runRestore(f);
+  });
+  $('#reportX').addEventListener('click', closeReport);
+  $('#reportShare').addEventListener('click', shareReport);
+  $('#reportDownload').addEventListener('click', () => { if (lastReport) downloadBlob(lastReport.blob, lastReport.name); });
+  $('#reportSave').addEventListener('click', saveReportToFiles);
+  $('#reportModal').addEventListener('click', e => { if (e.target === $('#reportModal')) closeReport(); });
+  $('#acctX').addEventListener('click', closeAcctEditor);
+  $('#acctSave').addEventListener('click', saveAcctEditor);
+  $('#acctDelete').addEventListener('click', deleteAcctEditor);
+  $$('#acctSideSeg .seg__opt').forEach(b =>
+    b.addEventListener('click', () => setAcctSide(b.dataset.side)));
+  $('#acctModal').addEventListener('click', e => { if (e.target === $('#acctModal')) closeAcctEditor(); });
   $('#balSave').addEventListener('click', saveBalance);
   $('#balClear').addEventListener('click', clearBalance);
   $('#openClear').addEventListener('click', clearOpening);
@@ -4588,7 +6372,9 @@ function wire(){
   $('#openAmount').addEventListener('input', previewRecon);
   $('#openDate').addEventListener('change', previewRecon);
   $('#crestHome').addEventListener('click', goSplash);
-  $('#ariaToggle').addEventListener('click', openDrawer);
+  $('#ariaTab').addEventListener('click', openDrawer);
+  window.addEventListener('online',  setLamp);
+  window.addEventListener('offline', setLamp);
   $('#ariaClose').addEventListener('click', closeDrawer);
   $('#scrim').addEventListener('click', closeDrawer);
   $('#composer').addEventListener('submit', e => { e.preventDefault(); sendAsk(); });
@@ -4620,6 +6406,7 @@ function wire(){
     const restored = await load();
     if (restored) applyRules();
     if (restored) logLine(`${state.rows.length} rows restored from your last session`,'ok');
+    refreshAcctSelects();               /* registry edits reach every dropdown */
   }
   renderLockRow();
   render();
