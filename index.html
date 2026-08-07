@@ -427,10 +427,24 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .schema__id .name{font-weight:600;font-size:15px}
 .schema__id .badge{margin-left:auto;font-family:var(--data);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
   border:1px solid var(--rule);border-radius:999px;padding:3px 9px;color:var(--muted)}
-.schema__fields{display:grid;gap:7px}
-.schema__fields .f{display:grid;grid-template-columns:96px 1fr;gap:10px;font-size:12.5px;align-items:baseline}
-.schema__fields .f b{font-family:var(--data);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper);font-weight:600}
-.schema__fields .f span{font-family:var(--data);font-size:11.5px;color:var(--muted);line-height:1.6}
+.schema__fields{display:grid;gap:9px}
+/* Both tracks are minmax(0,...): a plain 96px column still lets an over-long
+   word spill past its edge, which is how WELLSFARGOHELOC ended up printed
+   across its own description. */
+.schema__fields .f{display:grid;grid-template-columns:minmax(0,92px) minmax(0,1fr);
+  gap:4px 10px;font-size:12.5px;align-items:baseline}
+.schema__fields .f b{font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--paper);font-weight:600;min-width:0;overflow-wrap:break-word;line-height:1.35}
+.schema__fields .f span{font-family:var(--data);font-size:11.5px;color:var(--muted);line-height:1.6;min-width:0}
+/* the narrowest phones give the alias its own line rather than two cramped columns */
+@media (max-width:370px){
+  .schema__fields .f{grid-template-columns:minmax(0,1fr)}
+}
+/* A column list wraps between names, never through one, so "Card member" and
+   "Original description" stay whole instead of splitting across two lines. */
+.schema__cols{display:flex;flex-wrap:wrap;gap:0 5px}
+.schema__cols i{font-style:normal;white-space:nowrap}
+.schema__cols i:not(:last-child)::after{content:'\00a0\00b7';color:var(--rule)}
 .rules{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
 .rules:empty{margin:0}
 .rules li{display:flex;align-items:center;gap:10px;background:var(--ink);border:1px solid var(--rule);
@@ -1273,16 +1287,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       </details>
 
       <details class="fold" data-fold>
-        <summary><span class="fold__dot" style="background:var(--owe)"></span>Master ledger
-          <span class="fold__tag">Jan–Aug 2026</span>
-          <span class="fold__chev" aria-hidden="true">▸</span></summary>
-        <div class="fold__body">
-          <p class="hint" style="margin:0 0 10px">The categorized household ledger built in the workbench — 2,124 lines across AMEX and USAAC with categories, subcategories, and owners attached. Loading merges by line id, so it is safe to press again after new statements land.</p>
-          <button class="btn morebtn" id="masterBtn" type="button" style="margin:0">Load master ledger</button>
-        </div>
-      </details>
-
-      <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--asset)"></span>Account schema
           <span class="fold__tag" id="rowCount">0 rows</span>
           <span class="fold__chev" aria-hidden="true">▸</span></summary>
@@ -1532,6 +1536,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       <div><label for="mapDesc">Description column</label><select class="select" id="mapDesc"></select></div>
       <div><label for="mapAmount">Amount column</label><select class="select" id="mapAmount"></select></div>
       <div><label for="mapCategory">Category column</label><select class="select" id="mapCategory"></select></div>
+      <div><label for="mapMember">Card member column</label><select class="select" id="mapMember"></select>
+        <p class="hint" style="margin:5px 0 0">Names the person on each line. AMEX exports carry it; matched against the household, it fills The Family without a rule.</p></div>
       <div><label for="mapBalance">Balance column</label><select class="select" id="mapBalance"></select></div>
     </div>
     <label class="switch"><input type="checkbox" id="mapFlip"> Charges arrive as positive numbers — flip the sign</label>
@@ -1935,6 +1941,7 @@ const FIELDS = {
   debit:    ['debit','withdrawal','withdrawals','charges','money out','paid out'],
   credit:   ['credit','deposit','deposits','money in','paid in'],
   category: ['category','type','transaction type','classification','sub category','subcategory','merchant category'],
+  member:   ['card member','cardmember','card holder','cardholder','member name','name on card','card member name','user'],
   balance:  ['balance','running balance','ending balance','current balance','principal balance','remaining balance','balance after','unpaid principal'],
   principal:['principal','principal paid','principal portion','principal amount'],
   interest: ['interest','interest paid','interest portion','interest amount'],
@@ -1946,10 +1953,10 @@ const SCHEMAS = {
           fingerprint:[/original description/i,/running balance/i],
           example:{ headers:['Date','Description','Amount','Balance'],
                     row:['07/12/2026','PUBLIX #1204','-142.18','8,412.55'] } },
-  card: { label:'Card export',  use:['date','desc','amount','debit','credit','category'],
+  card: { label:'Card export',  use:['date','desc','amount','debit','credit','category','member'],
           fingerprint:[/card member/i,/extended details/i,/appears on your statement/i],
-          example:{ headers:['Date','Description','Amount','Category'],
-                    row:['07/09/2026','DELTA AIR LINES','412.00','Travel'] } },
+          example:{ headers:['Date','Description','Card Member','Amount','Category'],
+                    row:['07/09/2026','DELTA AIR LINES','RYAN E THOMPSON','412.00','Travel'] } },
   loan: { label:'Loan export',  use:['date','desc','amount','principal','interest','escrow','balance'],
           fingerprint:[/principal/i,/escrow/i,/unpaid principal/i],
           example:{ headers:['Date','Description','Principal','Interest','Balance'],
@@ -2281,6 +2288,7 @@ function planImport(file, wb){
       debit:    findColumn(headers,'debit'),
       credit:   findColumn(headers,'credit'),
       category: findColumn(headers,'category'),
+      member:   findColumn(headers,'member'),
       balance:  findColumn(headers,'balance'),
       principal:findColumn(headers,'principal'),
       interest: findColumn(headers,'interest'),
@@ -2288,6 +2296,29 @@ function planImport(file, wb){
     },
     flip: acct.flip,
   };
+}
+
+/* ============================================================
+   CARD MEMBER
+   An AMEX export names whoever swiped the card on every line --
+   "RYAN E THOMPSON", "VANESSA BATTERS" -- which is the household
+   attribution the Family screen otherwise has to guess at with
+   keyword rules. The column carries a legal name, so the match is
+   on the given name only: first word against a household first
+   name, then any household name appearing anywhere in the string
+   for the "THOMPSON, RYAN E" orderings. An unrecognised member
+   leaves the row unowned rather than guessing, so a rule or a
+   hand assignment can still claim it.
+   ============================================================ */
+function memberToPerson(v){
+  const raw = String(v ?? '').trim();
+  if (!raw) return null;
+  const first = raw.split(/[\s,]+/)[0].toLowerCase();
+  const byFirst = FAMILY.find(f => f.id.toLowerCase() === first);
+  if (byFirst) return byFirst.id;
+  const hay = raw.toLowerCase();
+  const anywhere = FAMILY.find(f => new RegExp(`\\b${f.id.toLowerCase()}\\b`).test(hay));
+  return anywhere ? anywhere.id : null;
 }
 
 /** Turn a planned import into normalised rows. */
@@ -2325,7 +2356,8 @@ function normalize(plan){
       side: acct.side,
       date, amount,
       desc: redactAccountNumbers(String(get('desc') ?? '').replace(/\s+/g,' ').trim()) || '—',
-      person: null,
+      person: memberToPerson(get('member')),
+      member: String(get('member') ?? '').trim() || null,
       category: String(get('category') ?? '').trim(),
       sub: cleanSub(get('sub')),
       principal: toNumber(get('principal')),
@@ -2377,6 +2409,11 @@ function loadMasterLedger(){
   save(); render();
   return added;
 }
+/* The Intake pill is gone, so this is the only remaining way back to the
+   baked-in ledger. Left on window as a recovery hatch: if the phone's copy
+   is ever cleared, loadMasterLedger() from a console re-seeds all 2,124
+   rows. It merges by line id, so pressing it twice costs nothing. */
+window.loadMasterLedger = loadMasterLedger;
 
 /* ============================================================
    6. DERIVED FIGURES
@@ -6424,9 +6461,27 @@ function initRuleForm(){
    routes the next files straight to that account, skipping
    auto-detection. "Auto-detect" restores filename matching.
    ============================================================ */
+/* An alias is camelCase underneath the uppercase styling, so its seams are
+   already there: WellsFargoHELOC is Wells|Fargo|HELOC. Marking each seam with
+   a <wbr> gives the line somewhere legal to break, so a too-long alias reads
+   WELLSFARGO / HELOC instead of WELLSFARGOHE / LOC. Written without a regex
+   lookbehind so it runs on every Safari the household might be holding. */
+function aliasWrap(id){
+  const chars = String(id).split('');
+  const parts = [];
+  let cur = '';
+  chars.forEach((ch, i) => {
+    if (i && /[A-Z]/.test(ch) && /[a-z0-9]/.test(chars[i-1])){ parts.push(cur); cur = ''; }
+    cur += ch;
+  });
+  parts.push(cur);
+  return parts.filter(Boolean).map(esc).join('<wbr>');
+}
+
 function schemaFieldLabel(f){
   return {date:'Date', desc:'Description', amount:'Amount', debit:'Debit', credit:'Credit',
-    category:'Category', balance:'Balance', principal:'Principal', interest:'Interest', escrow:'Escrow'}[f] || f;
+    category:'Category', member:'Card member', balance:'Balance', principal:'Principal',
+    interest:'Interest', escrow:'Escrow'}[f] || f;
 }
 function renderSchemaDetail(){
   const host = $('#schemaDetail');
@@ -6435,18 +6490,26 @@ function renderSchemaDetail(){
       <p class="schema__note">Auto-detect is on: each file is matched to an account by its
       filename and column headers, and you confirm the mapping before anything lands.
       Pick an account above to see its schema — that also routes the next imports straight to it.</p>
-      <div class="schema__fields">${ACCOUNTS.map(a =>
-        `<div class="f"><b>${esc(a.id)}</b><span>${esc(a.name)} — ${SCHEMAS[a.schema].label.toLowerCase()}${a.flip?', sign flipped':''}</span></div>`).join('')}
+      <div class="schema__fields">${ACCOUNTS.map(a => {
+        /* Naming the fields here, not just the schema, means a column this
+           account reads -- the card member on an AMEX export, say -- is
+           visible without drilling into the account first. */
+        const use = SCHEMAS[a.schema].use
+          .map(f => `<i>${esc(schemaFieldLabel(f))}</i>`).join('');
+        return `<div class="f"><b>${aliasWrap(a.id)}</b><span>${esc(a.name)} — `
+          + `${SCHEMAS[a.schema].label.toLowerCase()}${a.flip?', sign flipped':''}`
+          + `<span class="schema__cols" style="margin-top:3px">${use}</span></span></div>`;
+      }).join('')}
       </div></div>`;
     return;
   }
   const a = ACCT[state.routeAcct];
   const sch = SCHEMAS[a.schema];
   const fields = sch.use.map(f => `<div class="f"><b>${schemaFieldLabel(f)}</b>
-    <span>${FIELDS[f].slice(0,4).map(esc).join(' · ')}</span></div>`).join('');
+    <span class="schema__cols">${FIELDS[f].slice(0,4).map(x => `<i>${esc(x)}</i>`).join('')}</span></div>`).join('');
   host.innerHTML = `<div class="schema">
     <div class="schema__id">
-      <span class="alias">${esc(a.id)}</span><span class="name">${esc(a.name)}</span>
+      <span class="alias">${aliasWrap(a.id)}</span><span class="name">${esc(a.name)}</span>
       <span class="badge">${esc(sch.label)}</span>
     </div>
     <div class="schema__fields">${fields}</div>
@@ -6460,7 +6523,9 @@ function renderSchemaDetail(){
       : a.side === 'liability'
         ? 'Payments land positive (debt paid down); draws and charges land negative.'
         : 'Deposits land positive; withdrawals land negative.'}
-      Files added now go straight to ${esc(a.id)} — the mapping sheet still opens for confirmation.</p>
+      ${sch.use.includes('member')
+        ? `A card-member column names whoever swiped on each line; matched against the household it fills The Family with no rule needed. `
+        : ''}Files added now go straight to ${esc(a.id)} — the mapping sheet still opens for confirmation.</p>
   </div>`;
 }
 function initSchemaJump(){
@@ -6510,7 +6575,7 @@ function openReview(plan){
   $('#modalFile').textContent = `${plan.file} · sheet “${plan.sheet}” · ${plan.body.length} data rows`;
   $('#mapAccount').innerHTML = ACCOUNTS.map(a =>
     `<option value="${a.id}"${a.id===plan.acctId?' selected':''}>${esc(a.id)} — ${esc(a.name)}</option>`).join('');
-  ['date','desc','amount','category','balance'].forEach(f => {
+  ['date','desc','amount','category','member','balance'].forEach(f => {
     $('#map'+f[0].toUpperCase()+f.slice(1)).innerHTML = columnOptions(plan.headers, plan.map[f]);
   });
   $('#mapFlip').checked = plan.flip;
@@ -6525,6 +6590,7 @@ function readModal(){
   current.map.desc = +$('#mapDesc').value;
   current.map.amount = +$('#mapAmount').value;
   current.map.category = +$('#mapCategory').value;
+  current.map.member = +$('#mapMember').value;
   current.map.balance = +$('#mapBalance').value;
   current.flip = $('#mapFlip').checked;
 }
@@ -6574,6 +6640,12 @@ function confirmImport(){
   const claimed = applyRules();
   if (claimed) logLine(`${claimed} lines matched by ownership rules`,'ok');
   if (scrubbed) logLine(`${scrubbed} account-number fragment${scrubbed===1?'':'s'} scrubbed before storing`,'ok');
+  if (current.map.member > -1){
+    const named = rows.filter(r => r.person).length;
+    const unknown = [...new Set(rows.filter(r => r.member && !r.person).map(r => r.member))];
+    logLine(`Card member: ${named} of ${rows.length} lines attributed`, named ? 'ok' : 'warn');
+    if (unknown.length) logLine(`Unmatched card member${unknown.length===1?'':'s'}: ${unknown.slice(0,3).join(', ')} — file by hand or add a rule`,'warn');
+  }
   logLine(`${acct.id}: ${added} new rows from ${current.file}${added<rows.length?` (${rows.length-added} already held)`:''}`,'ok');
   toast(`${added} rows added to ${acct.id}`);
   closeReview();
@@ -6697,7 +6769,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-06j';
+const BUILD = '2026-08-06o';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -6914,18 +6986,13 @@ function wire(){
   $('#modalConfirm').addEventListener('click', confirmImport);
   $('#modalCancel').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
   $('#modalX').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
-  ['#mapAccount','#mapDate','#mapDesc','#mapAmount','#mapCategory','#mapBalance','#mapFlip'].forEach(sel => {
+  ['#mapAccount','#mapDate','#mapDesc','#mapAmount','#mapCategory','#mapMember','#mapBalance','#mapFlip'].forEach(sel => {
     $(sel).addEventListener('change', () => {
       if (sel === '#mapAccount') $('#mapFlip').checked = ACCT[$('#mapAccount').value].flip;
       refreshPreview();
     });
   });
 
-  $('#masterBtn').addEventListener('click', () => {
-    const n = loadMasterLedger();
-    toast(n ? `${n.toLocaleString()} master rows loaded` : 'Master ledger already loaded');
-    goTo(0);
-  });
   $('#acctFilter').addEventListener('change', e => { state.filter.acct = e.target.value; shownCount = 40; renderTable(); });
   $('#search').addEventListener('input', e => { state.filter.q = e.target.value; shownCount = 40; renderTable(); });
   $('#moreBtn').addEventListener('click', () => { shownCount += 60; renderTable(); });
