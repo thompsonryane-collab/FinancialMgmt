@@ -947,6 +947,50 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .toast{background-image:linear-gradient(180deg,rgba(255,255,255,.4),rgba(23,30,20,.05));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5), var(--shadow)}
 
+/* ---------- ledger filter icon + sheet ---------- */
+.ledger__filt{position:relative;margin-left:auto;background:var(--rise);border:1px solid var(--rule);
+  border-radius:10px;width:38px;height:38px;display:grid;place-items:center;padding:0;
+  color:var(--muted);cursor:pointer;flex:none}
+.ledger__filt svg{width:18px;height:18px;display:block}
+.ledger__filt.on{color:var(--accent-deep);border-color:var(--accent-deep)}
+/* a dot rather than a number: the sheet itself says which filters are on */
+.ledger__filt i{position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;
+  background:var(--accent-deep);border:1.5px solid var(--slab)}
+.ledger__close{margin-left:0}
+.filt__row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.filt__row label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+#filtModal .cchips{margin-top:8px}
+#filtModal .sheet{max-height:92vh}
+
+/* ---------- sortable table headers (landscape) ---------- */
+.tbl th.sortable{cursor:pointer;-webkit-user-select:none;user-select:none;white-space:nowrap}
+.tbl th.sortable:after{content:'\2195';opacity:.3;margin-left:5px;font-size:10px}
+.tbl th.sortable.up:after{content:'\2191';opacity:1;color:var(--accent-deep)}
+.tbl th.sortable.down:after{content:'\2193';opacity:1;color:var(--accent-deep)}
+
+/* ============================================================
+   BACK TO TOP
+   One caret for the whole app rather than one per screen. It sits
+   above the dock on the right, out of the thumb's way, and only
+   appears once a view is genuinely long and genuinely scrolled --
+   a short screen never grows a control it does not need. Bottom
+   is a variable so the caret can step up over the selection bar
+   when the ledger has lines picked.
+   ============================================================ */
+.totop{
+  position:fixed;right:14px;bottom:calc(var(--dockh) + var(--totop-lift, 0px) + 12px);
+  z-index:67;                       /* over the dock (66), under the ARIA scrim (71) */
+  width:42px;height:42px;padding:0;display:grid;place-items:center;
+  border:1px solid var(--dock-edge);border-radius:50%;
+  background:var(--dock);color:var(--paper);cursor:pointer;
+  box-shadow:0 10px 26px -12px rgba(23,30,20,.6), inset 0 1px 0 rgba(255,255,255,.35);
+  opacity:0;transform:translateY(10px) scale(.9);pointer-events:none;
+  transition:opacity .18s ease, transform .18s cubic-bezier(.22,1,.36,1), bottom .18s ease;
+}
+.totop svg{width:20px;height:20px;display:block}
+.totop.is-on{opacity:1;transform:none;pointer-events:auto}
+.totop:active{transform:scale(.9)}
+
 /* ambient: a soft ceiling light on every screen */
 .screen{background:radial-gradient(120% 55% at 50% -12%, rgba(99,140,79,.12), rgba(0,0,0,0) 60%)}
 .topbar{box-shadow:0 1px 0 rgba(255,255,255,.08) inset, 0 10px 26px -16px rgba(10,27,16,.75)}
@@ -1555,6 +1599,14 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   <header class="ledger__head">
     <h2 id="ledgerTitle">Ledger</h2>
     <span class="chip" id="shown"></span>
+    <button class="ledger__filt" id="filtBtn" type="button" aria-haspopup="dialog"
+            aria-label="Filter and sort the ledger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/>
+      </svg>
+      <i id="filtDot" hidden></i>
+    </button>
     <button class="ledger__close" id="ledgerClose" type="button" aria-label="Close the ledger">&#10005;</button>
   </header>
   <div class="ledger__filters">
@@ -1576,6 +1628,62 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <div id="ledgerRows"></div>
     <div class="empty" id="tableEmpty">Nothing imported yet. Open Intake and add a statement.</div>
     <button class="btn morebtn" id="moreBtn" type="button" hidden>Show more</button>
+  </div>
+</div>
+
+<!-- ============ LEDGER FILTER SHEET ============ -->
+<div class="modal" id="filtModal" hidden role="dialog" aria-modal="true" aria-labelledby="filtTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="filtX" type="button" aria-label="Close">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>
+    </button>
+    <p class="eyebrow">Narrow the ledger</p>
+    <h2 id="filtTitle">Filter &amp; sort</h2>
+    <p class="file" id="filtCount"></p>
+
+    <p class="eyebrow" style="margin-top:16px">Category</p>
+    <div class="filt__row">
+      <div><label class="sr-only" for="filtCat">Category</label>
+        <select class="select" id="filtCat"></select></div>
+      <div><label class="sr-only" for="filtSub">Subcategory</label>
+        <select class="select" id="filtSub"></select></div>
+    </div>
+
+    <p class="eyebrow" style="margin-top:16px">Date range</p>
+    <div class="filt__row">
+      <div><label for="filtFrom">From</label><input class="input" id="filtFrom" type="date"></div>
+      <div><label for="filtTo">To</label><input class="input" id="filtTo" type="date"></div>
+    </div>
+    <div class="cchips" id="filtQuick">
+      <button data-span="30" type="button">Last 30 days</button>
+      <button data-span="90" type="button">Last 90 days</button>
+      <button data-span="ytd" type="button">This year</button>
+      <button data-span="all" type="button">All time</button>
+    </div>
+
+    <p class="eyebrow" style="margin-top:16px">Amount</p>
+    <div class="filt__row">
+      <div><label for="filtMin">At least</label>
+        <input class="input" id="filtMin" type="text" inputmode="decimal" placeholder="$0.00" autocomplete="off"></div>
+      <div><label for="filtMax">At most</label>
+        <input class="input" id="filtMax" type="text" inputmode="decimal" placeholder="no cap" autocomplete="off"></div>
+    </div>
+    <p class="hint" style="margin:6px 0 0">Compared on size, ignoring sign — $50 catches a $50 charge and a $50 deposit alike.</p>
+
+    <p class="eyebrow" style="margin-top:16px">Sort by</p>
+    <div class="cchips" id="filtSort">
+      <button data-sort="date" data-dir="-1" type="button">Newest first</button>
+      <button data-sort="date" data-dir="1" type="button">Oldest first</button>
+      <button data-sort="desc" data-dir="1" type="button">Description A–Z</button>
+      <button data-sort="desc" data-dir="-1" type="button">Description Z–A</button>
+    </div>
+
+    <div class="sheet__actions" style="margin-top:18px">
+      <button class="btn" id="filtClear" type="button">Clear all</button>
+      <button class="btn btn--primary" id="filtDone" type="button">Show lines</button>
+    </div>
   </div>
 </div>
 
@@ -1826,6 +1934,13 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   </div>
 </div>
 
+<button class="totop" id="toTop" type="button" hidden aria-label="Back to the top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M6 15l6-6 6 6"/>
+  </svg>
+</button>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -1976,8 +2091,10 @@ const state = {
                          // onto it, so the card figure is fully derived and can
                          // be reconciled against the bank.
   imports:[],            // {file, acct, count, at}
-  sort:{key:'date', dir:-1},
-  filter:{acct:'', q:'', cat:'', sub:'', flag:null},
+  filter:{acct:'', q:'', cat:'', sub:'', flag:null,
+          from:'', to:'',            // ISO days, inclusive; '' means open-ended
+          min:null, max:null},       // absolute dollars, inclusive; null means open-ended
+  sort:{key:'date', dir:-1},         // key: 'date' | 'desc' — dir: 1 up, -1 down
   sel:new Set(),         // ledger lines picked for bulk filing
   taxonomy:null,         // {Category:[subs]} — seeded from CATALOG, then owned by the household
   catUI:{ q:'', flag:null, sort:'rows', open:new Set(), editing:null },
@@ -2750,7 +2867,9 @@ function applyPayload(data){
   /* rows can reference an account deleted on another day — drop them
      rather than let every renderer trip over a missing entry */
   state.rows = state.rows.filter(r => ACCT[r.acct]);
-  return state.rows.length > 0 || state.bills.length > 0;
+  /* An edited taxonomy on its own is a restored session too */
+  return state.rows.length > 0 || state.bills.length > 0 ||
+         Boolean(data.taxonomy && Object.keys(data.taxonomy).length);
 }
 
 async function save(){
@@ -3194,6 +3313,13 @@ async function buildReportDocx(analysis){
    it in any folder. Restore reads that file back and the app
    stands exactly where it stood.
    ============================================================ */
+/* categories and subcategories the file carries, for the log lines */
+function taxoTally(t){
+  const tax = t || taxo();
+  const cats = Object.keys(tax);
+  return { cats: cats.length, subs: cats.reduce((n,c) => n + (tax[c] || []).length, 0) };
+}
+
 function runBackup(){
   const wrap = { app:'thompson-finances', version:1, build:BUILD,
                  savedAt:new Date().toISOString(), payload: ledgerPayload() };
@@ -3202,7 +3328,10 @@ function runBackup(){
   const file = new File([blob], name, { type:'application/json' });
   const done = () => {
     const n = state.rows.length;
-    logLine(`Backup written — ${n.toLocaleString()} row${n === 1 ? '' : 's'}, ${(blob.size/1024).toFixed(0)} KB`, 'ok');
+    const t = taxoTally();
+    logLine(`Backup written — ${n.toLocaleString()} row${n === 1 ? '' : 's'}, `
+      + `${t.cats} categor${t.cats === 1 ? 'y' : 'ies'} / ${t.subs} subcategories, `
+      + `${(blob.size/1024).toFixed(0)} KB`, 'ok');
   };
   if (navigator.canShare && navigator.canShare({ files:[file] })){
     navigator.share({ files:[file] }).then(done).catch(err => {
@@ -3223,14 +3352,24 @@ function runRestore(file){
     catch(_){ toast('That is not a backup file'); return; }
     /* accept the wrapped form or a bare payload */
     const payload = data && data.app === 'thompson-finances' ? data.payload : data;
-    if (!payload || typeof payload !== 'object' || (!payload.rows && !payload.balances && !payload.bills)){
+    /* The household can shape its categories before a single statement
+       lands, and that work is worth as much as the rows. Any durable
+       section is enough to call this a backup -- checking only rows,
+       balances and bills threw away a taxonomy-only file as junk. */
+    const carries = payload && typeof payload === 'object' &&
+      ['rows','balances','opens','bills','taxonomy','trips','files','rules','loans','acctEdits']
+        .some(k => payload[k] && Object.keys(payload[k]).length);
+    if (!carries){
       toast('That is not a Thompson Finances backup'); return;
     }
     applyPayload(payload);
     applyRules();
+    fillBulkCats();          /* the bulk pickers read the restored taxonomy */
     save(); render(); refreshAcctSelects(); showFoldbar();
     const when = data && data.savedAt ? ` from ${fmtDate(new Date(data.savedAt))}` : '';
-    logLine(`Backup restored${when} — ${state.rows.length.toLocaleString()} rows, ${state.bills.length} bills, ${Object.keys(state.balances).length} balances`, 'ok');
+    const t = taxoTally();
+    logLine(`Backup restored${when} — ${state.rows.length.toLocaleString()} rows, ${state.bills.length} bills, `
+      + `${Object.keys(state.balances).length} balances, ${t.cats} categor${t.cats === 1 ? 'y' : 'ies'} / ${t.subs} subcategories`, 'ok');
     toast(`Backup restored${when}`);
   };
   r.readAsText(file);
@@ -4168,6 +4307,7 @@ function initPager(){
 
   railTo(0);
   measureDock();
+  initToTop();
 }
 
 /* the caret sheet — every screen at once, no panning required */
@@ -4192,6 +4332,64 @@ function measureDock(){
   if (h > 0) document.documentElement.style.setProperty('--dockh', h + 'px');
 }
 
+/* ============================================================
+   BACK TO TOP
+   Whichever surface is actually being read owns the caret: the
+   ledger's body when that view is up, otherwise the live screen.
+   Two thresholds, so this only appears where scrolling is real
+   work -- the view has to be long enough to be worth a shortcut,
+   and already far enough down that the top is out of reach.
+   ============================================================ */
+const TOTOP_LONG = 900;   /* px of scrollable overflow before the caret exists */
+const TOTOP_DEEP = 380;   /* px scrolled before it appears */
+
+/** The scroller the reader is looking at right now, or null. */
+function liveScroller(){
+  if (typeof ledgerOpen === 'function' && ledgerOpen()) return $('#ledgerView .ledger__body');
+  const sc = SCREENS[activeScreen];
+  return sc ? sc.el : null;
+}
+
+let toTopRaf = null;
+function syncToTop(){
+  if (toTopRaf) return;
+  toTopRaf = requestAnimationFrame(() => {
+    toTopRaf = null;
+    const btn = $('#toTop');
+    if (!btn) return;
+    const el = liveScroller();
+    const app = $('#app');
+    const live = el && app && !app.hidden;
+    const over = live ? el.scrollHeight - el.clientHeight : 0;
+    const on = Boolean(live && over > TOTOP_LONG && el.scrollTop > TOTOP_DEEP);
+    /* step up over the ledger's selection bar when lines are picked */
+    const v = $('#ledgerView');
+    const lift = v && !v.hidden && v.classList.contains('has-sel') ? 76 : 0;
+    document.documentElement.style.setProperty('--totop-lift', lift + 'px');
+    if (on === btn.classList.contains('is-on')) return;
+    btn.classList.toggle('is-on', on);
+    btn.hidden = !on;
+  });
+}
+
+function initToTop(){
+  const btn = $('#toTop');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const el = liveScroller();
+    if (!el) return;
+    el.scrollTo({ top:0, behavior:'smooth' });
+    btn.classList.remove('is-on');
+    btn.hidden = true;
+  });
+  /* every screen scrolls on its own, and so does the ledger body */
+  SCREENS.forEach(s => s.el.addEventListener('scroll', syncToTop, {passive:true}));
+  const body = $('#ledgerView .ledger__body');
+  if (body) body.addEventListener('scroll', syncToTop, {passive:true});
+  window.addEventListener('resize', syncToTop);
+  syncToTop();
+}
+
 /* pan the rail so the live mark is centred, without touching the pager */
 function railTo(i){
   const rail = $('#tabRail');
@@ -4213,6 +4411,7 @@ function setActive(i){
     b.setAttribute('aria-current', String(+b.dataset.i === activeScreen)));
   railTo(activeScreen);
   showFoldbar();
+  syncToTop();          /* the new screen may be short, or already at its top */
 }
 
 function goTo(i){
@@ -5401,9 +5600,46 @@ let ledgerReturnFocus = null, ledgerRotateLock = false;
 const landscapeMQ = window.matchMedia('(orientation: landscape)');
 const wideLedger = () => landscapeMQ.matches;
 
+/* Both ends are inclusive and either may be left open. Dates are compared
+   as ISO days so a timezone can never nudge a row across midnight, and
+   amounts are compared on size so one range catches a charge and a credit
+   of the same weight without the reader thinking about sign. */
+function inRange(r, f){
+  if (f.from || f.to){
+    const day = isoOf(r.date);
+    if (f.from && day < f.from) return false;
+    if (f.to   && day > f.to)   return false;
+  }
+  if (f.min != null || f.max != null){
+    const size = Math.abs(r.amount);
+    if (f.min != null && size < f.min) return false;
+    if (f.max != null && size > f.max) return false;
+  }
+  return true;
+}
+
+/* Description sorts by the household's own reading of a line, so a
+   locale compare rather than a byte compare: "Épicerie" files under E.
+   Ties fall back to date, newest first, so a repeated merchant still
+   reads chronologically instead of shuffling between renders. */
+const sortText = new Intl.Collator('en', {sensitivity:'base', numeric:true});
+function sortRows(rows){
+  const { key, dir } = state.sort;
+  return rows.sort((a, b) => {
+    if (key === 'desc'){
+      const c = sortText.compare(a.desc || '', b.desc || '');
+      if (c) return c * dir;
+      return b.date - a.date;
+    }
+    const c = a.date - b.date;
+    if (c) return c * dir;
+    return sortText.compare(a.desc || '', b.desc || '');
+  });
+}
+
 function visibleRows(){
   const f = state.filter, q = f.q.toLowerCase();
-  return state.rows.filter(r => {
+  return sortRows(state.rows.filter(r => {
     if (f.acct && r.acct !== f.acct) return false;
     if (f.cat && (r.category || CAT_NONE) !== f.cat) return false;
     if (f.sub && (r.sub || '') !== f.sub) return false;
@@ -5413,8 +5649,15 @@ function visibleRows(){
     if (f.flag === 'out'  && r.amount >= 0) return false;
     if (f.flag === 'in'   && r.amount <= 0) return false;
     if (f.flag && FAMILY.some(p => p.id === f.flag) && r.person !== f.flag) return false;
+    if (!inRange(r, f)) return false;
     return true;
-  });
+  }));
+}
+
+/** How many of the sheet's controls are actually narrowing the view. */
+function activeFilterCount(){
+  const f = state.filter;
+  return [f.cat, f.sub, f.from, f.to, f.min != null, f.max != null].filter(Boolean).length;
 }
 
 function ledgerList(rows){
@@ -5437,7 +5680,12 @@ function ledgerTable(rows){
   return `<table class="tbl">
     <thead><tr>
       <th class="c-pick" aria-label="Picked"></th>
-      <th class="c-date">Date</th><th class="c-desc">Description</th>
+      <th class="c-date sortable${state.sort.key === 'date' ? (state.sort.dir > 0 ? ' up' : ' down') : ''}"
+          data-sort="date" role="button" tabindex="0"
+          aria-sort="${state.sort.key === 'date' ? (state.sort.dir > 0 ? 'ascending' : 'descending') : 'none'}">Date</th>
+      <th class="c-desc sortable${state.sort.key === 'desc' ? (state.sort.dir > 0 ? ' up' : ' down') : ''}"
+          data-sort="desc" role="button" tabindex="0"
+          aria-sort="${state.sort.key === 'desc' ? (state.sort.dir > 0 ? 'ascending' : 'descending') : 'none'}">Description</th>
       <th class="c-acct">Account</th><th class="c-cat">Category</th><th class="c-amt">Amount</th>
     </tr></thead>
     <tbody>` + rows.map(r => `<tr data-id="${esc(r.id)}" class="${state.sel.has(r.id) ? 'sel' : ''}">
@@ -5468,7 +5716,158 @@ function renderTable(){
   $('#moreBtn').hidden = rs.length <= shownCount;
   $$('#ledFlags button[data-flag]').forEach(b =>
     b.classList.toggle('on', state.filter.flag === b.dataset.flag));
+  const fbtn = $('#filtBtn');
+  if (fbtn){
+    const n = activeFilterCount();
+    fbtn.classList.toggle('on', n > 0);
+    $('#filtDot').hidden = n === 0;
+  }
   renderSel();
+}
+
+/* ============================================================
+   FILTER SHEET + SORT
+   The head chips answer the quick questions -- who, in or out,
+   uncategorized. Everything that needs two values or a long list
+   lives behind the filter icon instead of crowding the header:
+   category and subcategory, a date range, an amount range, and
+   the sort order. Filters apply as they are touched, so the line
+   count under the title moves while the sheet is still open and
+   nothing has to be guessed at before committing.
+   ============================================================ */
+function setSort(key, dir){
+  if (dir == null) dir = state.sort.key === key ? -state.sort.dir
+    : (key === 'desc' ? 1 : -1);      /* text opens A-Z, dates open newest first */
+  state.sort = { key, dir };
+  shownCount = 40;
+  renderTable();
+  syncFiltSheet();
+}
+
+/* Category picker offers every name the household holds plus the
+   unfiled bucket, so a filter can find lines no rule has claimed. */
+function fillFiltCats(){
+  const sel = $('#filtCat');
+  if (!sel) return;
+  const names = Object.keys(taxo()).sort((a,b) => a.localeCompare(b));
+  sel.innerHTML = '<option value="">Any category</option>'
+    + `<option value="${esc(CAT_NONE)}">${esc(CAT_NONE)}</option>`
+    + names.filter(c => c !== CAT_NONE).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  sel.value = state.filter.cat || '';
+  fillFiltSubs();
+}
+function fillFiltSubs(){
+  const sel = $('#filtSub');
+  if (!sel) return;
+  const cat = $('#filtCat').value;
+  const subs = (taxo()[cat] || []).slice().sort((a,b) => a.localeCompare(b));
+  sel.disabled = !cat || !subs.length;
+  sel.innerHTML = '<option value="">' + (sel.disabled ? 'no subcategories' : 'Any subcategory') + '</option>'
+    + subs.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  sel.value = subs.includes(state.filter.sub) ? state.filter.sub : '';
+}
+
+/** Push state into the sheet's controls and the icon's dot. */
+function syncFiltSheet(){
+  const f = state.filter;
+  const btn = $('#filtBtn');
+  if (btn){
+    const n = activeFilterCount();
+    btn.classList.toggle('on', n > 0);
+    $('#filtDot').hidden = n === 0;
+  }
+  if (!$('#filtModal') || $('#filtModal').hidden) return;
+  $('#filtFrom').value = f.from || '';
+  $('#filtTo').value = f.to || '';
+  $('#filtMin').value = f.min == null ? '' : formatMoneyInput(f.min.toFixed(2));
+  $('#filtMax').value = f.max == null ? '' : formatMoneyInput(f.max.toFixed(2));
+  $$('#filtSort button').forEach(b => b.classList.toggle('on',
+    b.dataset.sort === state.sort.key && +b.dataset.dir === state.sort.dir));
+  const n = visibleRows().length;
+  $('#filtCount').textContent = `${n.toLocaleString()} line${n === 1 ? '' : 's'} match`;
+}
+
+/** Read the sheet's controls into state, then repaint. */
+function readFiltSheet(){
+  const f = state.filter;
+  f.cat = $('#filtCat').value;
+  f.sub = $('#filtSub').disabled ? '' : $('#filtSub').value;
+  f.from = $('#filtFrom').value || '';
+  f.to   = $('#filtTo').value || '';
+  /* a range entered backwards is a slip, not an empty result */
+  if (f.from && f.to && f.from > f.to){ const t = f.from; f.from = f.to; f.to = t;
+    $('#filtFrom').value = f.from; $('#filtTo').value = f.to; }
+  const lo = toNumber($('#filtMin').value), hi = toNumber($('#filtMax').value);
+  f.min = lo == null ? null : Math.abs(lo);
+  f.max = hi == null ? null : Math.abs(hi);
+  if (f.min != null && f.max != null && f.min > f.max){ const t = f.min; f.min = f.max; f.max = t;
+    $('#filtMin').value = formatMoneyInput(f.min.toFixed(2));
+    $('#filtMax').value = formatMoneyInput(f.max.toFixed(2)); }
+  shownCount = 40;
+  renderTable();
+  syncFiltSheet();
+}
+
+function clearFilt(){
+  const f = state.filter;
+  f.cat = ''; f.sub = ''; f.from = ''; f.to = ''; f.min = null; f.max = null;
+  state.sort = { key:'date', dir:-1 };
+  fillFiltCats();
+  shownCount = 40;
+  renderTable();
+  syncFiltSheet();
+  toast('Filters cleared');
+}
+
+let filtReturnFocus = null;
+function openFilt(){
+  filtReturnFocus = document.activeElement;
+  fillFiltCats();
+  $('#filtModal').hidden = false;
+  syncFiltSheet();
+  document.addEventListener('keydown', filtKeys);
+  $('#filtCat').focus();
+}
+function closeFilt(){
+  $('#filtModal').hidden = true;
+  document.removeEventListener('keydown', filtKeys);
+  syncFiltSheet();
+  if (filtReturnFocus && filtReturnFocus.focus) filtReturnFocus.focus();
+}
+function filtKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeFilt(); } }
+
+function initFiltSheet(){
+  if (!$('#filtModal')) return;
+  $('#filtBtn').addEventListener('click', openFilt);
+  $('#filtX').addEventListener('click', closeFilt);
+  $('#filtDone').addEventListener('click', closeFilt);
+  $('#filtClear').addEventListener('click', clearFilt);
+  $('#filtModal').addEventListener('click', e => { if (e.target === $('#filtModal')) closeFilt(); });
+  $('#filtCat').addEventListener('change', () => { fillFiltSubs(); readFiltSheet(); });
+  ['#filtSub','#filtFrom','#filtTo'].forEach(sel =>
+    $(sel).addEventListener('change', readFiltSheet));
+  ['#filtMin','#filtMax'].forEach(sel => {
+    attachMoneyInput($(sel));
+    $(sel).addEventListener('input', readFiltSheet);
+  });
+  $$('#filtSort button').forEach(b =>
+    b.addEventListener('click', () => setSort(b.dataset.sort, +b.dataset.dir)));
+  $$('#filtQuick button').forEach(b => b.addEventListener('click', () => {
+    const span = b.dataset.span;
+    const today = startOfToday();
+    if (span === 'all'){ state.filter.from = ''; state.filter.to = ''; }
+    else if (span === 'ytd'){
+      state.filter.from = isoOf(new Date(today.getFullYear(), 0, 1));
+      state.filter.to = isoOf(today);
+    } else {
+      const d = new Date(today); d.setDate(d.getDate() - (+span - 1));
+      state.filter.from = isoOf(d);
+      state.filter.to = isoOf(today);
+    }
+    shownCount = 40;
+    renderTable();
+    syncFiltSheet();
+  }));
 }
 
 /* ============================================================
@@ -5538,9 +5937,16 @@ function applyBulk(){
 
 function initWorkbench(){
   $('#ledgerRows').addEventListener('click', e => {
+    /* a header tap sorts; tapping the live key again turns it around */
+    const th = e.target.closest('th[data-sort]');
+    if (th){ setSort(th.dataset.sort); return; }
     const row = e.target.closest('[data-id]');
     if (!row) return;
     toggleSel(row.dataset.id);
+  });
+  $('#ledgerRows').addEventListener('keydown', e => {
+    const th = e.target.closest && e.target.closest('th[data-sort]');
+    if (th && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); setSort(th.dataset.sort); }
   });
   $$('#ledFlags button[data-flag]').forEach(b => b.addEventListener('click', () => {
     state.filter.flag = state.filter.flag === b.dataset.flag ? null : b.dataset.flag;
@@ -5583,6 +5989,7 @@ function openLedger(acctId){
   document.addEventListener('keydown', ledgerKeys);
   markLedgerTab(true);
   renderTable();
+  syncToTop();
   $('#ledgerClose').focus();
 }
 
@@ -5595,6 +6002,7 @@ function closeLedger(){
   setTimeout(() => { v.hidden = true; }, 240);
   document.removeEventListener('keydown', ledgerKeys);
   markLedgerTab(false);
+  syncToTop();
   if (landscapeMQ.matches) ledgerRotateLock = true;   /* do not spring back open */
   if (ledgerReturnFocus && ledgerReturnFocus.focus) ledgerReturnFocus.focus();
 }
@@ -5620,6 +6028,7 @@ function openLedgerCat(cat, sub){
   document.addEventListener('keydown', ledgerKeys);
   markLedgerTab(true);
   renderTable();
+  syncToTop();
   $('#ledgerClose').focus();
 }
 
@@ -6006,7 +6415,7 @@ function initCatalog(){
     toast('Catalog CSV saved');
   });
   $('#catFilterChip').addEventListener('click', () => {
-    state.filter.cat = ''; state.filter.sub = ''; shownCount = 40; renderTable();
+    state.filter.cat = ''; state.filter.sub = ''; shownCount = 40; renderTable(); syncFiltSheet();
   });
 }
 function catCommitEdit(card){
@@ -6461,6 +6870,14 @@ function initRuleForm(){
    routes the next files straight to that account, skipping
    auto-detection. "Auto-detect" restores filename matching.
    ============================================================ */
+/* The registry is ordered the way the balance sheet reads -- assets first,
+   then debts, each grouped by institution. The schema fold is a lookup
+   instead: someone arrives knowing the alias and wants to find it, so it
+   sorts A-Z. Sorting a copy leaves the registry's own order untouched, and
+   the numeric collator keeps an 02 behind its 01 rather than beside it. */
+const azAlias = new Intl.Collator('en', {sensitivity:'base', numeric:true});
+const accountsAZ = () => ACCOUNTS.slice().sort((a,b) => azAlias.compare(a.id, b.id));
+
 /* An alias is camelCase underneath the uppercase styling, so its seams are
    already there: WellsFargoHELOC is Wells|Fargo|HELOC. Marking each seam with
    a <wbr> gives the line somewhere legal to break, so a too-long alias reads
@@ -6490,7 +6907,7 @@ function renderSchemaDetail(){
       <p class="schema__note">Auto-detect is on: each file is matched to an account by its
       filename and column headers, and you confirm the mapping before anything lands.
       Pick an account above to see its schema — that also routes the next imports straight to it.</p>
-      <div class="schema__fields">${ACCOUNTS.map(a => {
+      <div class="schema__fields">${accountsAZ().map(a => {
         /* Naming the fields here, not just the schema, means a column this
            account reads -- the card member on an AMEX export, say -- is
            visible without drilling into the account first. */
@@ -6531,7 +6948,7 @@ function renderSchemaDetail(){
 function initSchemaJump(){
   const sel = $('#schemaJump');
   sel.innerHTML = '<option value="">Auto-detect from the file</option>' +
-    ACCOUNTS.map(a => `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+    accountsAZ().map(a => `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
   sel.addEventListener('change', e => {
     state.routeAcct = e.target.value;
     renderSchemaDetail();
@@ -6769,7 +7186,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-06o';
+const BUILD = '2026-08-06t';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -6997,6 +7414,7 @@ function wire(){
   $('#search').addEventListener('input', e => { state.filter.q = e.target.value; shownCount = 40; renderTable(); });
   $('#moreBtn').addEventListener('click', () => { shownCount += 60; renderTable(); });
   initWorkbench();
+  initFiltSheet();
 
   $('#ledgerClose').addEventListener('click', closeLedger);
   attachMoneyInput($('#balAmount'));
