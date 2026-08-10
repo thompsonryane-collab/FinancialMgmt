@@ -470,6 +470,12 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .bars .row .track{grid-column:1/3;height:8px;border-radius:4px;background:var(--ink);border:1px solid var(--rule);overflow:hidden}
 .bars .row .fill{height:100%;background-color:var(--owe);border-radius:4px}
 .bars .row .amt{font-family:var(--data);color:var(--owe)}
+/* a third column for the share of income; the track still spans the lot */
+.bars .row--pct{grid-template-columns:minmax(0,1fr) auto auto}
+.bars .row--pct .track{grid-column:1/4}
+.bars .row .pct{font-family:var(--data);font-size:11.5px;color:var(--muted);
+  min-width:46px;text-align:right;font-variant-numeric:tabular-nums}
+.bars .row .pct.tone-owe{color:var(--owe)}
 .bignum{font-family:var(--data);font-weight:600;font-size:22px;letter-spacing:-.02em}
 .kv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .kv .panel{margin:0}
@@ -503,6 +509,13 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   color:var(--muted);cursor:pointer;flex:none;font-size:12px;display:grid;place-items:center;padding:0}
 .icox.bad{border-color:var(--danger);color:var(--danger)}
 .icox[disabled]{opacity:.34;cursor:default}
+.icox svg{width:15px;height:15px;display:block}
+/* A locked delete is not a disabled one. Disabled swallows the tap and
+   explains nothing; this stays live so tapping it says which lines are
+   in the way, and wears a padlock rather than a dimmed cross. */
+.icox.locked{border-color:var(--rule);color:var(--muted);background:transparent}
+.icox.armed{background:var(--danger);border-color:var(--danger);color:#FFF3EF}
+.icox.armed svg{transform:scale(1.05)}
 .subx{list-style:none;margin:0;padding:0;display:grid;gap:5px}
 .subx li{background:var(--ink);border:1px solid var(--rule);border-radius:10px;padding:6px 8px;
   display:flex;align-items:center;gap:8px}
@@ -515,8 +528,87 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .editwrap{display:grid;gap:6px;width:100%}
 .addsub{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:9px}
 .locknote{font-family:var(--data);font-size:10.5px;color:var(--owe);margin:9px 0 0;line-height:1.6}
-.catfilterchip{display:none;margin-top:8px}
-.catfilterchip.on{display:flex}
+/* ---------- an icon rail ----------
+   Rows of text chips wrapped onto three lines and ate the top of
+   every view they sat in. A row of icons holds the same ground in
+   one line, and each one opens a list rather than cycling silently,
+   so nothing has to be discovered by tapping it twice. The ledger
+   and the catalog both run on this. */
+.rail__n{margin-left:auto;font-family:var(--data);font-size:11px;color:var(--muted);flex:none;line-height:1}
+/* a rail standing directly on a screen, rather than inside a grid that
+   already spaces it: same 12px gap a .fold leaves under itself */
+.rail--screen{margin:2px 0 12px}
+.rail + .rail{margin-top:8px}
+.rail{position:relative;display:flex;gap:12px;align-items:center;
+  /* the row claims its own height rather than inheriting it from whatever
+     is tallest, so a button can never be clipped by the box below it */
+  min-height:44px;
+
+  /* ---------- the fill theme ----------
+     Five tokens carry meaning rather than decoration, and they mean the
+     same thing on every screen: who a line belongs to, which way money
+     moved, which category, what is picked, and how a list is ordered.
+     A button wears its token as a wash when idle and fills with it
+     solid when it is doing something, so a live filter is legible at a
+     glance without reading a single label. Any new rail inherits this
+     by sitting inside .rail -- nothing per-screen to remember. */
+  --rail-who:#5C8C43;        /* family */
+  --rail-dir:#B07A22;        /* direction of money */
+  --rail-cat:#8A5787;        /* category and subcategory */
+  --rail-pick:#3F7288;       /* what is selected or open */
+  --rail-order:#1F8C7C;      /* how a list is sorted */
+  --rail-more:#8C5A3F;       /* everything behind a sheet: dates, amounts, order */
+}
+.railbtn{position:relative;width:42px;height:42px;flex:none;display:grid;place-items:center;padding:0;
+  cursor:pointer;border-radius:12px;
+  --tint:var(--accent);
+  background:color-mix(in srgb, var(--tint) 11%, var(--slab));
+  border:1px solid color-mix(in srgb, var(--tint) 32%, var(--rule));
+  color:color-mix(in srgb, var(--tint) 55%, var(--paper));
+  transition:background .16s ease, color .16s ease, border-color .16s ease}
+.railbtn svg{width:20px;height:20px;display:block;place-self:center}
+/* doing something: the wash becomes the fill */
+.railbtn.on{background:var(--tint);border-color:var(--tint);
+  color:color-mix(in srgb, var(--tint) 18%, #0B140A);
+  box-shadow:0 6px 16px -10px color-mix(in srgb, var(--tint) 80%, transparent)}
+.railbtn[aria-expanded="true"]{border-color:color-mix(in srgb, var(--tint) 68%, var(--rule))}
+.railbtn--end{margin-left:auto}
+.railbtn__dot{position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;
+  background:var(--tint);border:2px solid var(--slab)}
+.railbtn.on .railbtn__dot{background:var(--slab);border-color:var(--tint)}
+
+/* which token each control wears */
+.railbtn--who{--tint:var(--rail-who)}
+.railbtn--dir{--tint:var(--rail-dir)}
+.railbtn--cat{--tint:var(--rail-cat)}
+.railbtn--pick{--tint:var(--rail-pick)}
+.railbtn--order{--tint:var(--rail-order)}
+.railbtn--more{--tint:var(--rail-more)}
+/* direction takes the ledger's own colours for money once it is set */
+.railbtn.on--owe{--tint:var(--owe)}
+.railbtn.on--asset{--tint:var(--asset)}
+.railbtn.on--owe.on{color:#FBF7EC}
+
+.pop{position:absolute;top:calc(100% + 8px);left:0;z-index:5;
+  width:min(300px, 100%);background:var(--ink);border:1px solid var(--rule);border-radius:12px;
+  overflow:hidden;box-shadow:0 20px 44px -20px rgba(10,27,16,.92)}
+.pop__head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--rule);
+  font-family:var(--data);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pop__back{background:none;border:1px solid var(--rule);border-radius:8px;width:28px;height:28px;
+  flex:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1}
+.pop__list{max-height:44vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0}
+.pop__opt{width:100%;display:flex;align-items:center;gap:9px;padding:10px 12px;background:none;border:0;
+  color:var(--paper);font-size:13.5px;text-align:left;cursor:pointer}
+.pop__opt:active{background:var(--rise)}
+.pop__opt.on{color:var(--accent);font-weight:600}
+.pop__opt .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pop__opt .dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--rule)}
+.pop__opt .n{font-family:var(--data);font-size:10.5px;color:var(--muted);flex:none}
+.pop__opt .chev{color:var(--muted);flex:none;font-size:13px}
+.pop__opt.zero .nm,.pop__opt.zero .n{color:var(--muted)}
+.pop__empty{padding:16px 12px;text-align:center;color:var(--muted);font-size:12.5px}
+/* a popover wide enough to hold a checkable list rather than four words */
+.pop--pick{width:min(330px, calc(100vw - 44px))}
 
 /* Categories — accordion dropdowns */
 .acc{border:1px solid var(--rule);border-radius:14px;background:var(--slab);margin-bottom:10px;overflow:hidden}
@@ -570,6 +662,75 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .bill--proj .bill__amt{grid-column:2/3}
 .fixed-sum{display:flex;align-items:baseline;gap:8px;margin:0 0 10px;padding-bottom:9px;border-bottom:1px solid var(--rule)}
 .fixed-sum b{margin-left:auto;font-family:var(--data);font-size:15px;font-weight:600;color:var(--owe)}
+.fixed-sum--net{margin:12px 0 0;padding:9px 0 0;border-bottom:0;border-top:1px solid var(--rule)}
+.fixed-sum--net b{color:var(--paper)}
+.fixed-sum--net b.tone-owe{color:var(--owe)}
+.fixed-sum--net b.tone-asset{color:var(--asset)}
+
+/* ---------- multi-select: categories carried onto the calendar ----------
+   A field that opens a checkable list rather than a native <select
+   multiple>, which iOS renders as an unusable scrolling box. Categories
+   sit at the top level; each one unfolds into its subcategories, so a
+   household can carry a whole category or just the two lines inside it
+   that actually repeat. */
+.msel{position:relative}
+.msel__field{width:100%;display:flex;align-items:center;gap:10px;
+  background:var(--slab);border:1px solid var(--rule);border-radius:12px;
+  min-height:44px;padding:8px 12px;color:var(--paper);cursor:pointer;text-align:left}
+.msel__field[aria-expanded="true"]{border-color:var(--accent-deep)}
+.msel__label{flex:1;min-width:0;font-family:var(--data);font-size:13.5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msel__chev{color:var(--muted);font-size:12px;flex:none;transition:transform .2s}
+.msel__field[aria-expanded="true"] .msel__chev{transform:rotate(180deg)}
+.msel__menu{margin-top:8px;background:var(--ink);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+.msel__tools{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px;border-bottom:1px solid var(--rule)}
+.msel__list{max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0}
+.msel__row{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer}
+.msel__row input{width:18px;height:18px;flex:none;accent-color:var(--accent-deep)}
+.msel__nm{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msel__n{font-family:var(--data);font-size:10.5px;color:var(--muted);flex:none}
+/* Two jobs, two buttons. The caret only unfolds; the + only adds.
+   One control doing both is what made a + look like it would add
+   something when all it did was open a drawer. */
+.msel__more,.msel__caret{background:none;border:1px solid var(--rule);border-radius:8px;
+  width:30px;height:30px;flex:none;color:var(--muted);cursor:pointer;line-height:1;
+  display:grid;place-items:center;padding:0}
+.msel__more{font-size:16px;font-weight:600}
+.msel__caret svg{width:14px;height:14px;display:block;transition:transform .18s cubic-bezier(.22,1,.36,1)}
+.msel__cat.is-open .msel__caret svg{transform:rotate(90deg)}
+.msel__cat.is-open .msel__caret{color:var(--paper)}
+/* The + only lights once there is something staged for it to carry, and
+   when it does it glows rather than merely changing colour -- it is the
+   one control in the list that commits anything, so it should read as
+   live from the corner of the eye. */
+.msel__more{transition:background .16s ease, color .16s ease, border-color .16s ease,
+  box-shadow .2s ease, transform .16s cubic-bezier(.22,1,.36,1)}
+.msel__more[disabled]{opacity:.32;cursor:default;background:none;box-shadow:none}
+.msel__more.ready{color:#101B10;background:var(--accent);border-color:var(--accent);
+  transform:scale(1.06);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent),
+             0 6px 18px -8px color-mix(in srgb, var(--accent) 75%, transparent)}
+@media (prefers-reduced-motion:no-preference){
+  .msel__more.ready{animation:mselPulse 1.9s ease-in-out infinite}
+}
+@keyframes mselPulse{
+  0%,100%{box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent),
+                     0 6px 18px -8px color-mix(in srgb, var(--accent) 75%, transparent)}
+  50%    {box-shadow:0 0 0 6px color-mix(in srgb, var(--accent) 12%, transparent),
+                     0 6px 22px -8px color-mix(in srgb, var(--accent) 90%, transparent)}
+}
+/* a staged subcategory is ticked but not yet carried */
+.msel__row--pending .msel__nm{color:var(--accent);font-style:italic}
+.msel__row--pending input{accent-color:var(--accent)}
+.msel__stage{padding:2px 12px 8px 12px;font-family:var(--data);font-size:10.5px;color:var(--accent)}
+.msel__cat + .msel__cat{border-top:1px solid rgba(120,132,112,.16)}
+.msel__cat.is-open .msel__more{color:var(--accent);border-color:var(--accent-deep)}
+.msel__subs{padding:0 0 6px 22px}
+.msel__row--sub{padding:6px 12px}
+.msel__row--sub .msel__nm{font-family:var(--data);font-size:12px;color:var(--muted)}
+.msel__row--sub input:disabled{opacity:.5}
+.msel__row--on .msel__nm{color:var(--accent);font-weight:500}
+.msel__empty{padding:16px 12px;text-align:center;color:var(--muted);font-size:12.5px}
 
 /* ============================================================
    LEDGER OVERLAY
@@ -947,16 +1108,10 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .toast{background-image:linear-gradient(180deg,rgba(255,255,255,.4),rgba(23,30,20,.05));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5), var(--shadow)}
 
-/* ---------- ledger filter icon + sheet ---------- */
-.ledger__filt{position:relative;margin-left:auto;background:var(--rise);border:1px solid var(--rule);
-  border-radius:10px;width:38px;height:38px;display:grid;place-items:center;padding:0;
-  color:var(--muted);cursor:pointer;flex:none}
-.ledger__filt svg{width:18px;height:18px;display:block}
-.ledger__filt.on{color:var(--accent-deep);border-color:var(--accent-deep)}
-/* a dot rather than a number: the sheet itself says which filters are on */
-.ledger__filt i{position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;
-  background:var(--accent-deep);border:1.5px solid var(--slab)}
-.ledger__close{margin-left:0}
+/* ---------- ledger filter sheet ----------
+   The icon that opens this used to sit up in the header, a lone control
+   in a different shape and colour from the four it belonged with. It is
+   a railbtn now; the dot it wears is the rail's own. */
 .filt__row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .filt__row label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
 #filtModal .cchips{margin-top:8px}
@@ -967,6 +1122,33 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .tbl th.sortable:after{content:'\2195';opacity:.3;margin-left:5px;font-size:10px}
 .tbl th.sortable.up:after{content:'\2191';opacity:1;color:var(--accent-deep)}
 .tbl th.sortable.down:after{content:'\2193';opacity:1;color:var(--accent-deep)}
+
+/* ============================================================
+   CLEARABLE TEXT FIELDS
+   Every text field wears a small x at its right edge, shown only
+   once there is something to throw away. The field is wrapped at
+   runtime rather than in the markup, so fields drawn later --
+   trip categories, subcategory editors, the rule builder -- get
+   one for free. The wrapper inherits any layout class the field
+   carried (.wide inside .tripform, say) so grids stay put.
+   ============================================================ */
+.clr{position:relative;display:block;width:100%;min-width:0}
+.clr--flex{flex:1 1 0%;width:auto;min-width:0}
+.clr > input,.clr > textarea{width:100%;padding-right:34px}
+.clrx{
+  position:absolute;top:50%;right:4px;transform:translateY(-50%);
+  width:26px;height:26px;padding:0;display:none;place-items:center;
+  border:0;border-radius:50%;background:transparent;color:var(--muted);
+  cursor:pointer;-webkit-appearance:none;appearance:none;line-height:0;
+  transition:color .14s ease, background .14s ease;
+}
+.clr--area > .clrx{top:9px;transform:none}
+.clr.has-val > .clrx{display:grid}
+.clrx svg{width:13px;height:13px;display:block;pointer-events:none}
+.clrx:hover,.clrx:focus-visible{color:var(--paper);background:rgba(255,255,255,.09);outline:none}
+/* the WebKit search glyph would be a second x standing beside ours */
+.clr > input[type=search]::-webkit-search-cancel-button,
+.clr > input[type=search]::-webkit-search-decoration{-webkit-appearance:none;display:none}
 
 /* ============================================================
    BACK TO TOP
@@ -1187,13 +1369,15 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--owe)"></span>This month
-          <span class="fold__tag">in and out</span>
+          <span class="fold__tag" id="calMonthPill">in and out</span>
           <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
         <div class="fold__body">
           <div class="kv">
             <div class="panel"><p class="eyebrow">Due out</p><div class="bignum tone-owe" id="calOut">&mdash;</div></div>
             <div class="panel"><p class="eyebrow">Coming in</p><div class="bignum tone-asset" id="calIn">&mdash;</div></div>
           </div>
+          <div class="fixed-sum fixed-sum--net"><span class="eyebrow">Net for the month</span><b class="num" id="calNet">&mdash;</b></div>
+          <p class="hint" id="calMonthNote" style="margin:8px 0 0"></p>
         </div>
       </details>
 
@@ -1215,13 +1399,24 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       </details>
 
       <details class="fold" data-fold>
-        <summary><span class="fold__dot" style="background:var(--owe)"></span>Fixed expenses ahead
-          <span class="fold__tag" id="calFixedTag"></span>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>Projected categories
+          <span class="fold__tag" id="calCatTag"></span>
           <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
         <div class="fold__body">
-          <div class="fixed-sum"><span class="eyebrow">Projected out</span><b class="num" id="calFixedTotal">&mdash;</b></div>
-          <ul class="daylist" id="calFixed"></ul>
-          <p class="hint" style="margin:10px 0 0">Every line categorised <b>FixedExpense</b> is rolled forward one month at the same amount &mdash; last date plus a month, clamped so the 31st still lands in a short one. A projection holds only while its day is still ahead; once the date passes it drops off, and the next statement puts a fresher one in its place.</p>
+          <div class="msel" id="calCatSel">
+            <button class="msel__field" id="calCatBtn" type="button" aria-expanded="false" aria-controls="calCatMenu">
+              <span class="msel__label" id="calCatLabel">Nothing selected</span>
+              <span class="msel__chev" aria-hidden="true">&#9662;</span>
+            </button>
+            <div class="msel__menu" id="calCatMenu" hidden role="group" aria-label="Categories carried onto the calendar">
+              <div class="msel__tools">
+                <input class="search" id="calCatQ" type="search" placeholder="Find a category or subcategory" autocomplete="off">
+                <button class="btn btn--sm btn--ghost" id="calCatNone" type="button">Clear</button>
+              </div>
+              <div class="msel__list" id="calCatList"></div>
+            </div>
+          </div>
+          <p class="hint" style="margin:10px 0 0">Pick whole categories or single subcategories. Every ledger line filed under one of them is rolled forward exactly one month at the same amount &mdash; its date plus a month, the day clamped so the 31st still lands in a short one. A projection holds only while its day is still ahead; the morning it passes it drops off, and the next statement rolls a fresher one into its place. Projections show as dashed lines and hollow pips, and never touch a balance.</p>
         </div>
       </details>
 
@@ -1256,6 +1451,30 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <!-- 3 · CATEGORIES -->
     <section class="screen" id="scr-categories" aria-label="Categories" data-title="Categories" tabindex="-1">
 
+      <input class="search" id="cq" type="search" placeholder="Find a category or subcategory"
+             autocomplete="off" style="margin-bottom:8px">
+      <div class="catgrid" style="margin-bottom:10px">
+        <input class="search" id="newCat" type="text" placeholder="New category" autocomplete="off">
+        <button class="btn" id="addCatBtn" type="button">Add</button>
+      </div>
+      <div class="rail rail--screen" id="catRail" role="group" aria-label="Narrow the catalog">
+        <button class="railbtn railbtn--cat" id="cFlagBtn" type="button" aria-haspopup="true" aria-expanded="false"
+                aria-label="Filter the catalog"></button>
+        <button class="railbtn railbtn--order" id="cSortBtn" type="button" aria-haspopup="true" aria-expanded="false"
+                aria-label="Sort the catalog"></button>
+        <button class="railbtn railbtn--pick" id="cFoldBtn" type="button" aria-pressed="false"
+                aria-label="Open every category"></button>
+        <span class="rail__n" id="cShown"></span>
+        <div class="pop pop--pick" id="cFlagPop" hidden>
+          <div class="msel__tools">
+            <input class="search" id="cPickQ" type="search" placeholder="Find a category or subcategory" autocomplete="off">
+            <button class="btn btn--sm btn--ghost" id="cPickNone" type="button">Clear</button>
+          </div>
+          <div class="msel__list" id="cPickList"></div>
+        </div>
+        <div class="pop" id="cSortPop" hidden></div>
+      </div>
+
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>The catalog
           <span class="fold__tag" id="catTag">—</span>
@@ -1270,30 +1489,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
             <div class="panel"><p class="eyebrow">Uncategorized</p><div class="bignum tone-owe" id="cNone">—</div></div>
           </div>
           <p class="hint" style="margin:12px 0 0">Every count is the whole family — a category carries its own lines plus everything under its subcategories. Nothing a line item points at can be deleted; move the lines and the delete opens up.</p>
-        </div>
-      </details>
-
-      <details class="fold" data-fold>
-        <summary><span class="fold__dot" style="background:var(--asset)"></span>Find &amp; add
-          <span class="fold__tag" id="cShown"></span>
-          <span class="fold__chev" aria-hidden="true">▸</span></summary>
-        <div class="fold__body">
-          <input class="search" id="cq" type="search" placeholder="Find a category or subcategory" autocomplete="off" style="margin-bottom:9px">
-          <div class="catgrid" style="margin-bottom:9px">
-            <input class="search" id="newCat" type="text" placeholder="New category" autocomplete="off">
-            <button class="btn" id="addCatBtn" type="button">Add</button>
-          </div>
-          <div class="cchips" style="margin-bottom:6px">
-            <button data-cflag="used" type="button">In use</button>
-            <button data-cflag="unused" type="button">Unused</button>
-            <button data-cflag="orphan" type="button">Off-catalog subs</button>
-          </div>
-          <div class="cchips">
-            <button class="on" data-csort="rows" type="button">By lines</button>
-            <button data-csort="name" type="button">A–Z</button>
-            <button id="cExpand" type="button">Expand</button>
-            <button id="cCollapse" type="button">Collapse</button>
-          </div>
         </div>
       </details>
 
@@ -1371,10 +1566,27 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
       </details>
 
       <details class="fold" data-fold>
-        <summary><span class="fold__dot" style="background:var(--owe)"></span>Biggest outflows
-          <span class="fold__tag">top 6</span>
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>Outflows
+          <span class="fold__tag" id="outTag">top 6</span>
           <span class="fold__chev" aria-hidden="true">▸</span></summary>
-        <div class="fold__body"><div class="bars" id="topSpend"></div></div>
+        <div class="fold__body">
+          <div class="msel" id="outCatSel">
+            <button class="msel__field" id="outCatBtn" type="button" aria-expanded="false" aria-controls="outCatMenu">
+              <span class="msel__label" id="outCatLabel">The six biggest</span>
+              <span class="msel__chev" aria-hidden="true">&#9662;</span>
+            </button>
+            <div class="msel__menu" id="outCatMenu" hidden role="group" aria-label="Categories to show as outflows">
+              <div class="msel__tools">
+                <input class="search" id="outCatQ" type="search" placeholder="Find a category or subcategory" autocomplete="off">
+                <button class="btn btn--sm btn--ghost" id="outCatNone" type="button">Clear</button>
+              </div>
+              <div class="msel__list" id="outCatList"></div>
+            </div>
+          </div>
+          <div class="bars" id="topSpend" style="margin-top:12px"></div>
+          <div class="fixed-sum fixed-sum--net"><span class="eyebrow" id="outSumLabel">Share of income</span><b class="num" id="outPct">&mdash;</b></div>
+          <p class="hint" id="outNote" style="margin:8px 0 0"></p>
+        </div>
       </details>
     </section>
 
@@ -1599,14 +1811,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   <header class="ledger__head">
     <h2 id="ledgerTitle">Ledger</h2>
     <span class="chip" id="shown"></span>
-    <button class="ledger__filt" id="filtBtn" type="button" aria-haspopup="dialog"
-            aria-label="Filter and sort the ledger">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/>
-      </svg>
-      <i id="filtDot" hidden></i>
-    </button>
     <button class="ledger__close" id="ledgerClose" type="button" aria-label="Close the ledger">&#10005;</button>
   </header>
   <div class="ledger__filters">
@@ -1614,14 +1818,26 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <select class="select" id="acctFilter"><option value="">All accounts</option></select>
     <label class="sr-only" for="search">Search descriptions</label>
     <input class="search" id="search" type="search" placeholder="Search description">
-    <div class="cchips catfilterchip" id="catFilterWrap"><button class="on" id="catFilterChip" type="button"></button></div>
-    <div class="cchips" id="ledFlags">
-      <button data-flag="none" type="button">Uncategorized</button>
-      <button data-flag="Ryan" type="button">Ryan</button>
-      <button data-flag="Vanessa" type="button">Vanessa</button>
-      <button data-flag="out" type="button">Money out</button>
-      <button data-flag="in" type="button">Money in</button>
-      <button id="ledSelAll" type="button">Select all shown</button>
+    <div class="rail" id="ledTools" role="group" aria-label="Narrow the ledger">
+      <button class="railbtn railbtn--who" id="ledWhoBtn" type="button" aria-haspopup="true" aria-expanded="false"
+              aria-label="Filter by family member"></button>
+      <button class="railbtn railbtn--dir" id="ledDirBtn" type="button" aria-haspopup="true" aria-expanded="false"
+              aria-label="Filter by money in or out"></button>
+      <button class="railbtn railbtn--cat" id="ledCatBtn" type="button" aria-haspopup="true" aria-expanded="false"
+              aria-label="Filter by category"></button>
+      <button class="railbtn railbtn--more" id="filtBtn" type="button" aria-haspopup="dialog"
+              aria-label="Filter and sort the ledger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4.2 5.2h15.6"/><path d="M6.8 12h10.4"/><path d="M9.4 18.8h5.2"/>
+        </svg>
+        <i class="railbtn__dot" id="filtDot" hidden></i>
+      </button>
+      <button class="railbtn railbtn--pick railbtn--end" id="ledSelAll" type="button" aria-pressed="false"
+              aria-label="Select every line shown"></button>
+      <div class="pop" id="ledWhoPop" hidden></div>
+      <div class="pop" id="ledDirPop" hidden></div>
+      <div class="pop" id="ledCatPop" hidden></div>
     </div>
   </div>
   <div class="ledger__body">
@@ -2091,13 +2307,18 @@ const state = {
                          // onto it, so the card figure is fully derived and can
                          // be reconciled against the bank.
   imports:[],            // {file, acct, count, at}
-  filter:{acct:'', q:'', cat:'', sub:'', flag:null,
+  filter:{acct:'', q:'', cat:'', sub:'',
+          who:'',                    // '' = anyone; else a family member's name
+          dir:'',                    // '' = both; 'out' money leaving; 'in' money arriving
           from:'', to:'',            // ISO days, inclusive; '' means open-ended
           min:null, max:null},       // absolute dollars, inclusive; null means open-ended
   sort:{key:'date', dir:-1},         // key: 'date' | 'desc' — dir: 1 up, -1 down
   sel:new Set(),         // ledger lines picked for bulk filing
   taxonomy:null,         // {Category:[subs]} — seeded from CATALOG, then owned by the household
-  catUI:{ q:'', flag:null, sort:'rows', open:new Set(), editing:null },
+  catUI:{ q:'', sort:'rows', open:new Set(), editing:null,
+          pick:{ cats:[], subs:[] },   // which categories and subcategories the
+                                       // catalog is narrowed to; empty = all
+          pickOpen:new Set() },        // which categories the picker has unfolded
   person:'',            // '' = All
   routeAcct:'',          // '' = auto-detect; else force imports to this account
   rules:[],              // ownership rules: {q, acct, person} — first match wins
@@ -2108,6 +2329,9 @@ const state = {
   files:[],              // saved schedules: {id, name, acct, params, summary, savedAt}
   bills:[],              // scheduled due dates: {id, name, date, acct, kind, amount, repeat}
   cal:{ y:new Date().getFullYear(), m:new Date().getMonth(), sel:null },
+  calProj:{ cats:['FixedExpense'], subs:[] },   // what the calendar rolls forward: whole
+                         // categories, plus single subcategories written 'Cat\u241FSub'
+  outSel:{ cats:[], subs:[] },   // which outflows the Flow screen charts; empty = the six biggest
   thread:[],             // {role, content}
 };
 
@@ -2832,6 +3056,8 @@ function ledgerPayload(){
     acctEdits: state.acctEdits,
     trips: state.trips,
     tripSel: state.tripSel,
+    calProj: state.calProj,
+    outSel: state.outSel,
     taxonomy: taxo(),
   };
 }
@@ -2858,6 +3084,12 @@ function applyPayload(data){
   state.trips = data.trips || [];
   state.tripSel = data.tripSel || '';
   if (state.tripSel && !state.trips.some(t => t.id === state.tripSel)) state.tripSel = '';
+  state.calProj = (data.calProj && Array.isArray(data.calProj.cats))
+    ? { cats: data.calProj.cats.slice(), subs: (data.calProj.subs || []).slice() }
+    : { cats:['FixedExpense'], subs:[] };
+  state.outSel = (data.outSel && Array.isArray(data.outSel.cats))
+    ? { cats: data.outSel.cats.slice(), subs: (data.outSel.subs || []).slice() }
+    : { cats:[], subs:[] };
   state.taxonomy = data.taxonomy || JSON.parse(JSON.stringify(CATALOG));
   state.acctEdits = data.acctEdits || { added:[], changed:{}, removed:[] };
   state.acctEdits.added   = state.acctEdits.added   || [];
@@ -2979,7 +3211,10 @@ function answerLocally(q){
   if (/spend|spent|outflow|expense|where.*go/.test(s)){
     const top = topSpend(5);
     if (!top.length) return 'No outflows in the rows on file yet.';
-    return 'Biggest outflows on file:\n' + top.map((x,i) => `${i+1}. ${x.label} — ${money(x.total)}`).join('\n');
+    const inc = incomeOnFile();
+    const share = v => inc > 0 ? ` (${pctText(v / inc * 100)} of income)` : '';
+    return 'Biggest outflows on file:\n'
+      + top.map((x,i) => `${i+1}. ${x.label} — ${money(x.total)}${share(x.total)}`).join('\n');
   }
   if (/month|trend|in and out|cash ?flow/.test(s)){
     const m = byMonth();
@@ -4308,6 +4543,7 @@ function initPager(){
   railTo(0);
   measureDock();
   initToTop();
+  initClears();
 }
 
 /* the caret sheet — every screen at once, no panning required */
@@ -4333,6 +4569,119 @@ function measureDock(){
 }
 
 /* ============================================================
+   CLEARABLE TEXT FIELDS
+   A field is wrapped once, on sight, and marked so a second pass
+   leaves it alone. A MutationObserver watches for fields drawn
+   after load -- most of this app's inputs live inside template
+   literals -- so nothing has to remember to call the mounter.
+   The x is pointer-suppressed on the way down so the caret never
+   leaves the field, then clears, re-fires input and change so
+   every listener downstream reacts, and hands focus back.
+   ============================================================ */
+const CLR_TYPES = new Set(['text','search','tel','url','email','password','']);
+const CLRX_SVG  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                  'stroke-width="2.6" stroke-linecap="round" aria-hidden="true">' +
+                  '<path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>';
+
+/** Text fields only: dates, files, checkboxes and selects keep their own controls. */
+function clrEligible(el){
+  if (!el || el.nodeType !== 1) return false;
+  if (el.dataset.clrSkip !== undefined) return false;
+  if (el.closest('[data-clr-skip]')) return false;
+  if (el.tagName === 'TEXTAREA') return true;
+  if (el.tagName !== 'INPUT') return false;
+  if (el.classList.contains('sr-only')) return false;
+  return CLR_TYPES.has((el.getAttribute('type') || 'text').toLowerCase());
+}
+
+/** Show the x only when there is text to remove. */
+function clrSync(el){
+  const w = el && el.parentElement;
+  if (!w || !w.classList.contains('clr')) return;
+  w.classList.toggle('has-val', String(el.value == null ? '' : el.value).length > 0);
+}
+function clrSyncAll(){ $$('.clr').forEach(w => { const f = w.querySelector('input,textarea'); if (f) clrSync(f); }); }
+
+function clrWrap(el){
+  if (el.dataset.clrOn === '1' || !el.parentElement) return;
+  el.dataset.clrOn = '1';
+  const host = el.parentElement;
+  const w = document.createElement('span');
+  w.className = 'clr';
+  /* carry over layout modifiers -- .wide is a grid-column inside .tripform */
+  el.classList.forEach(c => { if (c !== 'input' && c !== 'search') w.classList.add(c); });
+  if (el.tagName === 'TEXTAREA') w.classList.add('clr--area');
+  const disp = getComputedStyle(host).display;
+  if (disp === 'flex' || disp === 'inline-flex') w.classList.add('clr--flex');
+  host.insertBefore(w, el);
+  w.appendChild(el);
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'clrx';
+  b.tabIndex = -1;
+  b.setAttribute('aria-label', 'Clear ' +
+    (el.getAttribute('aria-label') || el.getAttribute('placeholder') || 'this field'));
+  b.innerHTML = CLRX_SVG;
+  w.appendChild(b);
+  clrSync(el);
+}
+
+let clrBusy = false;
+function mountClears(root){
+  if (clrBusy) return;
+  clrBusy = true;
+  try {
+    const scope = (root && root.querySelectorAll) ? root : document;
+    scope.querySelectorAll('input,textarea').forEach(el => { if (clrEligible(el)) clrWrap(el); });
+    clrSyncAll();
+  } finally { clrBusy = false; }
+}
+
+function initClears(){
+  document.addEventListener('input', e => { if (clrEligible(e.target)) clrSync(e.target); }, true);
+  document.addEventListener('focusin', e => { if (clrEligible(e.target)) clrSync(e.target); }, true);
+
+  /* swallow the press so the field keeps its caret and the keyboard stays up */
+  document.addEventListener('pointerdown', e => {
+    const b = e.target.closest && e.target.closest('.clrx');
+    if (b) e.preventDefault();
+  }, true);
+
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('.clrx');
+    if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const el = b.parentElement && b.parentElement.querySelector('input,textarea');
+    if (!el) return;
+    el.value = '';
+    clrSync(el);
+    el.dispatchEvent(new Event('input',  {bubbles:true}));
+    el.dispatchEvent(new Event('change', {bubbles:true}));
+    try { el.focus({preventScroll:true}); } catch(_){ try { el.focus(); } catch(__){} }
+  });
+
+  mountClears(document);
+
+  /* fields drawn later -- catalog rows, trip categories, rule lists */
+  let clrRaf = null;
+  const mo = new MutationObserver(muts => {
+    if (clrBusy) return;
+    let hit = false;
+    for (const m of muts){
+      for (const n of m.addedNodes){
+        if (n.nodeType !== 1) continue;
+        if ((n.matches && n.matches('input,textarea')) ||
+            (n.querySelector && n.querySelector('input,textarea'))) { hit = true; break; }
+      }
+      if (hit) break;
+    }
+    if (!hit || clrRaf) return;
+    clrRaf = requestAnimationFrame(() => { clrRaf = null; mountClears(document); });
+  });
+  mo.observe(document.body, {childList:true, subtree:true});
+}
+
+/* ============================================================
    BACK TO TOP
    Whichever surface is actually being read owns the caret: the
    ledger's body when that view is up, otherwise the live screen.
@@ -4340,8 +4689,8 @@ function measureDock(){
    work -- the view has to be long enough to be worth a shortcut,
    and already far enough down that the top is out of reach.
    ============================================================ */
-const TOTOP_LONG = 900;   /* px of scrollable overflow before the caret exists */
-const TOTOP_DEEP = 380;   /* px scrolled before it appears */
+const TOTOP_LONG = 340;   /* px of scrollable overflow before the caret exists */
+const TOTOP_DEEP = 200;   /* px scrolled before it appears */
 
 /** The scroller the reader is looking at right now, or null. */
 function liveScroller(){
@@ -4382,10 +4731,10 @@ function initToTop(){
     btn.classList.remove('is-on');
     btn.hidden = true;
   });
-  /* every screen scrolls on its own, and so does the ledger body */
-  SCREENS.forEach(s => s.el.addEventListener('scroll', syncToTop, {passive:true}));
-  const body = $('#ledgerView .ledger__body');
-  if (body) body.addEventListener('scroll', syncToTop, {passive:true});
+  /* every screen scrolls on its own, and so does the ledger body. One
+     capture-phase listener sees them all, including surfaces rendered
+     after this ran, so no screen can be missed. */
+  document.addEventListener('scroll', syncToTop, {capture:true, passive:true});
   window.addEventListener('resize', syncToTop);
   syncToTop();
 }
@@ -5468,6 +5817,111 @@ function renderBeam(){
 }
 
 /* ============================================================
+   OUTFLOWS
+   Left alone, this reads the six biggest categories on file. Give
+   it a selection and it charts exactly those instead, at whatever
+   grain was picked -- a whole category, or the two subcategories
+   inside it that actually matter.
+   Every bar carries its share of income. Income is every positive
+   line on file, over the same span as the outflows it is measured
+   against, so the two figures are always drawn from one window.
+   ============================================================ */
+function outSel(){
+  if (!state.outSel || !Array.isArray(state.outSel.cats)) state.outSel = { cats:[], subs:[] };
+  if (!Array.isArray(state.outSel.subs)) state.outSel.subs = [];
+  return state.outSel;
+}
+
+/** Money in across every row on file -- the denominator for every share. */
+const incomeOnFile = () => state.rows.reduce((t, r) => r.amount > 0 ? t + r.amount : t, 0);
+
+/** Line counts over outflow rows only, so the picker counts what it charts. */
+const outCounts = () => catCounts(state.rows.filter(r => r.amount < 0));
+
+/**
+ * The bars the Flow screen draws, with each one's share of income.
+ * Returns {bars, income, custom, total, pct} -- total and pct describe
+ * the bars actually shown, never some wider figure they don't add up to.
+ */
+function outflowBars(){
+  const s = outSel();
+  const custom = selCount(s) > 0;
+  const income = incomeOnFile();
+  let bars;
+
+  if (!custom){
+    bars = topSpend(6);
+  } else {
+    const m = new Map();
+    state.rows.forEach(r => {
+      if (!(r.amount < 0)) return;
+      const cat = String(r.category || '');
+      let key = null;
+      if (s.cats.includes(cat)) key = cat;                    /* the category outranks its subs */
+      else if (s.subs.includes(catSubKey(cat, r.sub))) key = String(r.sub || cat);
+      if (key === null) return;
+      m.set(key, (m.get(key) || 0) + -r.amount);
+    });
+    bars = Array.from(m, ([label, total]) => ({label, total})).sort((a,b) => b.total - a.total);
+  }
+
+  bars.forEach(b => { b.pct = income > 0 ? (b.total / income) * 100 : null; });
+  const total = bars.reduce((t,b) => t + b.total, 0);
+  return { bars, income, custom, total, pct: income > 0 ? (total / income) * 100 : null };
+}
+
+const OUT_MSEL = mselCreate({
+  root:'outCatSel', btn:'outCatBtn', label:'outCatLabel', menu:'outCatMenu',
+  q:'outCatQ', none:'outCatNone', list:'outCatList',
+  sel: outSel,
+  counts: outCounts,
+  onChange: () => { save(); renderFlow(); },
+  clearToast: 'Back to the six biggest outflows',
+  emptyLabel: 'The six biggest',
+});
+const initOutflows = () => OUT_MSEL.init();
+
+const pctText = v => v == null ? '—' : (v >= 10 ? v.toFixed(0) : v.toFixed(1)) + '%';
+
+function renderOutflows(){
+  const host = $('#topSpend');
+  if (!host) return;
+  const o = outflowBars();
+  const max = o.bars.length ? o.bars[0].total : 1;
+
+  host.innerHTML = o.bars.length ? o.bars.map(x => `
+    <div class="row row--pct"><span>${esc(x.label)}</span>
+      <span class="amt">${moneyShort(x.total)}</span>
+      <span class="pct">${pctText(x.pct)}</span>
+      <div class="track"><div class="fill" style="width:${(x.total/max*100).toFixed(1)}%"></div></div>
+    </div>`).join('')
+    : `<p class="empty">${o.custom ? 'Nothing on file under those categories yet.' : 'No outflows yet.'}</p>`;
+
+  const pct = $('#outPct');
+  if (pct){
+    pct.textContent = o.bars.length ? pctText(o.pct) : '—';
+    pct.className = 'num' + (o.pct != null && o.pct >= 100 ? ' tone-owe' : '');
+  }
+  const sumLabel = $('#outSumLabel');
+  if (sumLabel) sumLabel.textContent = o.custom
+    ? `${o.bars.length} shown \u00b7 ${moneyShort(o.total)} of income`
+    : `Six biggest \u00b7 ${moneyShort(o.total)} of income`;
+
+  const tag = $('#outTag');
+  if (tag) tag.textContent = o.custom
+    ? `${selCount(outSel())} picked \u00b7 ${pctText(o.pct)}`
+    : `top 6 \u00b7 ${pctText(o.pct)}`;
+
+  const note = $('#outNote');
+  if (note) note.textContent = o.income > 0
+    ? `Shares are measured against ${money(o.income)} of money in across every row on file. `
+      + 'Every outflow line counts, transfers and card payments included — pick categories above to leave those out.'
+    : 'No money in on file yet, so there is nothing to measure a share against.';
+
+  OUT_MSEL.render();
+}
+
+/* ============================================================
    RENDER — flow graphics
    ============================================================ */
 function renderFlow(){
@@ -5476,7 +5930,7 @@ function renderFlow(){
   if (!data.length){
     host.innerHTML = '<p class="empty">Monthly totals appear once a statement lands.</p>';
     $('#flowNote').textContent = ''; $('#avgIn').textContent = '—'; $('#avgOut').textContent = '—';
-    $('#topSpend').innerHTML = '<p class="empty">No outflows yet.</p>';
+    renderOutflows();
     return;
   }
   const W = 360, H = 180, padB = 20, padT = 8, padL = 4;
@@ -5498,12 +5952,7 @@ function renderFlow(){
   $('#avgIn').textContent = moneyShort(avgIn);
   $('#avgOut').textContent = moneyShort(avgOut);
 
-  const top = topSpend(6);
-  const tmax = top.length ? top[0].total : 1;
-  $('#topSpend').innerHTML = top.length ? top.map(x => `
-    <div class="row"><span>${esc(x.label)}</span><span class="amt">${moneyShort(x.total)}</span>
-      <div class="track"><div class="fill" style="width:${(x.total/tmax*100).toFixed(1)}%"></div></div>
-    </div>`).join('') : '<p class="empty">No outflows yet.</p>';
+  renderOutflows();
 }
 
 /* ============================================================
@@ -5645,10 +6094,11 @@ function visibleRows(){
     if (f.sub && (r.sub || '') !== f.sub) return false;
     if (q && !r.desc.toLowerCase().includes(q) && !(r.category || '').toLowerCase().includes(q)
           && !(r.sub || '').toLowerCase().includes(q)) return false;
-    if (f.flag === 'none' && (r.category || CAT_NONE) !== CAT_NONE) return false;
-    if (f.flag === 'out'  && r.amount >= 0) return false;
-    if (f.flag === 'in'   && r.amount <= 0) return false;
-    if (f.flag && FAMILY.some(p => p.id === f.flag) && r.person !== f.flag) return false;
+    /* who and which direction are their own axes now, so a question
+       like "what did Vanessa spend" is one view rather than two */
+    if (f.dir === 'out' && r.amount >= 0) return false;
+    if (f.dir === 'in'  && r.amount <= 0) return false;
+    if (f.who && r.person !== f.who) return false;
     if (!inRange(r, f)) return false;
     return true;
   }));
@@ -5705,17 +6155,12 @@ function renderTable(){
   $('#ledgerTitle').textContent = state.filter.cat
     ? `Ledger · ${state.filter.cat}${state.filter.sub ? ' › ' + state.filter.sub : ''}`
     : state.filter.acct ? `Ledger · ${state.filter.acct}` : 'Ledger';
-  const chipWrap = $('#catFilterWrap');
-  chipWrap.classList.toggle('on', Boolean(state.filter.cat));
-  if (state.filter.cat) $('#catFilterChip').textContent =
-    `${state.filter.cat}${state.filter.sub ? ' › ' + state.filter.sub : ''} ✕`;
   $('#shown').textContent = rs.length ? `${rs.length.toLocaleString()} lines` : 'no lines';
   $('#tableEmpty').hidden = rs.length > 0;
   const page = rs.slice(0, shownCount);
   host.innerHTML = page.length ? (wideLedger() ? ledgerTable(page) : ledgerList(page)) : '';
   $('#moreBtn').hidden = rs.length <= shownCount;
-  $$('#ledFlags button[data-flag]').forEach(b =>
-    b.classList.toggle('on', state.filter.flag === b.dataset.flag));
+  syncLedTools(rs);
   const fbtn = $('#filtBtn');
   if (fbtn){
     const n = activeFilterCount();
@@ -5723,6 +6168,275 @@ function renderTable(){
     $('#filtDot').hidden = n === 0;
   }
   renderSel();
+}
+
+/* ============================================================
+   THE LEDGER'S ICON RAIL
+   Four controls, each its own axis, so they combine instead of
+   replacing one another: a family member, a direction, a category,
+   and take everything shown. Every count in a list is measured
+   with that list's own axis switched off, so a number tells you
+   what you would get by tapping it, not what you already have.
+   ============================================================ */
+/* Every glyph is drawn inside one optical box -- content between y 4.4
+   and y 19.6 on a 24 grid, centred on 12 -- so nothing sits high or
+   reads smaller than the icon beside it. */
+const RAIL_SVG = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" '
+               + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+const railIcon = d => `<svg ${RAIL_SVG}>${d}</svg>`;
+
+const LED_ICON = {
+  /* head and shoulders */
+  who: railIcon('<circle cx="12" cy="8.2" r="3.6"/><path d="M4.8 19.6v-.8a4.6 4.6 0 0 1 4.6-4.6h5.2a4.6 4.6 0 0 1 4.6 4.6v.8"/>'),
+  /* a note of money */
+  both: railIcon('<rect x="2.6" y="5.4" width="18.8" height="13.2" rx="2.6"/><circle cx="12" cy="12" r="2.6"/><path d="M6.2 9.2v5.6M17.8 9.2v5.6"/>'),
+  /* money leaving, money arriving */
+  out: railIcon('<rect x="2.6" y="5.4" width="18.8" height="13.2" rx="2.6"/><path d="M12 8v7"/><path d="m9 12 3 3 3-3"/>'),
+  in:  railIcon('<rect x="2.6" y="5.4" width="18.8" height="13.2" rx="2.6"/><path d="M12 16V9"/><path d="m9 12 3-3 3 3"/>'),
+  /* a filing tag */
+  cat: railIcon('<path d="M19.6 13 13 19.6a1.9 1.9 0 0 1-2.7 0L4.4 13.7a1.9 1.9 0 0 1-.6-1.3V6.3a1.9 1.9 0 0 1 1.9-1.9h6.1a1.9 1.9 0 0 1 1.3.6l6.5 6.5a1.9 1.9 0 0 1 0 2.5Z"/><circle cx="8.4" cy="8.4" r="1.3"/>'),
+  /* a ticked list */
+  all: railIcon('<path d="M19.6 11.6v6a2 2 0 0 1-2 2H6.4a2 2 0 0 1-2-2V6.4a2 2 0 0 1 2-2h8"/><path d="m8.2 11.4 3 3 8.4-8.4"/>'),
+};
+
+/**
+ * The rows one axis of the rail would be choosing among: every other
+ * filter still applied, that axis switched off. A count beside an
+ * option is therefore the count you get by picking it.
+ */
+function ledRowsExcept(axis){
+  const f = state.filter;
+  const held = { cat:f.cat, sub:f.sub, who:f.who, dir:f.dir };
+  if (axis === 'cat'){ f.cat = ''; f.sub = ''; }
+  if (axis === 'who') f.who = '';
+  if (axis === 'dir') f.dir = '';
+  try { return visibleRows(); }
+  finally { Object.assign(f, held); }
+}
+
+/* ============================================================
+   POPOVERS
+   One registry for every list a rail can drop. A pop knows the
+   button that owns it, so opening one closes the rest and every
+   button's aria-expanded stays honest without anyone tracking it.
+   ============================================================ */
+const POP_OWNER = {};
+const registerPop = (popId, btnId) => { POP_OWNER[popId] = btnId; };
+const popOpen = id => { const el = $('#' + id); return Boolean(el && !el.hidden); };
+const anyPopOpen = () => Object.keys(POP_OWNER).some(popOpen);
+
+function closePops(except){
+  Object.keys(POP_OWNER).forEach(id => {
+    if (id === except) return;
+    const el = $('#' + id);
+    if (el) el.hidden = true;
+    const b = $('#' + POP_OWNER[id]);
+    if (b) b.setAttribute('aria-expanded', 'false');
+  });
+}
+/** Shut one list, leaving any other rail's alone. */
+function closePop(id){
+  const el = $('#' + id);
+  if (el) el.hidden = true;
+  const b = $('#' + POP_OWNER[id]);
+  if (b) b.setAttribute('aria-expanded', 'false');
+}
+
+function openPop(id, build){
+  const el = $('#' + id);
+  if (!el) return;
+  if (popOpen(id)){ closePops(); return; }
+  closePops(id);
+  build();
+  el.hidden = false;
+  const b = $('#' + POP_OWNER[id]);
+  if (b) b.setAttribute('aria-expanded', 'true');
+}
+
+/** Every rail shares one way out: a tap elsewhere, or Escape. */
+function initPops(){
+  document.addEventListener('click', e => {
+    if (!anyPopOpen()) return;
+    /* A tap inside a list can re-render it before this runs, detaching
+       the node that was tapped. A detached node has no ancestors, so
+       asking it whether it sits inside a rail answers "no" and shuts the
+       list that the tap had just opened. It was never outside. */
+    if (!e.target.isConnected) return;
+    if (e.target.closest('.rail')) return;
+    closePops();
+  });
+  document.addEventListener('keydown', e => {
+    /* stopImmediate, not stopPropagation: the ledger's own Escape handler
+       sits on this same node, and a list closing must not close the view */
+    if (e.key === 'Escape' && anyPopOpen()){ e.stopImmediatePropagation(); closePops(); }
+  });
+}
+
+const popOpt = (attr, val, label, extra) =>
+  `<button class="pop__opt${extra && extra.on ? ' on' : ''}${extra && extra.zero ? ' zero' : ''}" type="button" ${attr}="${esc(val)}">
+    ${extra && extra.color ? `<i class="dot" style="background:${extra.color}"></i>` : ''}
+    <span class="nm">${esc(label)}</span>
+    ${extra && extra.n != null ? `<span class="n">${extra.n.toLocaleString()}</span>` : ''}
+    ${extra && extra.chev ? '<span class="chev">\u203A</span>' : ''}
+  </button>`;
+
+function buildWhoPop(){
+  const f = state.filter;
+  const rows = ledRowsExcept('who');
+  const n = new Map();
+  rows.forEach(r => { const k = r.person || ''; n.set(k, (n.get(k) || 0) + 1); });
+  const opts = [popOpt('data-who', '', 'Anyone', { on: !f.who, n: rows.length })]
+    .concat(FAMILY.map(m => popOpt('data-who', m.id, m.id,
+      { on: f.who === m.id, color: m.color, n: n.get(m.id) || 0, zero: !(n.get(m.id) || 0) })));
+  const unowned = n.get('') || 0;
+  if (unowned) opts.push(popOpt('data-who', '\u0000', 'Nobody yet', { on:false, n: unowned }));
+  $('#ledWhoPop').innerHTML = `<p class="pop__head">Family member</p><div class="pop__list">${opts.join('')}</div>`;
+}
+
+function buildDirPop(){
+  const f = state.filter;
+  const rows = ledRowsExcept('dir');
+  const out = rows.filter(r => r.amount < 0).length;
+  const inn = rows.filter(r => r.amount > 0).length;
+  $('#ledDirPop').innerHTML = `<p class="pop__head">Direction</p><div class="pop__list">
+    ${popOpt('data-dir', '', 'Both ways', { on: !f.dir, n: rows.length })}
+    ${popOpt('data-dir', 'out', 'Money out', { on: f.dir === 'out', n: out, zero: !out })}
+    ${popOpt('data-dir', 'in', 'Money in', { on: f.dir === 'in', n: inn, zero: !inn })}
+  </div>`;
+}
+
+let ledCatDrill = '';   /* the category whose subcategories the list is showing */
+
+function buildCatPop(){
+  const f = state.filter;
+  const rows = ledRowsExcept('cat');
+  const coll = new Intl.Collator('en', { numeric:true, sensitivity:'base' });
+
+  if (ledCatDrill){
+    const mine = rows.filter(r => (r.category || CAT_NONE) === ledCatDrill);
+    const n = new Map();
+    mine.forEach(r => { const k = r.sub || ''; n.set(k, (n.get(k) || 0) + 1); });
+    const subs = Array.from(new Set((taxo()[ledCatDrill] || []).concat(Array.from(n.keys()))))
+      .filter(Boolean).sort(coll.compare);
+    const bare = n.get('') || 0;
+    const opts = [popOpt('data-cat', ledCatDrill, 'All of ' + ledCatDrill,
+                         { on: f.cat === ledCatDrill && !f.sub, n: mine.length })]
+      .concat(bare ? [popOpt('data-sub', '\u0000', 'No subcategory', { on:false, n: bare })] : [])
+      .concat(subs.map(x => popOpt('data-sub', x, x,
+        { on: f.sub === x, n: n.get(x) || 0, zero: !(n.get(x) || 0) })));
+    $('#ledCatPop').innerHTML = `<p class="pop__head">
+      <button class="pop__back" type="button" data-catback aria-label="Back to every category">\u2039</button>
+      ${esc(ledCatDrill)}</p><div class="pop__list">${opts.join('')}</div>`;
+    return;
+  }
+
+  const n = new Map();
+  rows.forEach(r => { const k = r.category || CAT_NONE; n.set(k, (n.get(k) || 0) + 1); });
+  const names = Array.from(n.keys()).sort(coll.compare);
+  const opts = [popOpt('data-cat', '', 'Every category', { on: !f.cat, n: rows.length })]
+    .concat(names.map(c => popOpt('data-drill', c, c,
+      { on: f.cat === c, n: n.get(c), chev: true })));
+  $('#ledCatPop').innerHTML = `<p class="pop__head">Category</p><div class="pop__list">${
+    names.length ? opts.join('') : '<p class="pop__empty">No lines to file yet.</p>'}</div>`;
+}
+
+/** Paint the four icons from the filter, and close the lists when the ledger is away. */
+const LED_POP_IDS = ['ledWhoPop','ledDirPop','ledCatPop'];
+
+function syncLedTools(rows){
+  const f = state.filter;
+  const who = $('#ledWhoBtn'), dir = $('#ledDirBtn'), cat = $('#ledCatBtn'), all = $('#ledSelAll');
+  if (!who || !dir || !cat || !all) return;
+
+  /* only this rail's lists: a repaint here must not shut a list
+     the household just opened on another screen */
+  if ($('#ledgerView') && $('#ledgerView').hidden) LED_POP_IDS.forEach(closePop);
+
+  who.innerHTML = LED_ICON.who + (f.who ? '<i class="railbtn__dot"></i>' : '');
+  who.classList.toggle('on', Boolean(f.who));
+  who.setAttribute('aria-label', f.who ? `Showing ${f.who} only — change the family member` : 'Filter by family member');
+
+  dir.innerHTML = LED_ICON[f.dir || 'both'];
+  /* the tint classes only choose a colour -- .on is what fills the button */
+  dir.classList.toggle('on', Boolean(f.dir));
+  dir.classList.toggle('on--owe', f.dir === 'out');
+  dir.classList.toggle('on--asset', f.dir === 'in');
+  dir.setAttribute('aria-label', f.dir === 'out' ? 'Showing money out — change the direction'
+    : f.dir === 'in' ? 'Showing money in — change the direction' : 'Filter by money in or out');
+
+  cat.innerHTML = LED_ICON.cat + (f.cat ? '<i class="railbtn__dot"></i>' : '');
+  cat.classList.toggle('on', Boolean(f.cat));
+  cat.setAttribute('aria-label', f.cat
+    ? `Showing ${f.cat}${f.sub ? ' › ' + f.sub : ''} — change the category` : 'Filter by category');
+
+  const shown = (rows || visibleRows()).slice(0, shownCount);
+  const allOn = shown.length > 0 && shown.every(r => state.sel.has(r.id));
+  all.innerHTML = LED_ICON.all;
+  all.classList.toggle('on', allOn);
+  all.setAttribute('aria-pressed', String(allOn));
+  all.setAttribute('aria-label', allOn
+    ? `Clear the ${shown.length} lines selected` : `Select every line shown (${shown.length})`);
+}
+
+/** One repaint after any rail change: the list is answered, not re-opened. */
+function ledPick(){
+  closePops();
+  shownCount = 40;
+  renderTable();
+  syncFiltSheet();
+}
+
+function initLedTools(){
+  if (!$('#ledWhoBtn')) return;
+  registerPop('ledWhoPop','ledWhoBtn');
+  registerPop('ledDirPop','ledDirBtn');
+  registerPop('ledCatPop','ledCatBtn');
+  $('#ledWhoBtn').addEventListener('click', () => openPop('ledWhoPop', buildWhoPop));
+  $('#ledDirBtn').addEventListener('click', () => openPop('ledDirPop', buildDirPop));
+  $('#ledCatBtn').addEventListener('click', () => { ledCatDrill = state.filter.cat || ''; openPop('ledCatPop', buildCatPop); });
+
+  $('#ledWhoPop').addEventListener('click', e => {
+    const b = e.target.closest('[data-who]');
+    if (!b) return;
+    /* the null byte stands for "filed to nobody", which is not a name */
+    state.filter.who = b.dataset.who === '\u0000' ? '' : b.dataset.who;
+    ledPick();
+  });
+
+  $('#ledDirPop').addEventListener('click', e => {
+    const b = e.target.closest('[data-dir]');
+    if (!b) return;
+    state.filter.dir = b.dataset.dir;
+    ledPick();
+  });
+
+  $('#ledCatPop').addEventListener('click', e => {
+    if (e.target.closest('[data-catback]')){ ledCatDrill = ''; buildCatPop(); return; }
+    const drill = e.target.closest('[data-drill]');
+    if (drill){ ledCatDrill = drill.dataset.drill; buildCatPop(); return; }
+    const c = e.target.closest('[data-cat]');
+    if (c){
+      state.filter.cat = c.dataset.cat;
+      state.filter.sub = '';
+      fillFiltCats();
+      ledPick();
+      return;
+    }
+    const s = e.target.closest('[data-sub]');
+    if (!s) return;
+    state.filter.cat = ledCatDrill;
+    state.filter.sub = s.dataset.sub === '\u0000' ? '' : s.dataset.sub;
+    fillFiltCats();
+    ledPick();
+  });
+
+  $('#ledSelAll').addEventListener('click', () => {
+    const shown = visibleRows().slice(0, shownCount);
+    const allOn = shown.length > 0 && shown.every(r => state.sel.has(r.id));
+    shown.forEach(r => allOn ? state.sel.delete(r.id) : state.sel.add(r.id));
+    renderTable();
+  });
+
 }
 
 /* ============================================================
@@ -5779,8 +6493,8 @@ function syncFiltSheet(){
   if (!$('#filtModal') || $('#filtModal').hidden) return;
   $('#filtFrom').value = f.from || '';
   $('#filtTo').value = f.to || '';
-  $('#filtMin').value = f.min == null ? '' : formatMoneyInput(f.min.toFixed(2));
-  $('#filtMax').value = f.max == null ? '' : formatMoneyInput(f.max.toFixed(2));
+  $('#filtMin').value = f.min == null ? '' : formatMoneyField(f.min.toFixed(2));
+  $('#filtMax').value = f.max == null ? '' : formatMoneyField(f.max.toFixed(2));
   $$('#filtSort button').forEach(b => b.classList.toggle('on',
     b.dataset.sort === state.sort.key && +b.dataset.dir === state.sort.dir));
   const n = visibleRows().length;
@@ -5801,8 +6515,8 @@ function readFiltSheet(){
   f.min = lo == null ? null : Math.abs(lo);
   f.max = hi == null ? null : Math.abs(hi);
   if (f.min != null && f.max != null && f.min > f.max){ const t = f.min; f.min = f.max; f.max = t;
-    $('#filtMin').value = formatMoneyInput(f.min.toFixed(2));
-    $('#filtMax').value = formatMoneyInput(f.max.toFixed(2)); }
+    $('#filtMin').value = formatMoneyField(f.min.toFixed(2));
+    $('#filtMax').value = formatMoneyField(f.max.toFixed(2)); }
   shownCount = 40;
   renderTable();
   syncFiltSheet();
@@ -5811,6 +6525,7 @@ function readFiltSheet(){
 function clearFilt(){
   const f = state.filter;
   f.cat = ''; f.sub = ''; f.from = ''; f.to = ''; f.min = null; f.max = null;
+  f.who = ''; f.dir = '';
   state.sort = { key:'date', dir:-1 };
   fillFiltCats();
   shownCount = 40;
@@ -5838,7 +6553,9 @@ function filtKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeFilt(); 
 
 function initFiltSheet(){
   if (!$('#filtModal')) return;
-  $('#filtBtn').addEventListener('click', openFilt);
+  /* the sheet and a rail list are two ways of asking the same question;
+     only one of them should be on screen at a time */
+  $('#filtBtn').addEventListener('click', () => { closePops(); openFilt(); });
   $('#filtX').addEventListener('click', closeFilt);
   $('#filtDone').addEventListener('click', closeFilt);
   $('#filtClear').addEventListener('click', clearFilt);
@@ -5948,17 +6665,7 @@ function initWorkbench(){
     const th = e.target.closest && e.target.closest('th[data-sort]');
     if (th && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); setSort(th.dataset.sort); }
   });
-  $$('#ledFlags button[data-flag]').forEach(b => b.addEventListener('click', () => {
-    state.filter.flag = state.filter.flag === b.dataset.flag ? null : b.dataset.flag;
-    shownCount = 40;
-    renderTable();
-  }));
-  $('#ledSelAll').addEventListener('click', () => {
-    const shown = visibleRows().slice(0, shownCount);
-    const allOn = shown.length && shown.every(r => state.sel.has(r.id));
-    shown.forEach(r => allOn ? state.sel.delete(r.id) : state.sel.add(r.id));
-    renderTable();
-  });
+  initLedTools();
   $('#selClear').addEventListener('click', clearSel);
   $('#bulkCat').addEventListener('change', fillBulkSubs);
   $('#bulkGo').addEventListener('click', applyBulk);
@@ -6097,9 +6804,14 @@ function catalogNames(){
   Object.keys(CAT_STATS).forEach(c => { if (!names.includes(c)) names.push(c); });
   if (q) names = names.filter(c => c.toLowerCase().includes(q) ||
     Object.keys(statOf(c).subs).some(x => x.toLowerCase().includes(q)));
-  if (ui.flag === 'used')   names = names.filter(c => statOf(c).rows > 0);
-  if (ui.flag === 'unused') names = names.filter(c => statOf(c).rows === 0);
-  if (ui.flag === 'orphan') names = names.filter(c => statOf(c).orphans > 0);
+  /* the picker narrows to whole categories, plus the parents of any
+     single subcategory picked -- a card has to exist to show a sub */
+  const pick = catPick();
+  if (selCount(pick)){
+    const parents = new Set(pick.cats);
+    pick.subs.forEach(k => parents.add(k.split(CATSUB_SEP)[0]));
+    names = names.filter(c => parents.has(c));
+  }
   return ui.sort === 'name'
     ? names.sort((a,b) => a.localeCompare(b))
     : names.sort((a,b) => statOf(b).rows - statOf(a).rows || a.localeCompare(b));
@@ -6129,16 +6841,25 @@ function subLineHtml(c, name){
       ${st.rows ? '' : 'disabled'} aria-label="Show the ${esc(label)} lines">→</button>
     <button class="icox" data-ren-sub="${esc(name)}" data-cat="${esc(c)}" type="button"
       ${bare ? 'disabled' : ''} aria-label="Rename ${esc(label)}">✎</button>
-    <button class="icox bad" data-del-sub="${esc(name)}" data-cat="${esc(c)}" type="button"
-      ${st.rows || bare ? 'disabled' : ''} aria-label="Delete ${esc(label)}">✕</button>
+    ${bare
+      ? `<button class="icox" type="button" disabled aria-label="There is nothing to delete here"></button>`
+      : (() => {
+          const blocked = catDeleteBlocked(c, name);
+          const armed = catArmed === catDelKey(c, name);
+          return `<button class="icox ${blocked ? 'locked' : 'bad'}${armed ? ' armed' : ''}"
+            data-del-sub="${esc(name)}" data-cat="${esc(c)}" type="button"
+            aria-disabled="${Boolean(blocked)}"
+            aria-label="${blocked ? esc(blocked) : armed ? `Tap again to delete ${esc(label)}` : `Delete ${esc(label)}`}"
+            >${blocked ? ICO_LOCK : ICO_TRASH}</button>`;
+        })()}
   </li>`;
 }
 
 function catCardHtml(c){
   const st = statOf(c);
   const listed = Boolean(taxo()[c]);
-  const subNames = Object.keys(st.subs).sort((a,b) =>
-    (a === '') - (b === '') || st.subs[b].rows - st.subs[a].rows || a.localeCompare(b));
+  const subNames = pickedSubs(c, Object.keys(st.subs).sort((a,b) =>
+    (a === '') - (b === '') || st.subs[b].rows - st.subs[a].rows || a.localeCompare(b)));
   const realSubs = subNames.filter(x => x !== '').length;
   const ed = state.catUI.editing;
   const editing = ed && ed.cat === c && ed.sub == null;
@@ -6166,13 +6887,20 @@ function catCardHtml(c){
       <div class="catx__acts">
         <button class="btn btn--sm" data-ren-cat="${esc(c)}" type="button">Rename</button>
         <button class="btn btn--sm" data-rows-cat="${esc(c)}" type="button" ${st.rows ? '' : 'disabled'}>Show lines</button>
-        <button class="icox bad" data-del-cat="${esc(c)}" type="button" ${locked ? 'disabled' : ''}
-          aria-label="Delete ${esc(c)}">✕</button>
+        ${(() => {
+          const blocked = catDeleteBlocked(c, null);
+          const armed = catArmed === catDelKey(c, null);
+          return `<button class="icox ${blocked ? 'locked' : 'bad'}${armed ? ' armed' : ''}"
+            data-del-cat="${esc(c)}" type="button" aria-disabled="${Boolean(blocked)}"
+            aria-label="${blocked ? esc(blocked) : armed ? `Tap again to delete ${esc(c)}` : `Delete ${esc(c)}`}"
+            >${blocked ? ICO_LOCK : ICO_TRASH}</button>`;
+        })()}
       </div>
       <ul class="subx">${subNames.length ? subNames.map(x => subLineHtml(c, x)).join('')
         : '<li class="bare zero"><span class="snm">No subcategories yet</span></li>'}</ul>
       <div class="addsub">
-        <input class="search" data-newsub type="text" placeholder="New subcategory" autocomplete="off">
+        <input class="search" data-newsub type="text" placeholder="${esc(c)}-\u2026" autocomplete="off"
+               aria-label="New subcategory under ${esc(c)}">
         <button class="btn btn--sm" data-addsub type="button">Add</button>
       </div>
       ${locked ? `<p class="locknote">Locked: ${st.rows.toLocaleString()} line${st.rows===1?'':'s'} point here.
@@ -6197,6 +6925,7 @@ function renderCategories(){
 
   const names = catalogNames();
   $('#cShown').textContent = `${names.length} of ${all.length}`;
+  syncCatRail();
   host.innerHTML = names.length ? names.map(catCardHtml).join('')
     : '<div class="panel"><p class="empty">No category matches that.</p></div>';
 
@@ -6204,6 +6933,182 @@ function renderCategories(){
     const el = $('[data-editin]', host);
     if (el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
   }
+}
+
+/* ============================================================
+   THE CATALOG'S ICON RAIL
+   The four chip rows that used to live inside a fold, as icons
+   above it: which categories to show, how to order them, and open
+   or close the lot. The two lists carry counts, so a filter says
+   what it would leave behind before it is picked.
+   ============================================================ */
+const CAT_ICON = {
+  /* a funnel */
+  flag: railIcon('<path d="M3.6 4.8h16.8l-6.9 8.2v6.6l-3-2v-4.6Z"/>'),
+  /* two arrows, one each way */
+  sort: railIcon('<path d="M7.6 19.6V4.4"/><path d="m4.2 7.8 3.4-3.4L11 7.8"/><path d="M16.4 4.4v15.2"/><path d="m13 16.2 3.4 3.4 3.4-3.4"/>'),
+  /* chevrons pushed apart -- wide and shallow, so they never read as a cross */
+  expand: railIcon('<path d="m6.4 9.6 5.6-5.2 5.6 5.2"/><path d="m6.4 14.4 5.6 5.2 5.6-5.2"/>'),
+  /* chevrons drawn together */
+  collapse: railIcon('<path d="m6.4 4.4 5.6 5.2 5.6-5.2"/><path d="m6.4 19.6 5.6-5.2 5.6 5.2"/>'),
+};
+
+/* Two buttons for one question. The catalog is either open or it is not,
+   so the icon shows the move it would make: chevrons apart when a tap
+   would open the lot, together when a tap would shut it. */
+function catAllOpen(names){
+  const list = names || catalogNames();
+  return list.length > 0 && list.every(c => state.catUI.open.has(c));
+}
+
+const CAT_SORTS = [
+  { id:'rows', label:'By lines' },
+  { id:'name', label:'A\u2013Z' },
+];
+const catSortLabel = id => (CAT_SORTS.find(s => s.id === id) || CAT_SORTS[0]).label;
+
+/* ---------- the catalog's filter: a picker, not four flags ----------
+   In use, Unused and Off-catalog subs answered questions the cards
+   already answer on their face -- a card shows its line count and
+   marks its own off-catalog subs. What could not be asked was "show
+   me these three categories", so that is what the funnel does now. */
+function catPick(){
+  const ui = state.catUI;
+  if (!ui.pick || !Array.isArray(ui.pick.cats)) ui.pick = { cats:[], subs:[] };
+  if (!Array.isArray(ui.pick.subs)) ui.pick.subs = [];
+  if (!ui.pickOpen) ui.pickOpen = new Set();
+  return ui.pick;
+}
+
+/** Every category the catalog knows about, listed or merely in use. */
+function catalogTax(){
+  const tax = taxo(), out = {};
+  new Set(Object.keys(tax).concat(Object.keys(CAT_STATS))).forEach(c => {
+    out[c] = Array.from(new Set((tax[c] || [])
+      .concat(Object.keys(statOf(c).subs).filter(Boolean))));
+  });
+  return out;
+}
+
+/**
+ * The subcategories a card should show. Picking a whole category means
+ * all of them; picking single subcategories inside it means those only,
+ * so the card narrows to exactly what was asked for.
+ */
+function pickedSubs(c, subNames){
+  const p = catPick();
+  if (!selCount(p) || p.cats.includes(c)) return subNames;
+  const mine = p.subs
+    .filter(k => k.split(CATSUB_SEP)[0] === c)
+    .map(k => k.split(CATSUB_SEP)[1]);
+  return mine.length ? subNames.filter(x => mine.includes(x)) : subNames;
+}
+
+function buildCatSortPop(){
+  const cur = state.catUI.sort;
+  $('#cSortPop').innerHTML = `<p class="pop__head">Order</p><div class="pop__list">${
+    CAT_SORTS.map(s => popOpt('data-csort', s.id, s.label, { on: cur === s.id })).join('')}</div>`;
+}
+
+/* the catalog's picker is a popover rather than a dropdown, so it holds
+   its own waiting list; it is emptied whenever the popover is opened */
+const catPickStaged = new Set();
+
+function renderCatPick(){
+  const list = $('#cPickList');
+  if (!list) return;
+  catPick();
+  list.innerHTML = mselListHtml({
+    sel: state.catUI.pick,
+    counts: catCounts(),
+    q: norm(($('#cPickQ') && $('#cPickQ').value) || ''),
+    open: state.catUI.pickOpen,
+    staged: catPickStaged,
+    tax: catalogTax(),
+  });
+}
+
+/** Paint the rail from catUI. *//** Paint the rail from catUI. */
+function syncCatRail(){
+  const f = $('#cFlagBtn'), s = $('#cSortBtn'), x = $('#cFoldBtn');
+  if (!f || !s || !x) return;
+  const picked = selCount(catPick());
+  f.innerHTML = CAT_ICON.flag + (picked ? '<i class="railbtn__dot"></i>' : '');
+  f.classList.toggle('on', picked > 0);
+  f.setAttribute('aria-label', picked
+    ? `Narrowed to ${picked} pick${picked === 1 ? '' : 's'} — change the filter`
+    : 'Filter by category or subcategory');
+  s.innerHTML = CAT_ICON.sort;
+  s.classList.toggle('on', state.catUI.sort === 'name');
+  s.setAttribute('aria-label', `Ordered ${catSortLabel(state.catUI.sort)} — change the order`);
+
+  const allOpen = catAllOpen();
+  x.innerHTML = allOpen ? CAT_ICON.collapse : CAT_ICON.expand;
+  x.classList.toggle('on', allOpen);
+  x.setAttribute('aria-pressed', String(allOpen));
+  x.setAttribute('aria-label', allOpen ? 'Close every category' : 'Open every category');
+}
+
+function initCatRail(){
+  if (!$('#cFlagBtn')) return;
+  registerPop('cFlagPop','cFlagBtn');
+  registerPop('cSortPop','cSortBtn');
+  $('#cFlagBtn').addEventListener('click', () =>
+    openPop('cFlagPop', () => { catPickStaged.clear(); renderCatPick(); }));
+  $('#cSortBtn').addEventListener('click', () => openPop('cSortPop', buildCatSortPop));
+
+  $('#cPickQ').addEventListener('input', renderCatPick);
+  $('#cPickNone').addEventListener('click', () => {
+    const p = catPick();
+    p.cats = []; p.subs = [];
+    catPickStaged.clear();
+    renderCatPick();
+    renderCategories();
+  });
+
+  /* the list stays open while boxes are ticked -- this is a multi-select,
+     so closing on the first pick would be a single-select in disguise */
+  $('#cPickList').addEventListener('click', e => {
+    const more = e.target.closest('[data-mselopen]');
+    if (more){
+      const c = more.dataset.mselopen;
+      const open = state.catUI.pickOpen;
+      if (open.has(c)){
+        open.delete(c);
+        [...catPickStaged].forEach(k => { if (k.split(CATSUB_SEP)[0] === c) catPickStaged.delete(k); });
+      } else open.add(c);
+      renderCatPick();
+      return;
+    }
+    const plus = e.target.closest('[data-mseladd]');
+    if (!plus) return;
+    const c = plus.dataset.mseladd;
+    const n = mselCommit(catPick(), catPickStaged, c);
+    if (!n) return;
+    renderCatPick();
+    renderCategories();
+    toast(`Added ${n} subcategor${n === 1 ? 'y' : 'ies'} of ${c}`);
+  });
+  $('#cPickList').addEventListener('change', e => {
+    const what = mselToggle(catPick(), e.target, catPickStaged);
+    if (what === 'none') return;
+    renderCatPick();
+    if (what === 'commit') renderCategories();
+  });
+  $('#cSortPop').addEventListener('click', e => {
+    const b = e.target.closest('[data-csort]');
+    if (!b) return;
+    state.catUI.sort = b.dataset.csort;
+    closePops();
+    renderCategories();
+  });
+
+  $('#cFoldBtn').addEventListener('click', () => {
+    const names = catalogNames();
+    if (catAllOpen(names)) state.catUI.open.clear();
+    else names.forEach(c => state.catUI.open.add(c));
+    renderCategories();
+  });
 }
 
 /* ---------- catalog CRUD — the delete lock lives here ---------- */
@@ -6216,8 +7121,25 @@ function catAdd(name){
   save(); render();
   toast(`Added ${name}`);
 }
+/**
+ * The catalog reads Parent-Child: FixedExpense-Netflix, Grocery-Store.
+ * A subcategory typed bare picks its parent's name up on the way in, so
+ * the household never has to type the prefix or remember the shape. A
+ * name that already carries the prefix is left as typed rather than
+ * doubled -- typing "fred-shoes" under fred gives fred-shoes, not
+ * fred-fred-shoes. Only new names are qualified; what a statement
+ * imported, and what the catalog already holds, is left alone.
+ */
+function qualifySub(parent, name){
+  const t = String(name || '').trim();
+  const p = String(parent || '').trim();
+  if (!t || !p) return t;
+  const pre = p + '-';
+  return t.toLowerCase().startsWith(pre.toLowerCase()) ? t : pre + t;
+}
+
 function catAddSub(parent, name){
-  name = String(name || '').trim();
+  name = qualifySub(parent, cleanSub(name));
   if (!parent || !name) return;
   if (!taxo()[parent]) return toast('That category is off the catalog — rename it back first');
   if (taxo()[parent].includes(name)) return toast('That subcategory already exists');
@@ -6275,26 +7197,82 @@ function catRenameSub(cat, from, to, parent){
     : parent === cat ? `Renamed — ${n} line${n===1?'':'s'} moved`
     : `Moved to ${parent} — ${n} line${n===1?'':'s'} followed`);
 }
+/* ============================================================
+   DELETING FROM THE CATALOG
+   One rule, enforced in one place: a name can be deleted only while
+   no line item points at it. A category counts its whole family, so
+   a parent whose own rows are zero is still held by its children.
+   The button never goes grey and mute -- a locked delete stays live
+   and, when tapped, names the lines standing in the way. An open
+   delete arms on the first tap and fires on the second, which is how
+   every other destructive control in this app behaves; a browser
+   confirm() box is not available to a home-screen app in any reliable
+   form, and was never the right shape for this.
+   ============================================================ */
+const ICO_TRASH = railIcon('<path d="M4.8 6.8h14.4"/>'
+  + '<path d="M9.6 6.8V5.4a1.6 1.6 0 0 1 1.6-1.6h1.6a1.6 1.6 0 0 1 1.6 1.6v1.4"/>'
+  + '<path d="M17.4 6.8 16.8 18.6a1.7 1.7 0 0 1-1.7 1.6H8.9a1.7 1.7 0 0 1-1.7-1.6L6.6 6.8"/>'
+  + '<path d="M10.4 10.2v6.2M13.6 10.2v6.2"/>');
+const ICO_LOCK = railIcon('<rect x="5" y="10.6" width="14" height="9" rx="2.2"/>'
+  + '<path d="M8.6 10.6V8.2a3.4 3.4 0 0 1 6.8 0v2.4"/><path d="M12 14.2v1.8"/>');
+
+/** What a delete button is holding, so only one is ever armed. */
+const catDelKey = (cat, sub) => (sub == null ? 'cat' : 'sub') + CATSUB_SEP + catSubKey(cat, sub);
+let catArmed = null, catArmTimer = null;
+
+function disarmCatDelete(){
+  clearTimeout(catArmTimer);
+  catArmTimer = null;
+  catArmed = null;
+}
+function armCatDelete(key, msg){
+  clearTimeout(catArmTimer);
+  catArmed = key;
+  /* an armed delete that is walked away from disarms itself */
+  catArmTimer = setTimeout(() => { catArmed = null; renderCategories(); }, 4000);
+  renderCategories();
+  toast(msg);
+}
+
+/** The one gate. Nothing deletes without passing it, whatever the UI did. */
+function catDeleteBlocked(cat, sub){
+  const n = sub == null ? statOf(cat).rows : subRowsOf(cat, sub);
+  if (!n) return null;
+  return sub == null
+    ? `Locked — ${n.toLocaleString()} line${n === 1 ? '' : 's'} still filed under ${cat}`
+    : `Locked — ${n.toLocaleString()} line${n === 1 ? '' : 's'} still use ${sub}`;
+}
+
 function catDelete(name){
-  const st = statOf(name);
-  if (st.rows){
-    toast(`Locked — ${st.rows.toLocaleString()} line${st.rows===1?'':'s'} still filed under ${name}`);
+  const blocked = catDeleteBlocked(name, null);
+  if (blocked){
+    disarmCatDelete();
+    toast(blocked);
     state.catUI.open.add(name); renderCategories();
     return;
   }
-  const subs = (taxo()[name] || []).length;
-  if (!confirm(`Delete "${name}"? No line item uses it${subs ? `, and its ${subs} subcategor${subs===1?'y':'ies'} go with it` : ''}.`)) return;
+  const key = catDelKey(name, null);
+  if (catArmed !== key){
+    const subs = (taxo()[name] || []).length;
+    return armCatDelete(key, `Tap again to delete ${name}`
+      + (subs ? ` and its ${subs} subcategor${subs === 1 ? 'y' : 'ies'}` : ''));
+  }
+  disarmCatDelete();
   delete taxo()[name];
   state.catUI.open.delete(name);
   if (state.filter.cat === name){ state.filter.cat = ''; state.filter.sub = ''; }
   save(); render();
   toast(`Deleted ${name}`);
 }
+
 function catDeleteSub(cat, sub){
-  const n = subRowsOf(cat, sub);
-  if (n){ toast(`Locked — ${n} line${n===1?'':'s'} use ${sub}`); return; }
+  if (!sub) return;                       /* "no subcategory" is not a thing to delete */
+  const blocked = catDeleteBlocked(cat, sub);
+  if (blocked){ disarmCatDelete(); toast(blocked); renderCategories(); return; }
   if (!taxo()[cat]) return;
-  if (!confirm(`Delete "${sub}" from ${cat}? No line item uses it.`)) return;
+  const key = catDelKey(cat, sub);
+  if (catArmed !== key) return armCatDelete(key, `Tap again to delete ${sub}`);
+  disarmCatDelete();
   taxo()[cat] = taxo()[cat].filter(x => x !== sub);
   if (state.filter.sub === sub) state.filter.sub = '';
   save(); render();
@@ -6351,18 +7329,7 @@ function initCatalog(){
   $('#addCatBtn').addEventListener('click', () => { catAdd($('#newCat').value); $('#newCat').value = ''; });
   $('#newCat').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#addCatBtn').click(); } });
   $('#cq').addEventListener('input', e => { state.catUI.q = e.target.value; renderCategories(); });
-  $$('#scr-categories [data-cflag]').forEach(b => b.addEventListener('click', () => {
-    state.catUI.flag = state.catUI.flag === b.dataset.cflag ? null : b.dataset.cflag;
-    $$('#scr-categories [data-cflag]').forEach(x => x.classList.toggle('on', x.dataset.cflag === state.catUI.flag));
-    renderCategories();
-  }));
-  $$('#scr-categories [data-csort]').forEach(b => b.addEventListener('click', () => {
-    state.catUI.sort = b.dataset.csort;
-    $$('#scr-categories [data-csort]').forEach(x => x.classList.toggle('on', x.dataset.csort === state.catUI.sort));
-    renderCategories();
-  }));
-  $('#cExpand').addEventListener('click', () => { catalogNames().forEach(c => state.catUI.open.add(c)); renderCategories(); });
-  $('#cCollapse').addEventListener('click', () => { state.catUI.open.clear(); renderCategories(); });
+  initCatRail();
 
   const host = $('#catList');
   host.addEventListener('toggle', e => {
@@ -6377,6 +7344,10 @@ function initCatalog(){
     const save_ = e.target.closest('[data-save]');
     if (save_) return catCommitEdit(card);
     if (e.target.closest('[data-cancel]')){ state.catUI.editing = null; return renderCategories(); }
+    if (catArmed && !e.target.closest('[data-del-cat]') && !e.target.closest('[data-del-sub]')){
+      disarmCatDelete();
+      renderCategories();
+    }
     const rc = e.target.closest('[data-ren-cat]');
     if (rc){ state.catUI.editing = { cat: rc.dataset.renCat, sub: null }; state.catUI.open.add(rc.dataset.renCat); return renderCategories(); }
     const dc = e.target.closest('[data-del-cat]');
@@ -6413,9 +7384,6 @@ function initCatalog(){
   $('#expCatCsv').addEventListener('click', () => {
     dlFile('category-catalog.csv', catalogCsv(), 'text/csv');
     toast('Catalog CSV saved');
-  });
-  $('#catFilterChip').addEventListener('click', () => {
-    state.filter.cat = ''; state.filter.sub = ''; shownCount = 40; renderTable(); syncFiltSheet();
   });
 }
 function catCommitEdit(card){
@@ -6591,19 +7559,29 @@ function billsAhead(days = 30){
 const billSigned = b => b.kind === 'income' ? Math.abs(b.amount) : -Math.abs(b.amount);
 
 /* ============================================================
-   FIXED EXPENSES AHEAD
+   PROJECTED CATEGORIES
    The ledger already knows what this household pays every month,
-   so nothing here needs typing. Each FixedExpense outflow is
-   rolled forward exactly one month at the same amount: its date
-   plus a month, the day clamped so the 31st still lands inside a
-   short month. A projection survives only while its date is still
-   ahead of today -- the morning it passes it drops off on its own,
-   and the next import rolls a fresher line into its place.
-   Projections never touch a balance and never enter the bill
-   totals; they sit beside the calendar as a read of the pattern.
+   so nothing here needs typing. The household names the categories
+   -- or the single subcategories -- worth carrying forward, and
+   every line filed under one is rolled forward exactly one month
+   at the same amount: its date plus a month, the day clamped so
+   the 31st still lands inside a short month. A projection survives
+   only while its date is still ahead of today; the morning it
+   passes it drops off on its own, and the next import rolls a
+   fresher line into its place. Projections never touch a balance.
    ============================================================ */
-const isFixedRow = r =>
-  /^fixedexpense/.test(String(r.category || '').toLowerCase().replace(/[^a-z]/g, ''));
+const CATSUB_SEP = '\u241F';   /* a subcategory name is only unique under its parent */
+const catSubKey = (cat, sub) => String(cat || '') + CATSUB_SEP + String(sub || '');
+
+function projSel(){
+  if (!state.calProj || !Array.isArray(state.calProj.cats)) state.calProj = { cats:['FixedExpense'], subs:[] };
+  if (!Array.isArray(state.calProj.subs)) state.calProj.subs = [];
+  return state.calProj;
+}
+const projCount = () => selCount(projSel());
+
+/** Does this row belong to something the calendar carries forward? */
+const rowProjected = r => selMatch(projSel(), r);
 
 /** One month on, with the day clamped into the target month. */
 function addMonthClamped(d){
@@ -6612,46 +7590,105 @@ function addMonthClamped(d){
   return new Date(y, m + 1, Math.min(d.getDate(), dim));
 }
 
-function fixedForecasts(){
+/** A subcategory reads better without its parent repeated in front of it. */
+function shortSub(cat, sub){
+  const s = String(sub || ''), c = String(cat || '') + '-';
+  return s.toLowerCase().startsWith(c.toLowerCase()) ? s.slice(c.length) : s;
+}
+
+/** Every carried line rolled one month on, still ahead of today. */
+function calForecasts(){
   const from = startOfToday();
+  const seen = new Set();
   const out = [];
   state.rows.forEach(r => {
-    if (!isFixedRow(r) || !(r.amount < 0)) return;
+    if (!r.amount || !(r.date instanceof Date) || !rowProjected(r)) return;
     const next = addMonthClamped(r.date);
     if (next < from) return;                    /* the day passed -- drop it off */
+    /* two statements can carry the same charge; one promise is enough */
+    const k = isoOf(next) + '|' + norm(r.desc) + '|' + r.amount;
+    if (seen.has(k)) return;
+    seen.add(k);
     out.push({
+      kind: 'proj',
       id: 'FX-' + r.id,
       name: r.desc,
-      amount: Math.abs(r.amount),
+      amount: r.amount,                         /* signed, as the ledger holds it */
       acct: r.acct,
-      sub: String(r.sub || '').replace(/^FixedExpense-/i, ''),
+      cat: String(r.category || ''),
+      sub: shortSub(r.category, r.sub),
       date: next,
       from: r.date,
     });
   });
-  return out.sort((a, b) => a.date - b.date || b.amount - a.amount);
+  return out.sort((a, b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
 }
 
-function forecastRow(f, showDate){
+/* ============================================================
+   ONE LIST, ONE TOTAL
+   Every surface on this screen -- the month figures, the selected
+   day, the rolling window -- reads the same unified list, so a
+   figure can never disagree with the lines printed under it.
+   ============================================================ */
+function billItem(o){
+  return { kind:'bill', id:o.bill.id, date:o.date, name:o.bill.name,
+           amount: billSigned(o.bill), acct:o.bill.acct, repeat:o.bill.repeat };
+}
+const calSort = (a,b) => a.date - b.date
+  || (a.kind === b.kind ? 0 : a.kind === 'bill' ? -1 : 1)
+  || String(a.name).localeCompare(String(b.name));
+
+/** Everything landing inside one calendar month, promises and projections alike. */
+function calItems(y, m, fx){
+  const proj = (fx || calForecasts())
+    .filter(f => f.date.getFullYear() === y && f.date.getMonth() === m);
+  return billOccurrences(y, m).map(billItem).concat(proj).sort(calSort);
+}
+
+/** Everything inside a rolling window from today. */
+function calAheadItems(days = 30, fx){
+  const from = startOfToday();
+  const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
+  const proj = (fx || calForecasts()).filter(f => f.date >= from && f.date <= to);
+  return billsAhead(days).map(billItem).concat(proj).sort(calSort);
+}
+
+/** The only place a calendar figure is ever produced. */
+function calTotals(items){
+  const t = { out:0, in:0, net:0, n:items.length, bills:0, projs:0 };
+  items.forEach(it => {
+    if (it.amount < 0) t.out += Math.abs(it.amount); else t.in += it.amount;
+    if (it.kind === 'bill') t.bills++; else t.projs++;
+  });
+  t.net = t.in - t.out;
+  return t;
+}
+
+function projRow(f, showDate){
   const when = showDate ? fmtDate(f.date) + ' \u00b7 ' : '';
   const tag = f.sub ? ' \u00b7 ' + esc(f.sub) : '';
+  const income = f.amount > 0;
   return `<li class="bill bill--proj">
     <span class="bill__name">${esc(f.name)}</span>
-    <span class="bill__amt" style="color:var(--owe)">\u2212${money(f.amount)}</span>
+    <span class="bill__amt" style="color:${income ? 'var(--asset)' : 'var(--owe)'}">${income ? '+' : '\u2212'}${money(Math.abs(f.amount))}</span>
     <span class="bill__meta">${when}${esc(f.acct)}${tag} \u00b7 projected from ${fmtDate(f.from)}</span>
   </li>`;
 }
 
-function billRow(o, showDate){
-  const b = o.bill;
-  const income = b.kind === 'income';
-  const when = showDate ? fmtDate(o.date) + ' · ' : '';
-  const rep = b.repeat === 'monthly' ? ' · monthly' : '';
+/** One renderer for both kinds, so a list never sorts itself into two piles. */
+const calRow = (it, showDate) => it.kind === 'bill'
+  ? billRow(it, showDate)
+  : projRow(it, showDate);
+
+function billRow(it, showDate){
+  const income = it.amount > 0;
+  const when = showDate ? fmtDate(it.date) + ' · ' : '';
+  const rep = it.repeat === 'monthly' ? ' · monthly' : '';
   return `<li class="bill">
-    <span class="bill__name">${esc(b.name)}</span>
-    <span class="bill__amt" style="color:${income ? 'var(--asset)' : 'var(--owe)'}">${income ? '+' : '−'}${money(Math.abs(b.amount))}</span>
-    <button class="bill__del" type="button" data-bill="${esc(b.id)}" aria-label="Remove ${esc(b.name)} from the calendar">✕</button>
-    <span class="bill__meta">${when}${esc(b.acct)}${rep}</span>
+    <span class="bill__name">${esc(it.name)}</span>
+    <span class="bill__amt" style="color:${income ? 'var(--asset)' : 'var(--owe)'}">${income ? '+' : '−'}${money(Math.abs(it.amount))}</span>
+    <button class="bill__del" type="button" data-bill="${esc(it.id)}" aria-label="Remove ${esc(it.name)} from the calendar">✕</button>
+    <span class="bill__meta">${when}${esc(it.acct)}${rep}</span>
   </li>`;
 }
 
@@ -6666,7 +7703,6 @@ function wireBillDeletes(){
 
 function renderCalendar(){
   const { y, m } = state.cal;
-  const occ = billOccurrences(y, m);
   const today = startOfToday();
   const todayIso = isoOf(today);
 
@@ -6675,38 +7711,37 @@ function renderCalendar(){
   const mt = $('#calMonthTag');
   if (mt) mt.textContent = new Date(y, m, 1).toLocaleDateString('en-US',{month:'short', year:'numeric'});
 
+  /* one pass of the forecast feeds every surface below */
+  const fx = calForecasts();
+  const items = calItems(y, m, fx);
+
   /* the grid */
   const dim = new Date(y, m+1, 0).getDate();
   const lead = new Date(y, m, 1).getDay();
   const cells = Math.ceil((lead + dim) / 7) * 7;
   const byDay = new Map();
-  occ.forEach(o => { const k = isoOf(o.date); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(o); });
-
-  /* projections ride the same grid, in their own map so they never
-     get counted as bills or folded into the month totals */
-  const fx = fixedForecasts();
-  const fxByDay = new Map();
-  fx.forEach(f => { const k = isoOf(f.date); if (!fxByDay.has(k)) fxByDay.set(k, []); fxByDay.get(k).push(f); });
+  items.forEach(it => { const k = isoOf(it.date); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(it); });
 
   let html = '';
   for (let i = 0; i < cells; i++){
     const d = new Date(y, m, i - lead + 1);
     const iso = isoOf(d);
     const inMonth = d.getMonth() === m;
-    const items = byDay.get(iso) || [];
-    const proj = inMonth ? (fxByDay.get(iso) || []) : [];
-    const pips = items.slice(0,3).map(o =>
-      `<i style="background:${o.bill.kind === 'income' ? 'var(--asset)' : 'var(--owe)'}"></i>`).join('')
-      + proj.slice(0, Math.max(0, 4 - Math.min(items.length, 3))).map(() =>
+    const day = inMonth ? (byDay.get(iso) || []) : [];
+    const bills = day.filter(it => it.kind === 'bill');
+    const proj  = day.filter(it => it.kind === 'proj');
+    const pips = bills.slice(0,3).map(it =>
+      `<i style="background:${it.amount > 0 ? 'var(--asset)' : 'var(--owe)'}"></i>`).join('')
+      + proj.slice(0, Math.max(0, 4 - Math.min(bills.length, 3))).map(() =>
         `<i class="pip--proj"></i>`).join('');
     const cls = ['cal__day'];
     if (!inMonth) cls.push('cal__day--out');
-    if (items.length && inMonth) cls.push('cal__day--has');
+    if (bills.length) cls.push('cal__day--has');
     else if (proj.length) cls.push('cal__day--proj');
     if (iso === todayIso) cls.push('cal__day--today');
     if (iso === state.cal.sel) cls.push('cal__day--sel');
     html += `<button type="button" class="${cls.join(' ')}" data-day="${iso}"
-      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${items.length ? `, ${items.length} due` : ''}${proj.length ? `, ${proj.length} projected` : ''}">
+      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${bills.length ? `, ${bills.length} due` : ''}${proj.length ? `, ${proj.length} projected` : ''}">
       <span>${d.getDate()}</span><span class="cal__pips">${pips}</span></button>`;
   }
   $('#calGrid').innerHTML = html;
@@ -6717,48 +7752,310 @@ function renderCalendar(){
     renderCalendar();
   }));
 
-  /* month totals */
-  const out = occ.filter(o => o.bill.kind !== 'income').reduce((s,o) => s + Math.abs(o.bill.amount), 0);
-  const inn = occ.filter(o => o.bill.kind === 'income').reduce((s,o) => s + Math.abs(o.bill.amount), 0);
-  $('#calOut').textContent = occ.length ? moneyShort(out) : '—';
-  $('#calIn').textContent  = occ.length ? moneyShort(inn) : '—';
+  /* month totals -- the sum of exactly the lines the month shows */
+  const mtot = calTotals(items);
+  $('#calOut').textContent = mtot.n ? moneyShort(mtot.out) : '—';
+  $('#calIn').textContent  = mtot.n ? moneyShort(mtot.in)  : '—';
+  const net = $('#calNet');
+  net.textContent = mtot.n ? (mtot.net >= 0 ? '+' : '\u2212') + moneyShort(Math.abs(mtot.net)) : '—';
+  net.className = 'num' + (mtot.n ? (mtot.net >= 0 ? ' tone-asset' : ' tone-owe') : '');
+  const pill = $('#calMonthPill');
+  if (pill) pill.textContent = mtot.n
+    ? `${mtot.net >= 0 ? '+' : '\u2212'}${moneyShort(Math.abs(mtot.net))} net`
+    : 'nothing scheduled';
+  $('#calMonthNote').textContent = mtot.n
+    ? `${mtot.n} line${mtot.n === 1 ? '' : 's'} — ${mtot.bills} scheduled, ${mtot.projs} projected`
+    : 'Nothing scheduled or projected in this month.';
 
   /* the selected day */
   const sel = state.cal.sel ? toDate(state.cal.sel) : null;
-  const dayItems = state.cal.sel ? (byDay.get(state.cal.sel) || []) : [];
+  const day = state.cal.sel ? (byDay.get(state.cal.sel) || []) : [];
+  const dtot = calTotals(day);
   $('#calDayTitle').textContent = sel
     ? sel.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'})
     : 'Pick a day';
-  const dayProj = state.cal.sel ? (fxByDay.get(state.cal.sel) || []) : [];
-  const dayNet = dayItems.reduce((s,o) => s + billSigned(o.bill), 0);
-  const noteBits = [];
-  if (dayItems.length) noteBits.push(`${dayItems.length} item${dayItems.length===1?'':'s'} \u00b7 net ${dayNet >= 0 ? '+' : '\u2212'}${moneyShort(Math.abs(dayNet))}`);
-  if (dayProj.length) noteBits.push(`${dayProj.length} projected \u00b7 ${moneyShort(dayProj.reduce((s,f) => s + f.amount, 0))}`);
-  $('#calDayNote').textContent = noteBits.join('  \u2014  ');
-  $('#calDayList').innerHTML = (dayItems.length || dayProj.length)
-    ? dayItems.map(o => billRow(o, false)).join('') + dayProj.map(f => forecastRow(f, false)).join('')
+  $('#calDayNote').textContent = dtot.n
+    ? `${dtot.n} item${dtot.n === 1 ? '' : 's'} \u00b7 net ${dtot.net >= 0 ? '+' : '\u2212'}${moneyShort(Math.abs(dtot.net))}`
+      + (dtot.projs ? `  \u2014  ${dtot.projs} projected` : '')
+    : '';
+  $('#calDayList').innerHTML = dtot.n
+    ? day.map(it => calRow(it, false)).join('')
     : `<li class="empty" style="padding:14px 6px">${sel ? 'Nothing due on this day.' : 'Tap a date above to see what lands on it.'}</li>`;
 
   /* the rolling window */
-  const ahead = billsAhead(30);
-  const aheadOut = ahead.filter(o => o.bill.kind !== 'income').reduce((s,o) => s + Math.abs(o.bill.amount), 0);
-  $('#calUpNote').textContent = ahead.length ? `${moneyShort(aheadOut)} going out` : '';
-  $('#calUpcoming').innerHTML = ahead.length
-    ? ahead.slice(0,12).map(o => billRow(o, true)).join('')
-    : '<li class="empty" style="padding:14px 6px">Nothing scheduled yet. Add a due date below and it will show up here.</li>';
+  const ahead = calAheadItems(30, fx);
+  const atot = calTotals(ahead);
+  $('#calUpNote').textContent = atot.n
+    ? `${moneyShort(atot.out)} out${atot.in ? ` \u00b7 ${moneyShort(atot.in)} in` : ''}`
+    : '';
+  $('#calUpcoming').innerHTML = atot.n
+    ? ahead.map(it => calRow(it, true)).join('')
+    : '<li class="empty" style="padding:14px 6px">Nothing scheduled yet. Add a due date below, or carry a category forward, and it will show up here.</li>';
 
-  /* fixed expenses ahead */
-  const fxTotal = fx.reduce((s, f) => s + f.amount, 0);
-  $('#calFixedTag').textContent = fx.length
-    ? `${fx.length} line${fx.length===1?'':'s'} \u00b7 ${moneyShort(fxTotal)}`
-    : 'nothing on file';
-  $('#calFixedTotal').textContent = fx.length ? money(fxTotal) : '\u2014';
-  $('#calFixed').innerHTML = fx.length
-    ? fx.slice(0, 40).map(f => forecastRow(f, true)).join('')
-    : `<li class="empty" style="padding:14px 6px">No fixed expenses in the ledger yet \u2014 or every projection has already come due. Import a statement and next month's schedule builds itself.</li>`;
-
+  renderCalCats(fx);
   wireBillDeletes();
 }
+
+/* ============================================================
+   MULTI-SELECT
+   A checkable list rather than a native <select multiple>, which
+   iOS renders as an unusable box. Categories sit at the top; each
+   one unfolds into its subcategories. Checking a category takes
+   the whole thing, and its subcategory boxes go checked and
+   disabled to say so plainly -- there is no hidden third state to
+   guess at. One component, mounted twice: the calendar picks what
+   to roll forward, the Flow screen picks what to chart.
+   ============================================================ */
+/** Ledger line counts per category and per subcategory, over any row set. */
+function catCounts(rows){
+  const cats = new Map(), subs = new Map();
+  (rows || state.rows).forEach(r => {
+    const c = String(r.category || '');
+    cats.set(c, (cats.get(c) || 0) + 1);
+    const k = catSubKey(c, r.sub);
+    subs.set(k, (subs.get(k) || 0) + 1);
+  });
+  return { cats, subs };
+}
+
+/** Everything a selection covers, category first: {cats, subs}. */
+function selCount(s){ return s.cats.length + s.subs.length; }
+
+/** Does a row fall inside a selection? A category outranks its own subs. */
+function selMatch(s, r){
+  const cat = String(r.category || '');
+  if (s.cats.includes(cat)) return true;
+  return s.subs.includes(catSubKey(cat, r.sub));
+}
+
+/**
+ * The checkable list itself: categories with their subcategories, a
+ * search already applied, and a count beside every line. Lifted out
+ * of the component so a rail's popover can draw the same list without
+ * pretending to be a dropdown.
+ */
+const MSEL_CARET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
+  + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
+
+function mselListHtml({ sel, counts, q, open, tax, staged }){
+  const wait = staged || new Set();
+  const coll = new Intl.Collator('en', { numeric:true, sensitivity:'base' });
+  const html = Object.keys(tax).sort(coll.compare).map(c => {
+    const allSubs = (tax[c] || []).slice().sort(coll.compare);
+    const hitCat = !q || norm(c).includes(q);
+    const subs = hitCat ? allSubs : allSubs.filter(x => norm(x).includes(q));
+    if (!hitCat && !subs.length) return '';
+    const catOn = sel.cats.includes(c);
+    const isSubOpen = open.has(c) || (!!q && !hitCat);
+    const n = counts.cats.get(c) || 0;
+    let pending = 0;
+    const subHtml = subs.map(x => {
+      const k = catSubKey(c, x);
+      const carried = catOn || sel.subs.includes(k);
+      const held = !carried && wait.has(k);
+      if (held) pending++;
+      const sn = counts.subs.get(k) || 0;
+      return `<label class="msel__row msel__row--sub${carried ? ' msel__row--on' : ''}${held ? ' msel__row--pending' : ''}">
+        <input type="checkbox" data-mselsub="${esc(k)}"${carried || held ? ' checked' : ''}${catOn ? ' disabled' : ''}
+               aria-label="${esc(x)}">
+        <span class="msel__nm">${esc(x)}</span>
+        <span class="msel__n">${sn}</span>
+      </label>`;
+    }).join('');
+    /* the + carries what is ticked but not yet added; with nothing
+       waiting it has no work to do and says so by going quiet */
+    const addLabel = pending
+      ? `Add ${pending} subcategor${pending === 1 ? 'y' : 'ies'} of ${c}`
+      : `Tick a subcategory of ${c} first`;
+    return `<div class="msel__cat${isSubOpen ? ' is-open' : ''}" data-cat="${esc(c)}">
+      <div class="msel__row${catOn ? ' msel__row--on' : ''}">
+        <input type="checkbox" data-mselcat="${esc(c)}"${catOn ? ' checked' : ''} aria-label="${esc(c)}">
+        <span class="msel__nm">${esc(c)}</span>
+        <span class="msel__n">${n} line${n === 1 ? '' : 's'}</span>
+        ${isSubOpen ? `<button class="msel__more${pending ? ' ready' : ''}" type="button"
+                data-mseladd="${esc(c)}"${pending ? '' : ' disabled'}
+                aria-label="${esc(addLabel)}">+</button>` : ''}
+        <button class="msel__caret" type="button" data-mselopen="${esc(c)}"
+                aria-expanded="${isSubOpen}"
+                aria-label="${isSubOpen ? 'Hide' : 'Show'} subcategories of ${esc(c)}">${MSEL_CARET}</button>
+      </div>
+      ${isSubOpen ? `<div class="msel__subs">${subHtml || '<p class="msel__empty">No subcategories</p>'}</div>
+        ${pending ? `<p class="msel__stage">${pending} ticked \u2014 tap + to add</p>` : ''}` : ''}
+    </div>`;
+  }).join('');
+  return html || '<p class="msel__empty">Nothing matches that.</p>';
+}
+
+/**
+ * Apply one checkbox change, in place. A category takes effect on the
+ * tick, because a whole category is one decision. A subcategory only
+ * gets staged -- the + on its category's row is what carries it across,
+ * so a handful can be ticked and added together rather than one repaint
+ * at a time. Taking a carried subcategory back needs no staging: an
+ * untick removes it there and then.
+ * Returns 'commit' (the selection changed), 'stage' (only the waiting
+ * list changed) or 'none' (the box was not ours).
+ */
+function mselToggle(sel, box, staged){
+  const wait = staged || new Set();
+  if (box.dataset.mselcat !== undefined){
+    const c = box.dataset.mselcat;
+    if (box.checked){
+      if (!sel.cats.includes(c)) sel.cats.push(c);
+      /* a whole category swallows its own subcategories, staged or carried */
+      sel.subs = sel.subs.filter(k => k.split(CATSUB_SEP)[0] !== c);
+      [...wait].forEach(k => { if (k.split(CATSUB_SEP)[0] === c) wait.delete(k); });
+    } else {
+      sel.cats = sel.cats.filter(x => x !== c);
+    }
+    return 'commit';
+  }
+  if (box.dataset.mselsub !== undefined){
+    const k = box.dataset.mselsub;
+    if (sel.subs.includes(k)){
+      if (box.checked) return 'none';
+      sel.subs = sel.subs.filter(x => x !== k);
+      return 'commit';
+    }
+    box.checked ? wait.add(k) : wait.delete(k);
+    return 'stage';
+  }
+  return 'none';
+}
+
+/** Carry one category's staged subcategories across. Returns how many moved. */
+function mselCommit(sel, staged, cat){
+  const mine = [...(staged || [])].filter(k => k.split(CATSUB_SEP)[0] === cat);
+  mine.forEach(k => {
+    if (!sel.subs.includes(k)) sel.subs.push(k);
+    staged.delete(k);
+  });
+  return mine.length;
+}
+
+function mselCreate(cfg){
+  const open = new Set();
+  const staged = new Set();
+  const el = k => $('#' + cfg[k]);
+  const isOpen = () => { const m = el('menu'); return Boolean(m && !m.hidden); };
+  const setMenu = on => {
+    const m = el('menu'), b = el('btn');
+    if (!m || !b) return;
+    /* anything ticked but never added is abandoned when the list shuts;
+       a half-made choice should not be waiting the next time it opens */
+    if (!on) staged.clear();
+    m.hidden = !on;
+    b.setAttribute('aria-expanded', String(on));
+  };
+
+  function labelText(){
+    const s = cfg.sel();
+    const n = selCount(s);
+    if (!n) return cfg.emptyLabel || 'Nothing selected';
+    const names = s.cats.concat(s.subs.map(k => k.split(CATSUB_SEP)[1] || k));
+    return n <= 2 ? names.join(', ') : names.slice(0, 2).join(', ') + ` +${n - 2} more`;
+  }
+
+  function render(){
+    const lab = el('label');
+    if (lab) lab.textContent = labelText();
+    const list = el('list');
+    if (!list) return;
+    list.innerHTML = mselListHtml({
+      sel: cfg.sel(),
+      counts: cfg.counts ? cfg.counts() : catCounts(),
+      q: norm((el('q') && el('q').value) || ''),
+      open,
+      staged,
+      tax: cfg.tax ? cfg.tax() : taxo(),
+    });
+  }
+
+  function init(){
+    if (!el('btn')) return;
+    el('btn').addEventListener('click', () => setMenu(!isOpen()));
+    el('q').addEventListener('input', render);
+    el('none').addEventListener('click', () => {
+      const s = cfg.sel();
+      s.cats = []; s.subs = [];
+      staged.clear();
+      cfg.onChange();
+      if (cfg.clearToast) toast(cfg.clearToast);
+    });
+
+    el('list').addEventListener('click', e => {
+      const more = e.target.closest('[data-mselopen]');
+      if (more){
+        const c = more.dataset.mselopen;
+        if (open.has(c)){
+          open.delete(c);
+          /* folding away is the same as walking away from the tick */
+          [...staged].forEach(k => { if (k.split(CATSUB_SEP)[0] === c) staged.delete(k); });
+        } else open.add(c);
+        render();
+        return;
+      }
+      const plus = e.target.closest('[data-mseladd]');
+      if (plus){
+        const c = plus.dataset.mseladd;
+        const n = mselCommit(cfg.sel(), staged, c);
+        if (!n) return;
+        cfg.onChange();
+        toast(`Added ${n} subcategor${n === 1 ? 'y' : 'ies'} of ${c}`);
+        return;
+      }
+      /* the category name is a target too -- a sub row is a real label,
+         but a category row carries the unfold button and cannot be one */
+      const nm = e.target.closest('.msel__row:not(.msel__row--sub) .msel__nm');
+      if (!nm) return;
+      const box = nm.parentElement.querySelector('input[data-mselcat]');
+      if (!box) return;
+      box.checked = !box.checked;
+      box.dispatchEvent(new Event('change', {bubbles:true}));
+    });
+
+    el('list').addEventListener('change', e => {
+      const what = mselToggle(cfg.sel(), e.target, staged);
+      if (what === 'commit') cfg.onChange();
+      else if (what === 'stage') render();
+    });
+
+    /* a tap outside puts the list away */
+    document.addEventListener('click', e => {
+      if (!isOpen()) return;
+      /* the list re-renders under the tap; see the note in initPops */
+      if (!e.target.isConnected) return;
+      if (e.target.closest('#' + cfg.root)) return;
+      setMenu(false);
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && isOpen()){ setMenu(false); el('btn').focus(); }
+    });
+  }
+
+  return { render, init, setMenu, isOpen, open };
+}
+
+/* the calendar's: which categories get rolled a month forward */
+const CAL_MSEL = mselCreate({
+  root:'calCatSel', btn:'calCatBtn', label:'calCatLabel', menu:'calCatMenu',
+  q:'calCatQ', none:'calCatNone', list:'calCatList',
+  sel: projSel,
+  onChange: () => { save(); renderCalendar(); },
+  clearToast: 'Nothing is carried onto the calendar now',
+  emptyLabel: 'Nothing selected',
+});
+
+function renderCalCats(fx){
+  const proj = fx || calForecasts();
+  const total = proj.reduce((t, f) => t + Math.abs(f.amount), 0);
+  const tag = $('#calCatTag');
+  if (tag) tag.textContent = projCount()
+    ? `${projCount()} selected \u00b7 ${proj.length} line${proj.length === 1 ? '' : 's'} \u00b7 ${moneyShort(total)}`
+    : 'nothing carried forward';
+  CAL_MSEL.render();
+}
+const initCalCats = () => CAL_MSEL.init();
 
 function initCalendar(){
   state.cal.sel = isoOf(startOfToday());
@@ -6824,6 +8121,7 @@ function initCalendar(){
     if (e.key === 'Enter'){ e.preventDefault(); $('#billAdd').click(); }
   }));
 
+  initCalCats();
   renderCalendar();
 }
 
@@ -7186,7 +8484,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-06t';
+const BUILD = '2026-08-10n';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -7484,11 +8782,13 @@ function wire(){
   initPager();
   setMode('guest');
   renderPrompts();
+  initPops();
   initCatalog();
   renderCategories();
   initSchemaJump();
   initRuleForm();
   initCalendar();
+  initOutflows();
   initLedgerRotation();
   initAmort();
   initFolds();
