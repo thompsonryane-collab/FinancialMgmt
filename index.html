@@ -689,16 +689,24 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .cal__dow span{text-align:center;font-family:var(--data);font-size:10px;letter-spacing:.12em;color:var(--muted)}
 .cal__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .cal__day{position:relative;aspect-ratio:1/1;background:var(--ink);border:1px solid transparent;border-radius:10px;
-  display:flex;flex-direction:column;align-items:center;padding:5px 2px 0;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;padding:5px 2px 0;cursor:pointer;overflow:hidden;
   font-family:var(--data);font-size:12.5px;color:var(--paper);
   box-shadow:inset 0 1px 2px rgba(23,30,20,.12)}
 .cal__day--out{opacity:.34}
 .cal__day--has{background:var(--rise)}
 .cal__day--today{border-color:rgba(57,96,40,.65)}
 .cal__day--sel{background:var(--accent);color:#0E1808;border-color:var(--accent-deep);font-weight:600}
-.cal__pips{display:flex;gap:2.5px;margin-top:auto;padding-bottom:6px;min-height:4px}
+.cal__pips{display:flex;gap:2.5px;margin-top:auto;padding-bottom:2px;min-height:4px}
 .cal__pips i{width:4.5px;height:4.5px;border-radius:50%;display:block}
 .cal__day--sel .cal__pips i{box-shadow:0 0 0 1px rgba(23,30,20,.35)}
+/* The day's own figure, under the pips. A cell is about 44px of usable
+   width, so the amount is abbreviated rather than wrapped or clipped --
+   the exact figures are one tap away in the day list below. The pips stay:
+   they separate a scheduled bill from a projected one, which a single
+   signed number cannot say. */
+.cal__val{font-size:9px;line-height:1;letter-spacing:-.02em;padding-bottom:4px;
+  font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+.cal__day--sel .cal__val{color:inherit}
 /* a projected fixed expense reads as an outline, not a solid dot */
 .cal__day--proj{background:color-mix(in srgb, var(--owe) 12%, transparent)}
 .cal__pips i.pip--proj{background:transparent;box-shadow:inset 0 0 0 1.5px var(--owe)}
@@ -2297,6 +2305,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <select class="select" id="acctSchema" style="width:100%">
         <option value="bank">Bank export — deposits and withdrawals</option>
         <option value="card">Card export — charges land negative</option>
+        <option value="visa">Visa export — charges land negative, pending held out</option>
         <option value="loan">Loan export — principal, interest, balance</option>
       </select>
       <p class="hint">How this account's files read at Intake. Cards flip their sign so charges count against you.</p>
@@ -2366,6 +2375,17 @@ const BASE_ACCOUNTS = [
     schema:'card', flip:true,
     match:[{re:/amex|american.?express/i,w:6}] },
 
+  /* The USAA Visa. Named USAAVISA because that is the id already written
+     into TOTAL_BAL_ACCTS and DAILY_ACCTS, both of which have been
+     filtering it out for want of an account behind it. Matching has to
+     clear USAA Checking and USAA Savings, which every USAA filename also
+     hits: 'usaa' alone is worth 3 to all three, so the distinguishing
+     word carries 5 and the visa wins outright at 8 rather than by a
+     tiebreak. */
+  { id:'USAAVISA', name:'USAA Visa', inst:'USAA', side:'liability', kind:'Credit card',
+    schema:'visa', flip:true,
+    match:[{re:/usaa/i,w:3},{re:/visa|usaavisa/i,w:5},{re:/card|credit|\bcc\b/i,w:2}] },
+
   { id:'PenFed', name:'PenFed Card', inst:'PenFed', side:'liability', kind:'Credit card',
     schema:'card', flip:true,
     match:[{re:/pen ?fed/i,w:4},{re:/card|credit|\bcc\b/i,w:3}] },
@@ -2411,6 +2431,17 @@ function matchersFor(id, name){
   return m;
 }
 
+/* Whether a statement shape exports charges as positive numbers. This
+   was written as `schema === 'card'` in two places, which was true while
+   the card export was the only flipped one and silently wrong the moment
+   a second arrived: re-file an account onto the Visa shape and its
+   charges would have stopped flipping. The schema is the thing that
+   knows, so ask it. */
+function schemaFlips(id){
+  const sch = SCHEMAS[id];
+  return sch ? Boolean(sch.flip) : false;
+}
+
 function rebuildRegistry(){
   const ed = state.acctEdits || { added: [], changed: {}, removed: [] };
   const out = [];
@@ -2419,13 +2450,13 @@ function rebuildRegistry(){
     const c = ed.changed[base.id];
     out.push(c ? { ...base, name: c.name, inst: c.inst, kind: c.kind,
                    side: c.side, schema: c.schema,
-                   flip: c.schema === 'card', manual: base.manual,
+                   flip: schemaFlips(c.schema), manual: base.manual,
                    feed: base.feed } : base);
   });
   ed.added.forEach(c => {
     if (ed.removed.includes(c.id)) return;
     out.push({ id: c.id, name: c.name, inst: c.inst, kind: c.kind,
-               side: c.side, schema: c.schema, flip: c.schema === 'card',
+               side: c.side, schema: c.schema, flip: schemaFlips(c.schema),
                manual: true, via: 'manual entry',
                match: matchersFor(c.id, c.name) });
   });
@@ -2460,22 +2491,53 @@ const FIELDS = {
   asin:     ['asin','item id','product id','item code'],
   qty:      ['original quantity','quantity','qty','units','item quantity'],
   subtotal: ['shipment item subtotal','shipment subtotal','order subtotal','item subtotal'],
+  /* Some card exports ship a Posted/Pending column. A pending line is a
+     hold, not a transaction: the amount can still move and the same
+     charge arrives again once it settles. Reading the column is what
+     lets those be held out instead of landing twice. */
+  status:   ['status','transaction status','posted status','clearing status'],
 };
 
 const SCHEMAS = {
   bank: { label:'Bank export', use:['date','desc','amount','debit','credit','category','balance'],
+          flip:false,
           fingerprint:[/original description/i,/running balance/i],
           example:{ headers:['Date','Description','Amount','Balance'],
                     row:['07/12/2026','PUBLIX #1204','-142.18','8,412.55'] } },
-  card: { label:'Card export',  use:['date','desc','amount','debit','credit','category','member'],
+  /* AMEX ships four columns and packs the merchant, city and state into
+     ONE fixed-width Description: 20 characters of merchant, 20 of city, 2
+     of state, no delimiter between them. Read raw, every line arrives as a
+     string no rule has ever seen -- 'AplPay GIANT 0366   SILVER SPRING
+     MD' where the ledger knows 'GIANT 0366'. `fixed` declares the widths
+     so the merchant can be cut back out. Older exports carried a Category
+     column and this one does not; the field stays listed because the
+     mapping sheet still offers it and older files still map it. */
+  card: { label:'Card export',  use:['date','desc','member','amount','category'],
+          flip:true, fixed:{ merchant:20, city:20, state:2 },
           fingerprint:[/card member/i,/extended details/i,/appears on your statement/i],
-          example:{ headers:['Date','Description','Card Member','Amount','Category'],
-                    row:['07/09/2026','DELTA AIR LINES','RYAN E THOMPSON','412.00','Travel'] } },
+          example:{ headers:['Date','Description','Card Member','Amount'],
+                    row:['8/10/2026','AplPay TST* YIA YIASBELTSVILLE          MD','RYAN E THOMPSON','59.34'] } },
+  /* USAA exports its Visa in a shape that is neither the bank export nor
+     the AMEX one. It carries no card member and no running balance, but
+     it does carry two descriptions -- a tidied merchant name and the raw
+     statement string -- an issuer category, and a Posted/Pending status.
+     It needs its own entry for one reason above the rest: it ships an
+     Original Description column, which is half of the BANK fingerprint.
+     Left to the bank schema the file would map cleanly, import without
+     complaint, and land every charge unflipped -- a restaurant bill
+     arriving as income. The sign is the whole point of separating it. */
+  visa: { label:'Visa export',  use:['date','desc','amount','category','status'],
+          flip:true,
+          fingerprint:[/original description/i,/\bstatus\b/i],
+          example:{ headers:['Date','Description','Original Description','Category','Amount','Status'],
+                    row:['7/6/2026','Bangkok Garden','BANGKOK GARDEN 301-545-2848 MD','Restaurants','49.91','Posted'] } },
   items:{ label:'Item export', use:['date','asin','desc','qty','subtotal','amount'],
+          flip:false,
           fingerprint:[/asin/i,/product name/i,/shipment item subtotal/i],
           example:{ headers:['ASIN','Order Date','Product Name','Shipment Item Subtotal','Total Amount'],
                     row:['B0CD2XLQ96','2026-08-04T19:26:42.323Z','FARMER\u2019S DEFENSE Gardening Arm Sleeves','117.98','31.79'] } },
   loan: { label:'Loan export',  use:['date','desc','amount','principal','interest','escrow','balance'],
+          flip:false,
           fingerprint:[/principal/i,/escrow/i,/unpaid principal/i],
           example:{ headers:['Date','Description','Principal','Interest','Balance'],
                     row:['07/01/2026','PAYMENT','830.00','1,310.00','312,500.00'] } },
@@ -2741,7 +2803,7 @@ async function parsePdfFile(file){
     acctId: acct.id,
     confident: guess.confident,
     map: { date:0, desc:1, amount:2, category:-1, balance:3,
-           debit:-1, credit:-1, principal:-1, interest:-1, escrow:-1 },
+           debit:-1, credit:-1, principal:-1, interest:-1, escrow:-1, status:-1 },
     flip: acct.flip,
   };
 }
@@ -2849,6 +2911,7 @@ function planImport(file, wb, d){
       principal:findColumn(headers,'principal'),
       interest: findColumn(headers,'interest'),
       escrow:   findColumn(headers,'escrow'),
+      status:   findColumn(headers,'status'),
     },
     flip: acct.flip,
   };
@@ -2883,10 +2946,76 @@ function memberToPerson(v){
   return anywhere ? anywhere.id : null;
 }
 
+/* ============================================================
+   FIXED-WIDTH DESCRIPTION
+   One Description column carrying three fields butted together.
+   Cutting at 20 recovers the merchant -- but only where the column
+   really is fixed-width. AMEX's own house lines are free text of
+   their own length ('AMAZON PAY WITH POINTS CREDIT', 'RENEWAL
+   MEMBERSHIP FEE'), and cutting those at 20 would truncate them
+   mid-word. So a cut needs positive evidence that a city follows:
+
+     - the row is the full 42 characters (merchant + city + state), or
+     - it opens 'AplPay ', which only ever appears in this field, or
+     - the merchant is space-padded AND the line holds a run of two or
+       more spaces, which is the padding between merchant and city.
+
+   That last clause is what saves 'ADJ REDIST PURCHASE BAL': its 20th
+   character is a space, but the line has no padding run, so it is
+   left whole.
+
+   'AplPay ' is Apple Pay's own prefix and it is inside the 20, so a
+   tap at Home Depot reads 'THE HOME DEPO' where the swipe reads
+   'THE HOME DEPOT 2551'. The seven characters are gone from the
+   export and nothing can recover them; stripping the prefix at least
+   leaves both forms sharing a stem a rule can match on.
+   ============================================================ */
+function cardMerchant(v){
+  let t = String(v ?? '').replace(/\s+$/, '');
+  if (t.length > 20 && (t.length === 42 || /^AplPay /.test(t)
+      || (t[19] === ' ' && /\s{2,}/.test(t)))) t = t.slice(0, 20);
+  return t.trim().replace(/^AplPay\s+/, '').replace(/\s+/g, ' ').trim();
+}
+
+/* Does this file's description column actually carry the fixed-width
+   shape? Asked of the file rather than trusted from the schema, because
+   the same schema also reads PenFed and older AMEX exports, whose
+   descriptions are ordinary text that must not be cut at 20. The full
+   42-character form is the signature; a clear majority of rows carrying
+   it is the evidence. */
+function looksFixedWidth(body, col){
+  if (!(col > -1)) return false;
+  let seen = 0, full = 0;
+  (body || []).forEach(r => {
+    const t = String(r[col] ?? '').replace(/\s+$/, '');
+    if (!t) return;
+    seen++;
+    if (t.length === 42) full++;
+  });
+  return seen >= 10 && full / seen >= 0.6;
+}
+
+/* A status cell that means the money has not actually moved. Anything
+   else -- 'Posted', 'Cleared', a blank cell, no column at all -- is
+   treated as settled, so a shape that never ships the column is
+   unaffected and an unfamiliar word never silently drops a row. */
+const PENDING_RE = /pend|process|authoriz|authoris|\bhold\b|\btemp/i;
+function isPending(v){
+  const t = String(v ?? '').trim();
+  return t ? PENDING_RE.test(t) : false;
+}
+
 /** Turn a planned import into normalised rows. */
+let pendingTally = 0;
 function normalize(plan){
   const acct = ACCT[plan.acctId];
   const out = [];
+  pendingTally = 0;
+  /* Decided from the rows in hand, not carried on the plan, so re-mapping
+     the description column in the sheet re-decides rather than going on
+     believing what the first column looked like. */
+  const fixedDesc = Boolean(SCHEMAS[acct.schema] && SCHEMAS[acct.schema].fixed)
+    && looksFixedWidth(plan.body, plan.map.desc);
   /* The running-balance column is only meaningful on the newest row.
      USAA and AMEX export newest-first, so walking the file in order
      used to leave us holding the OLDEST balance — the statement's
@@ -2898,6 +3027,13 @@ function normalize(plan){
     const get = k => plan.map[k] > -1 ? r[plan.map[k]] : null;
     const date = toDate(get('date'));
     if (!date) return;                                  // no date, no row
+
+    /* A hold is not a transaction. Its amount can still move -- a
+       restaurant pre-auth settles higher once the tip lands -- and the
+       settled line arrives in the next export under its own date, so
+       importing both would post the same charge twice at two figures.
+       The Daily Ledger is where a charge lives before it posts. */
+    if (isPending(get('status'))){ pendingTally++; return; }
 
     let amount = toNumber(get('amount'));
     if (amount == null){                                // debit/credit pair
@@ -2917,7 +3053,9 @@ function normalize(plan){
       acct: plan.acctId,
       side: acct.side,
       date, amount,
-      desc: redactAccountNumbers(String(get('desc') ?? '').replace(/\s+/g,' ').trim()) || '—',
+      desc: redactAccountNumbers(fixedDesc
+        ? cardMerchant(get('desc'))
+        : String(get('desc') ?? '').replace(/\s+/g,' ').trim()) || '—',
       person: memberToPerson(get('member')),
       member: String(get('member') ?? '').trim() || null,
       category: String(get('category') ?? '').trim(),
@@ -8608,6 +8746,24 @@ function calAheadItems(days = 30, fx){
   return billsAhead(days).map(billItem).concat(proj).sort(calSort);
 }
 
+/* ============================================================
+   THE FIGURE ON A DAY CELL
+   moneyShort still runs to '$3,311.67', which is three times the
+   width a calendar cell has. This abbreviates hard enough to fit
+   seven of them across a phone: thousands to one decimal, ten
+   thousands and up to none, everything under a thousand to whole
+   dollars. Cents are dropped on purpose -- a day cell is for
+   noticing the shape of a month, and the exact figure is one tap
+   away in the day list underneath.
+   ============================================================ */
+function calCompact(n){
+  const v = Math.abs(n || 0);
+  const sign = n < 0 ? '\u2212' : n > 0 ? '+' : '';
+  if (v >= 10000) return sign + '$' + Math.round(v / 1000) + 'k';
+  if (v >= 1000)  return sign + '$' + (v / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return sign + '$' + Math.round(v);
+}
+
 /** The only place a calendar figure is ever produced. */
 function calTotals(items){
   const t = { out:0, in:0, net:0, n:items.length, bills:0, projs:0 };
@@ -8668,12 +8824,23 @@ function wireBillDeletes(){
    ============================================================ */
 
 /* The accounts a daily charge can land on: the cards and the checking
-   account the household actually spends from. Written as ids so a new
-   one -- USAAVISA, when its schema lands -- only has to be added here,
-   and filtered against the registry so an id with no account yet is
-   simply skipped rather than throwing. */
-const DAILY_ACCTS = ['USAAC', 'PenFed', 'AMEX', 'USAAVISA'];
+   account the household actually spends from, plus Amazon. Written as
+   ids so a new one only has to be added here, and filtered against the
+   registry so an id with no account yet is simply skipped rather than
+   throwing.
+
+   Amazon is the odd one and belongs here anyway. An order placed today
+   is money committed today, but it does not reach a statement until it
+   ships, and when it does it arrives as 'AMAZON MARKEPLACE NA PA' with
+   no hint of what was in the box. Filing it pending under Amazon is the
+   one moment the household knows what it bought. What Amazon is NOT is
+   an account: it holds no balance, so it draws no running-balance row
+   and never claims the household will owe or hold anything. */
+const DAILY_ACCTS = ['USAAC', 'PenFed', 'AMEX', 'USAAVISA', 'AMAZON'];
 const dailyAccts = () => DAILY_ACCTS.filter(id => ACCT[id]);
+
+/** Of those, the ones that actually carry a balance to run forward. */
+const dailyBalAccts = () => dailyAccts().filter(id => !ACCT[id].feed);
 
 /** Every pending charge on one account, newest first. */
 const pendFor = id => state.pend
@@ -8696,7 +8863,7 @@ const pendFor = id => state.pend
     the magnitude of the charges to what is owed. */
 function runningBalance(id){
   const acct = ACCT[id];
-  if (!acct) return null;
+  if (!acct || acct.feed) return null;   /* a feed has no balance to run */
   const posted = balanceOf(id);
   const cr = cardRunning(id);
   const base = cr ? cr.running : posted.value;
@@ -8708,11 +8875,32 @@ function runningBalance(id){
            total: cr ? cr.total : null, move, running, n: held.length };
 }
 
+/** One line for a feed: what it is holding, and no balance claim.
+
+    Lifted out of renderDaily so a test can read it. The first cut of this
+    row returned '' when nothing was queued, the tests checked only the
+    account lists, and the row vanished from a clean session with every
+    test still passing. */
+function feedQueueRow(id){
+  const acct = ACCT[id];
+  if (!acct) return '';
+  const held = pendFor(id);
+  const sum = held.reduce((s,p) => s + p.amount, 0);
+  return `<li class="${held.length ? 'runbal--held' : ''}">
+    <span class="runbal__nm">${esc(acct.name)}</span>
+    <span class="runbal__meta">no balance of its own \u00b7 ${held.length
+      ? `${held.length} ordered, not yet shipped`
+      : 'nothing queued'}</span>
+    <span class="runbal__val tone-owe">${moneyShort(Math.abs(sum))}
+      <small>settles on a card</small></span>
+  </li>`;
+}
+
 /** The whole Daily Ledger: the running rows, the register, the pill. */
 function renderDaily(){
   const host = $('#dlBal');
   if (!host) return;
-  const ids = dailyAccts();
+  const ids = dailyBalAccts();
 
   host.innerHTML = ids.length ? ids.map(id => {
     const b = runningBalance(id);
@@ -8731,6 +8919,19 @@ function renderDaily(){
     </li>`;
   }).join('') : `<li><span class="runbal__nm">No spending accounts on file</span>
       <span class="runbal__meta">Add one on the Position screen</span></li>`;
+
+  /* A feed holds charges but no balance, so it gets a line that says what
+     it is holding without pretending to be an account. Without this the
+     rows above would sum to less than the pending pill at the top of the
+     screen, and a figure that disagrees with the one beside it is the one
+     thing this screen is built not to do.
+
+     The row is drawn whether or not anything is queued. Hiding it when
+     empty was the first cut and it was wrong: an account offered in the
+     dropdown but missing from the list above reads as a bug, not as a
+     zero -- every other spending account sits there at $0.00 saying
+     nothing pending, and this one has to do the same. */
+  host.innerHTML += dailyAccts().filter(id => ACCT[id].feed).map(feedQueueRow).join('');
 
   /* the register, grouped by the day the charge was made */
   const list = $('#dlList');
@@ -8817,9 +9018,21 @@ function renderCalendar(){
     else if (proj.length) cls.push('cal__day--proj');
     if (iso === todayIso) cls.push('cal__day--today');
     if (iso === state.cal.sel) cls.push('cal__day--sel');
+    /* Through calTotals, so the number on a cell is arrived at exactly the
+       way the month figure and the day list below are -- the same list, the
+       same sum. A day holding both a paycheck and a bill shows the net; the
+       gross either way is spoken in the label and printed in the day list. */
+    const dt = day.length ? calTotals(day) : null;
+    const val = dt
+      ? `<span class="cal__val" style="color:${dt.net >= 0 ? 'var(--asset)' : 'var(--owe)'}">${calCompact(dt.net)}</span>`
+      : '';
+    const said = dt
+      ? `, ${dt.out ? `${money(dt.out)} out` : ''}${dt.out && dt.in ? ' and ' : ''}${dt.in ? `${money(dt.in)} in` : ''}`
+        + `${dt.bills ? `, ${dt.bills} due` : ''}${dt.projs ? `, ${dt.projs} projected` : ''}`
+      : '';
     html += `<button type="button" class="${cls.join(' ')}" data-day="${iso}"
-      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${bills.length ? `, ${bills.length} due` : ''}${proj.length ? `, ${proj.length} projected` : ''}">
-      <span>${d.getDate()}</span><span class="cal__pips">${pips}</span></button>`;
+      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${said}">
+      <span>${d.getDate()}</span><span class="cal__pips">${pips}</span>${val}</button>`;
   }
   $('#calGrid').innerHTML = html;
   $$('#calGrid .cal__day').forEach(btn => btn.addEventListener('click', () => {
@@ -9318,7 +9531,7 @@ function schemaFieldLabel(f){
   return {date:'Date', desc:'Description', amount:'Amount', debit:'Debit', credit:'Credit',
     category:'Category', member:'Card member', balance:'Balance', principal:'Principal',
     interest:'Interest', escrow:'Escrow', asin:'ASIN', qty:'Quantity',
-    subtotal:'Shipment subtotal'}[f] || f;
+    subtotal:'Shipment subtotal', status:'Status'}[f] || f;
 }
 function renderSchemaDetail(){
   const host = $('#schemaDetail');
@@ -9368,6 +9581,10 @@ function renderSchemaDetail(){
         : 'Deposits land positive; withdrawals land negative.'}
       ${sch.use.includes('member')
         ? `A card-member column names whoever swiped on each line; matched against the household it fills The Family with no rule needed. `
+        : ''}${sch.fixed
+        ? `The description packs merchant, city and state into one fixed-width column; the merchant is cut back out on import, and an Apple Pay tap loses seven characters of the name to its own prefix. `
+        : ''}${sch.use.includes('status')
+        ? `A pending line is held out: the hold can still move and the settled charge arrives again under its own date. Carry it on the Daily Ledger until it posts. `
         : ''}${a.feed ? '' : `Files added now go straight to ${esc(a.id)} — the mapping sheet still opens for confirmation.`}</p>
   </div>`;
 }
@@ -9480,6 +9697,8 @@ function confirmImport(){
   scrubTally = 0;
   const { rows, lastBalance } = normalize(current);
   const scrubbed = scrubTally;
+  if (pendingTally) logLine(`${pendingTally} pending line${pendingTally === 1 ? '' : 's'} held out `
+    + `— not posted yet, and the settled charge will arrive in a later export`, 'warn');
   const added = mergeRows(rows);
   const acct = ACCT[current.acctId];
   if (lastBalance){
@@ -9661,7 +9880,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-11q';
+const BUILD = '2026-08-12e';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
