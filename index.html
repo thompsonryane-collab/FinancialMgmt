@@ -731,6 +731,7 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .runbal__val small{display:block;font-size:9.5px;font-weight:500;letter-spacing:.1em;
   text-transform:uppercase;color:var(--muted)}
 .bill--pend{border-left:3px solid var(--owe)}
+.bill--pendin{border-left-color:var(--asset)}
 .dl__day{font-family:var(--data);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--muted);margin:9px 0 -2px;padding-left:2px}
 .dl__day:first-child{margin-top:0}
@@ -1487,6 +1488,13 @@ input[type=date]{-webkit-appearance:none;appearance:none}
           <div class="rule-form" style="margin-top:12px">
             <input class="search" id="dlName" type="text" placeholder="What was it? e.g. Whole Foods"
                    aria-label="What the charge was" autocapitalize="words">
+            <fieldset style="margin:0">
+              <legend id="dlKindLegend">Direction</legend>
+              <div class="seg" role="radiogroup" aria-labelledby="dlKindLegend" id="dlKind">
+                <button type="button" class="seg__opt" role="radio" aria-checked="true" tabindex="0" data-kind="out">Money out</button>
+                <button type="button" class="seg__opt" role="radio" aria-checked="false" tabindex="-1" data-kind="in">Money in</button>
+              </div>
+            </fieldset>
             <div class="rule-form__row">
               <input class="search" id="dlAmount" type="text" inputmode="decimal" placeholder="Amount" aria-label="Amount">
               <input class="search" id="dlDate" type="date" aria-label="Day it was charged">
@@ -1494,10 +1502,10 @@ input[type=date]{-webkit-appearance:none;appearance:none}
             <select class="select" id="dlAcct" aria-label="Account the charge will land on"></select>
             <button class="btn btn--primary" id="dlAdd" type="button">Add pending charge</button>
           </div>
-          <p class="hint" style="margin:11px 0 0">A pending charge is money already spent that no statement
-            has carried yet. It never enters the ledger and never moves a posted balance &mdash; the running
-            figure above simply leans on it, so you can see what each account will read once everything lands.
-            Delete a charge the day its real line imports.</p>
+          <p class="hint" style="margin:11px 0 0">Something that has already happened that no statement has
+            carried yet &mdash; money out, or a deposit or refund on its way in. It never enters the ledger and
+            never moves a posted balance; the running figure above simply leans on it, so you can see what each
+            account will read once everything lands. Delete a line the day its real one imports.</p>
         </div>
       </details>
 
@@ -2306,6 +2314,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         <option value="bank">Bank export — deposits and withdrawals</option>
         <option value="card">Card export — charges land negative</option>
         <option value="visa">Visa export — charges land negative, pending held out</option>
+        <option value="penfed">PenFed export — already signed, no flip</option>
         <option value="loan">Loan export — principal, interest, balance</option>
       </select>
       <p class="hint">How this account's files read at Intake. Cards flip their sign so charges count against you.</p>
@@ -2386,13 +2395,24 @@ const BASE_ACCOUNTS = [
     schema:'visa', flip:true,
     match:[{re:/usaa/i,w:3},{re:/visa|usaavisa/i,w:5},{re:/card|credit|\bcc\b/i,w:2}] },
 
+  /* The issuer name outweighs any single product word. 'PenFedvisa'
+     used to hand this file to the USAA Visa -- 'visa' was worth 5 there
+     and 'pen fed' only 4 here -- and because 5 clears the confidence
+     bar it routed silently, with no "account guessed" line to catch it.
+     'visa' now sits among PenFed's own product terms as well, so the
+     word identifies the product without conceding the issuer. */
   { id:'PenFed', name:'PenFed Card', inst:'PenFed', side:'liability', kind:'Credit card',
-    schema:'card', flip:true,
-    match:[{re:/pen ?fed/i,w:4},{re:/card|credit|\bcc\b/i,w:3}] },
+    schema:'penfed', flip:false,
+    match:[{re:/pen ?fed/i,w:6},{re:/visa|card|credit|\bcc\b/i,w:3}] },
 
+  /* 'CarLoan' and 'PenFedCL' both failed \bcar\b and \bloan\b -- the
+     boundary the pattern wanted was never there in a filename written
+     without separators. 'car ?loan' catches the run-together form, and
+     'auto'/'loan' lead-anchor rather than close, while \bcar\b stays
+     strict so the word "card" can never claim the car loan. */
   { id:'PenFedCL', name:'PenFed Car Loan', inst:'PenFed', side:'liability', kind:'Auto loan',
     schema:'loan', flip:false,
-    match:[{re:/pen ?fed/i,w:4},{re:/penfedcl/i,w:6},{re:/\bcar\b|\bauto\b|\bloan\b|\bcl\b|vehicle/i,w:5}] },
+    match:[{re:/pen ?fed/i,w:6},{re:/penfedcl/i,w:6},{re:/\bcar\b|car ?loan|\bauto|\bloan|vehicle|\bcl\b/i,w:5}] },
 
   { id:'WellsFargo', name:'Wells Fargo Mortgage', inst:'Wells Fargo', side:'liability', kind:'Mortgage',
     schema:'loan', flip:false,
@@ -2531,6 +2551,16 @@ const SCHEMAS = {
           fingerprint:[/original description/i,/\bstatus\b/i],
           example:{ headers:['Date','Description','Original Description','Category','Amount','Status'],
                     row:['7/6/2026','Bangkok Garden','BANGKOK GARDEN 301-545-2848 MD','Restaurants','49.91','Posted'] } },
+  /* PenFed. Four columns, and the one shape here that arrives already
+     signed the way the ledger signs: a charge is negative in the file.
+     It was reading through the AMEX `card` shape, which flips, so a
+     -40 laundromat posted as +40 income. flip:false is the whole point
+     of the separate entry. `Merchant Category` is PenFed's alone. */
+  penfed:{ label:'PenFed export', use:['date','desc','amount','category'],
+          flip:false,
+          fingerprint:[/merchant category/i],
+          example:{ headers:['Date','Description','Amount','Merchant Category'],
+                    row:['2026-07-26','THE WOODMOOR PASTRY SHOP SILVER SPRINGMD','-11.05','Dining & Restaurants'] } },
   items:{ label:'Item export', use:['date','asin','desc','qty','subtotal','amount'],
           flip:false,
           fingerprint:[/asin/i,/product name/i,/shipment item subtotal/i],
@@ -2658,7 +2688,18 @@ function toNumber(v){
 
 /** Parse anything a bank might call a date, including Excel serials. */
 function toDate(v){
-  if (v instanceof Date) return isNaN(v) ? null : v;
+  if (v instanceof Date){
+    if (isNaN(v)) return null;
+    /* A date cell with no time carries UTC midnight. Local getters then
+       report the day before for every user behind UTC. Rebuild it as a
+       local calendar day. A Date that already holds a real time of day
+       is a timestamp, not a calendar day, and is left alone — and under
+       TZ=UTC the rebuild is a no-op either way. */
+    return v.getUTCHours() === 0 && v.getUTCMinutes() === 0
+        && v.getUTCSeconds() === 0 && v.getUTCMilliseconds() === 0
+      ? new Date(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate())
+      : v;
+  }
   if (typeof v === 'number' && v > 20000 && v < 60000){
     const ms = Math.round((v - 25569) * 86400 * 1000);
     const d = new Date(ms);
@@ -3734,12 +3775,17 @@ function balanceOf(id){
 
   /* Nothing anchors this account: no opening balance, no statement
      figure, no running-balance column. All that is left is the net of
-     every row on file — the period's movement, not a balance. A debt
-     already reads as a magnitude here, and an asset now does the same,
-     so a card never shows a minus sign for money the household holds.
-     Set an opening balance on the card to turn this into a real one. */
+     every row on file — the period's movement, not a balance.
+
+     A debt is carried as a magnitude throughout, so a liability keeps
+     the absolute. An asset must NOT: this figure was reading through
+     Math.abs on both sides, so a checking account that spent 16,168.69
+     more than it took in reported +$16,169 in green — the right number
+     pointing the wrong way, and the wrong way is the one that looks
+     like money in the bank. Set an opening balance to turn this into a
+     real balance; until then it is signed movement and says so. */
   const sum = rs.reduce((s,r) => s + r.amount, 0);
-  return { value: acct.side === 'liability' ? Math.abs(Math.min(sum,0)) : Math.abs(sum),
+  return { value: acct.side === 'liability' ? Math.abs(Math.min(sum,0)) : sum,
            source:'derived', since:0, netOnly:true };
 }
 
@@ -5799,6 +5845,7 @@ function renderCards(){
     const src = bal.source === 'opening' ? `opened${opStamp}${rolled}${offBy}`
       : byHand ? `set by hand${stamp}${rolled}`
       : bal.source === 'statement' ? `from statement${stamp}${rolled}`
+      : bal.netOnly                ? 'net of rows, not a balance — tap to set an opening balance'
       : bal.source === 'derived'   ? `derived from rows${rolled}` : '';
     const base = rs.length ? `${a.kind} · ${rs.length} rows · thru ${fmtDate(last)}`
       : byHand ? a.kind
@@ -5820,7 +5867,7 @@ function renderCards(){
               <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
             </svg>
           </button></div><p class="card__name">${esc(a.name)}</p></div>
-        <button type="button" class="card__bal ${a.side==='asset'?'tone-asset':'tone-owe'}${byHand?' card__bal--set':''}"
+        <button type="button" class="card__bal ${a.side==='asset'&&bal.value>=0?'tone-asset':'tone-owe'}${byHand?' card__bal--set':''}"
                 data-acct="${a.id}"
                 aria-label="${bal.source === 'empty'
                   ? `Set the ${esc(a.name)} balance or opening balance. Nothing on file yet`
@@ -8891,7 +8938,7 @@ function feedQueueRow(id){
     <span class="runbal__meta">no balance of its own \u00b7 ${held.length
       ? `${held.length} ordered, not yet shipped`
       : 'nothing queued'}</span>
-    <span class="runbal__val tone-owe">${moneyShort(Math.abs(sum))}
+    <span class="runbal__val ${sum > 0 ? 'tone-asset' : 'tone-owe'}">${moneyShort(sum)}
       <small>settles on a card</small></span>
   </li>`;
 }
@@ -8908,8 +8955,11 @@ function renderDaily(){
     const from = b.fromCard
       ? `running ${moneyShort(b.base)} · total ${moneyShort(b.total)}`
       : `posted ${moneyShort(b.posted)}`;
+    /* Math.abs here read '3 pending $120.00' whether that was money
+       leaving or arriving. With both directions on the register the
+       magnitude alone is ambiguous, so the net keeps its sign. */
     const meta = b.n
-      ? `${from} · ${b.n} pending ${moneyShort(Math.abs(b.move))}`
+      ? `${from} · ${b.n} pending ${moneyShort(b.move)}`
       : `${from} · nothing pending`;
     return `<li class="${b.n ? 'runbal--held' : ''}">
       <span class="runbal__nm">${esc(b.name)}</span>
@@ -8948,12 +8998,17 @@ function renderDaily(){
         html += `<p class="dl__day">${d ? d.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'}) : esc(day)}</p>`;
       }
       const a = ACCT[p.acct];
-      html += `<ul class="daylist"><li class="bill bill--pend">
+      /* The register used to be outflow-only, so the tone and the left
+         edge were both hard-coded to owe. Read the sign instead: a
+         refund or an expected deposit is money arriving and has to look
+         like it, or the colour contradicts the figure beside it. */
+      const inbound = p.amount > 0;
+      html += `<ul class="daylist"><li class="bill bill--pend${inbound ? ' bill--pendin' : ''}">
         <span class="bill__name">${esc(p.name)}</span>
         <span class="bill__meta">${esc(a ? a.name : p.acct)}</span>
-        <span class="bill__amt tone-owe">${moneyShort(p.amount)}</span>
+        <span class="bill__amt ${inbound ? 'tone-asset' : 'tone-owe'}">${moneyShort(p.amount)}</span>
         <button class="bill__del" type="button" data-pend="${esc(p.id)}"
-          aria-label="Delete the pending charge ${esc(p.name)}">&#10005;</button>
+          aria-label="Delete the pending ${inbound ? 'credit' : 'charge'} ${esc(p.name)}">&#10005;</button>
       </li></ul>`;
     });
     list.innerHTML = html;
@@ -8970,10 +9025,15 @@ function renderDaily(){
   if (tag){
     const n = state.pend.length;
     const sum = state.pend.reduce((s,p) => s + p.amount, 0);
+    const mixed = state.pend.some(p => p.amount > 0) && state.pend.some(p => p.amount < 0);
+    /* One direction: the figure speaks for itself. Both: say it is a
+       net, because '2 pending $40.00' hides that it is 300 out and 260
+       in and the pill is the only thing most glances read. */
     tag.textContent = n
-      ? `${n} pending · ${moneyShort(Math.abs(sum))}`
+      ? `${n} pending · ${mixed ? 'net ' : ''}${moneyShort(sum)}`
       : 'nothing pending';
-    tag.classList.toggle('tone-owe', n > 0);
+    tag.classList.toggle('tone-owe', n > 0 && sum < 0);
+    tag.classList.toggle('tone-asset', n > 0 && sum >= 0);
   }
 }
 
@@ -9371,6 +9431,36 @@ function initCalendar(){
   fillDailyAccts();
   $('#dlDate').value = isoOf(startOfToday());
 
+  /* Direction for the pending register. Out is the default because it is
+     the common case; in covers a refund, a reimbursement or a deposit
+     that has left the payer but not yet landed. The control mirrors the
+     bill form's Expense/Income seg exactly -- same roles, same arrow
+     keys -- so the two forms on this screen behave identically. */
+  let dlKind = 'out';
+  const setDlKind = k => {
+    dlKind = k;
+    $$('#dlKind .seg__opt').forEach(b => {
+      const on = b.dataset.kind === k;
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    const add = $('#dlAdd');
+    if (add) add.textContent = k === 'in' ? 'Add pending credit' : 'Add pending charge';
+    const amt = $('#dlAmount');
+    if (amt) amt.setAttribute('aria-label', k === 'in' ? 'Amount coming in' : 'Amount going out');
+  };
+  $$('#dlKind .seg__opt').forEach(b => {
+    b.addEventListener('click', () => setDlKind(b.dataset.kind));
+    b.addEventListener('keydown', e => {
+      if (!['ArrowRight','ArrowLeft'].includes(e.key)) return;
+      e.preventDefault();
+      const opts = $$('#dlKind .seg__opt');
+      const nextEl = opts[(opts.indexOf(b) + 1) % opts.length];
+      setDlKind(nextEl.dataset.kind); nextEl.focus();
+    });
+  });
+  setDlKind('out');
+
   $('#dlAdd').addEventListener('click', () => {
     const name = $('#dlName').value.trim();
     const amount = toNumber($('#dlAmount').value);
@@ -9380,18 +9470,21 @@ function initCalendar(){
     if (!name){ toast('Give the charge a name so you know what it was'); $('#dlName').focus(); return; }
     if (amount == null || amount === 0){ toast('Enter an amount, like 42.80'); $('#dlAmount').focus(); return; }
     if (!date){ toast('Pick the day it was charged'); $('#dlDate').focus(); return; }
-    /* A daily charge is money going out. The household types 42.80, not
-       -42.80, so the sign is applied here and the register only ever
-       holds ledger-signed figures. */
+    /* The household types 42.80, never -42.80, so the sign is applied
+       here from the direction toggle and the register only ever holds
+       ledger-signed figures. Everything downstream -- runningBalance,
+       the pill, the feed row -- already sums p.amount straight, so a
+       positive line rolls through without another change. */
+    const signed = dlKind === 'in' ? Math.abs(amount) : -Math.abs(amount);
     state.pend.push({
       id: `P-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-      name, amount: -Math.abs(amount), date: isoOf(date), acct, at: Date.now(),
+      name, amount: signed, date: isoOf(date), acct, at: Date.now(),
     });
     $('#dlName').value = ''; $('#dlAmount').value = '';
     $('#dlDate').value = isoOf(startOfToday());
     save(); renderDaily(); syncFoldbar('scr-calendar');
     $('#dlName').focus();
-    toast(`${name} pending on ${ACCT[acct] ? ACCT[acct].name : acct}`);
+    toast(`${name} pending ${dlKind === 'in' ? 'into' : 'on'} ${ACCT[acct] ? ACCT[acct].name : acct}`);
   });
 
   ['#dlName','#dlAmount'].forEach(sel => $(sel).addEventListener('keydown', e => {
@@ -9880,7 +9973,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-12e';
+const BUILD = '2026-08-12h';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
