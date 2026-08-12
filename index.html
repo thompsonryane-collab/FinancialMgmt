@@ -1038,6 +1038,12 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .preview .dt{font-family:var(--data);color:var(--muted);white-space:nowrap}
 .preview .amt{text-align:right;font-family:var(--data);white-space:nowrap}
 .sheet__actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+/* The count and the way out of a filter belong on the same line: "Clear all"
+   sits below four more sections, and on a phone that is off the bottom of the
+   screen exactly when someone most wants it. */
+.filt__head{display:flex;align-items:center;gap:10px}
+.filt__head .file{margin:0}
+.filt__head .btn{margin-left:auto;flex:0 0 auto}
 .switch{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);margin-top:4px;min-height:44px}
 .switch input{width:18px;height:18px;accent-color:var(--accent)}
 
@@ -1188,10 +1194,49 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
    The icon that opens this used to sit up in the header, a lone control
    in a different shape and colour from the four it belonged with. It is
    a railbtn now; the dot it wears is the rail's own. */
-.filt__row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.filt__row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .filt__row label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+/* A grid track is 1fr wide but never narrower than its content, because
+   min-width on a grid item defaults to auto. An <input type=date> reports a
+   min-content width of its whole mm/dd/yyyy spinner -- wider than half a
+   phone -- so the two date tracks quietly grew past the sheet, carrying the
+   right-hand field and the subcategory chevron off the edge with them.
+   Letting the items shrink is the fix; the inputs are already width:100%. */
+.filt__row > *{min-width:0}
+.filt__row .input,.filt__row .select{max-width:100%}
+/* iOS gives a date field its own taller intrinsic box; strip the native
+   chrome so it matches the text fields beside it. */
+input[type=date]{-webkit-appearance:none;appearance:none}
+
+/* The sheet used to be one long scroll: the title clipped off the top, the
+   Show lines button off the bottom, and four sections of chips wrapping onto
+   two rows each in between. It is a column now -- head, body, actions -- so
+   the title and the two buttons are always on screen and only the middle can
+   ever move. Every section was rewritten to fit one row: four date chips
+   read 30d / 90d / YTD / All, four sort chips Newest / Oldest / A-Z / Z-A,
+   the field labels became placeholders, and the amount caveat rides on the
+   section heading instead of a two-line paragraph under it. */
+#filtModal .sheet{
+  max-height:min(92vh, 92dvh);
+  display:flex;flex-direction:column;overflow:hidden;
+  padding:14px 16px calc(var(--sab) + 14px);
+}
+#filtModal .sheet__grab{margin:0 auto 8px}
+#filtModal h2{margin:0}
+.filt__head{display:flex;align-items:baseline;gap:10px;flex:0 0 auto;padding-right:40px}
+.filt__head .file{margin:0;white-space:nowrap}
+.filt__head .btn{margin-left:auto;flex:0 0 auto;min-height:32px;padding:4px 12px}
+.filt__body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.filt__body .eyebrow{margin:12px 0 6px}
+.filt__body .eyebrow:first-child{margin-top:10px}
+.filt__note{font-family:var(--body);letter-spacing:0;text-transform:none;opacity:.7}
 #filtModal .cchips{margin-top:8px}
-#filtModal .sheet{max-height:92vh}
+/* four to a row, never wrapping -- the reason the sheet was twice as tall */
+.cchips--row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.cchips--row button{padding:6px 4px;text-align:center;white-space:nowrap}
+#filtModal .input,#filtModal .select{min-height:42px;max-height:42px;font-size:16px}
+#filtModal .filt__row > div{display:grid}
+#filtModal .sheet__actions{flex:0 0 auto;margin-top:12px}
 
 /* ---------- sortable table headers (landscape) ---------- */
 .tbl th.sortable{cursor:pointer;-webkit-user-select:none;user-select:none;white-space:nowrap}
@@ -1631,6 +1676,12 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
       </details>
 
       <details class="fold" data-fold>
+        <summary><span class="fold__dot" id="instDot" style="background:var(--accent)"></span>Instrument
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body"><div id="instrument"></div></div>
+      </details>
+
+      <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--asset)"></span>Account schema
           <span class="fold__tag" id="rowCount">0 rows</span>
           <span class="fold__chev" aria-hidden="true">▸</span></summary>
@@ -1947,61 +1998,66 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
   </div>
   <div class="ledger__body">
     <div id="ledgerRows"></div>
-    <div class="empty" id="tableEmpty">Nothing imported yet. Open Intake and add a statement.</div>
+    <div class="empty" id="tableEmpty"></div>
     <button class="btn morebtn" id="moreBtn" type="button" hidden>Show more</button>
   </div>
 </div>
 
 <!-- ============ LEDGER FILTER SHEET ============ -->
 <div class="modal" id="filtModal" hidden role="dialog" aria-modal="true" aria-labelledby="filtTitle">
-  <div class="sheet">
+  <div class="sheet" id="filtSheet" tabindex="-1">
     <div class="sheet__grab" aria-hidden="true"></div>
     <button class="sheet__x" id="filtX" type="button" aria-label="Close">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>
     </button>
-    <p class="eyebrow">Narrow the ledger</p>
-    <h2 id="filtTitle">Filter &amp; sort</h2>
-    <p class="file" id="filtCount"></p>
-
-    <p class="eyebrow" style="margin-top:16px">Category</p>
-    <div class="filt__row">
-      <div><label class="sr-only" for="filtCat">Category</label>
-        <select class="select" id="filtCat"></select></div>
-      <div><label class="sr-only" for="filtSub">Subcategory</label>
-        <select class="select" id="filtSub"></select></div>
+    <div class="filt__head">
+      <h2 id="filtTitle">Filter &amp; sort</h2>
+      <p class="file" id="filtCount"></p>
+      <button class="btn btn--sm" id="filtClearTop" type="button" hidden>Clear</button>
     </div>
 
-    <p class="eyebrow" style="margin-top:16px">Date range</p>
-    <div class="filt__row">
-      <div><label for="filtFrom">From</label><input class="input" id="filtFrom" type="date"></div>
-      <div><label for="filtTo">To</label><input class="input" id="filtTo" type="date"></div>
-    </div>
-    <div class="cchips" id="filtQuick">
-      <button data-span="30" type="button">Last 30 days</button>
-      <button data-span="90" type="button">Last 90 days</button>
-      <button data-span="ytd" type="button">This year</button>
-      <button data-span="all" type="button">All time</button>
+    <div class="filt__body">
+      <p class="eyebrow">Category</p>
+      <div class="filt__row">
+        <div><label class="sr-only" for="filtCat">Category</label>
+          <select class="select" id="filtCat"></select></div>
+        <div><label class="sr-only" for="filtSub">Subcategory</label>
+          <select class="select" id="filtSub"></select></div>
+      </div>
+
+      <p class="eyebrow">Date range <span class="filt__note">from · to</span></p>
+      <div class="filt__row">
+        <div><label class="sr-only" for="filtFrom">From</label>
+          <input class="input" id="filtFrom" type="date" aria-label="From"></div>
+        <div><label class="sr-only" for="filtTo">To</label>
+          <input class="input" id="filtTo" type="date" aria-label="To"></div>
+      </div>
+      <div class="cchips cchips--row" id="filtQuick">
+        <button data-span="30" type="button" aria-label="Last 30 days">30d</button>
+        <button data-span="90" type="button" aria-label="Last 90 days">90d</button>
+        <button data-span="ytd" type="button" aria-label="This year">YTD</button>
+        <button data-span="all" type="button" aria-label="All time">All</button>
+      </div>
+
+      <p class="eyebrow">Amount <span class="filt__note">size only, sign ignored</span></p>
+      <div class="filt__row">
+        <div><label class="sr-only" for="filtMin">At least</label>
+          <input class="input" id="filtMin" type="text" inputmode="decimal" placeholder="at least" aria-label="At least" autocomplete="off"></div>
+        <div><label class="sr-only" for="filtMax">At most</label>
+          <input class="input" id="filtMax" type="text" inputmode="decimal" placeholder="no cap" aria-label="At most" autocomplete="off"></div>
+      </div>
+
+      <p class="eyebrow">Sort by</p>
+      <div class="cchips cchips--row" id="filtSort">
+        <button data-sort="date" data-dir="-1" type="button" aria-label="Newest first">Newest</button>
+        <button data-sort="date" data-dir="1" type="button" aria-label="Oldest first">Oldest</button>
+        <button data-sort="desc" data-dir="1" type="button" aria-label="Description A to Z">A–Z</button>
+        <button data-sort="desc" data-dir="-1" type="button" aria-label="Description Z to A">Z–A</button>
+      </div>
     </div>
 
-    <p class="eyebrow" style="margin-top:16px">Amount</p>
-    <div class="filt__row">
-      <div><label for="filtMin">At least</label>
-        <input class="input" id="filtMin" type="text" inputmode="decimal" placeholder="$0.00" autocomplete="off"></div>
-      <div><label for="filtMax">At most</label>
-        <input class="input" id="filtMax" type="text" inputmode="decimal" placeholder="no cap" autocomplete="off"></div>
-    </div>
-    <p class="hint" style="margin:6px 0 0">Compared on size, ignoring sign — $50 catches a $50 charge and a $50 deposit alike.</p>
-
-    <p class="eyebrow" style="margin-top:16px">Sort by</p>
-    <div class="cchips" id="filtSort">
-      <button data-sort="date" data-dir="-1" type="button">Newest first</button>
-      <button data-sort="date" data-dir="1" type="button">Oldest first</button>
-      <button data-sort="desc" data-dir="1" type="button">Description A–Z</button>
-      <button data-sort="desc" data-dir="-1" type="button">Description Z–A</button>
-    </div>
-
-    <div class="sheet__actions" style="margin-top:18px">
+    <div class="sheet__actions">
       <button class="btn" id="filtClear" type="button">Clear all</button>
       <button class="btn btn--primary" id="filtDone" type="button">Show lines</button>
     </div>
@@ -2325,6 +2381,18 @@ const BASE_ACCOUNTS = [
   { id:'WellsFargoHELOC', name:'Wells Fargo HELOC', inst:'Wells Fargo', side:'liability', kind:'Home equity line',
     schema:'loan', flip:false,
     match:[{re:/wells|\bwf\b/i,w:4},{re:/heloc|equity|\bline\b/i,w:6}] },
+
+  /* Amazon is not an account. It holds no money, carries no balance and
+     settles on the AMEX card like any other merchant. What it does hold is
+     the only record of WHAT was in the box -- the statement line says
+     "AMAZON MARKEPLACE NA PA -125.06" and nothing more. So it joins the
+     registry as a feed: visible wherever an account can be picked, so its
+     export has somewhere to be routed and its items somewhere to be filtered,
+     but marked `feed` so it never draws a card on Position and never touches
+     net worth. Anything else would invent an asset that does not exist. */
+  { id:'AMAZON', name:'Amazon Orders', inst:'Amazon', side:'asset', kind:'Item feed',
+    schema:'items', flip:false, feed:true, via:'Your Orders \u203a Download order reports',
+    match:[{re:/amazon|\bamzn\b/i,w:6},{re:/order|item|asin/i,w:3}] },
 ];
 /* The registry the app actually reads. Starts as the shipped table;
    rebuildRegistry() folds in the household's additions, renames and
@@ -2351,7 +2419,8 @@ function rebuildRegistry(){
     const c = ed.changed[base.id];
     out.push(c ? { ...base, name: c.name, inst: c.inst, kind: c.kind,
                    side: c.side, schema: c.schema,
-                   flip: c.schema === 'card', manual: base.manual } : base);
+                   flip: c.schema === 'card', manual: base.manual,
+                   feed: base.feed } : base);
   });
   ed.added.forEach(c => {
     if (ed.removed.includes(c.id)) return;
@@ -2371,9 +2440,15 @@ function rebuildRegistry(){
    a couple of header fingerprints used to identify the source.
    ============================================================ */
 const FIELDS = {
-  date:     ['date','transaction date','trans date','post date','posted date','posting date','effective date','payment date','activity date','date posted'],
-  desc:     ['description','original description','payee','merchant','memo','transaction description','details','extended details','narrative','name','reference'],
-  amount:   ['amount','transaction amount','amount usd','payment amount','total amount','value','total'],
+  /* Bare "Posted" and bare "Settled" are what several exports actually ship,
+     and neither matched: "post date" is not a substring of "posted", so the
+     column went unmapped, normalize() read no rows and the Import button was
+     greyed out -- a mapping failure that looked exactly like a cancelled sheet. */
+  date:     ['date','transaction date','trans date','trans. date','post date','posted date','posted',
+             'posting date','settlement date','settled','effective date','payment date',
+             'activity date','date posted','order date','purchase date','process date'],
+  desc:     ['description','original description','payee','merchant','merchant name','memo','transaction description','details','extended details','narrative','name','reference','item'],
+  amount:   ['amount','transaction amount','amount usd','amount (usd)','payment amount','total amount','net amount','value','total'],
   debit:    ['debit','withdrawal','withdrawals','charges','money out','paid out'],
   credit:   ['credit','deposit','deposits','money in','paid in'],
   category: ['category','type','transaction type','classification','sub category','subcategory','merchant category'],
@@ -2382,6 +2457,9 @@ const FIELDS = {
   principal:['principal','principal paid','principal portion','principal amount'],
   interest: ['interest','interest paid','interest portion','interest amount'],
   escrow:   ['escrow','escrow paid','escrow portion','escrow amount'],
+  asin:     ['asin','item id','product id','item code'],
+  qty:      ['original quantity','quantity','qty','units','item quantity'],
+  subtotal: ['shipment item subtotal','shipment subtotal','order subtotal','item subtotal'],
 };
 
 const SCHEMAS = {
@@ -2393,6 +2471,10 @@ const SCHEMAS = {
           fingerprint:[/card member/i,/extended details/i,/appears on your statement/i],
           example:{ headers:['Date','Description','Card Member','Amount','Category'],
                     row:['07/09/2026','DELTA AIR LINES','RYAN E THOMPSON','412.00','Travel'] } },
+  items:{ label:'Item export', use:['date','asin','desc','qty','subtotal','amount'],
+          fingerprint:[/asin/i,/product name/i,/shipment item subtotal/i],
+          example:{ headers:['ASIN','Order Date','Product Name','Shipment Item Subtotal','Total Amount'],
+                    row:['B0CD2XLQ96','2026-08-04T19:26:42.323Z','FARMER\u2019S DEFENSE Gardening Arm Sleeves','117.98','31.79'] } },
   loan: { label:'Loan export',  use:['date','desc','amount','principal','interest','escrow','balance'],
           fingerprint:[/principal/i,/escrow/i,/unpaid principal/i],
           example:{ headers:['Date','Description','Principal','Interest','Balance'],
@@ -2444,6 +2526,19 @@ const state = {
                          // categories, plus single subcategories written 'Cat\u241FSub'
   outSel:{ cats:[], subs:[] },   // which outflows the Flow screen charts; empty = the six biggest
   thread:[],             // {role, content}
+  covered:[],            // card lines an item import has replaced, as 'acct|yyyy-mm-dd|cents'.
+                         // Durable: if the statement is imported again later, the line it
+                         // names must not come back and double-count what the items already say.
+  diag:[],               // last few files through Intake, stage by stage. Session
+                         // only -- never persisted, never restored: it describes
+                         // this run of the app, not the household's money.
+  asins:{},              // Amazon item memory: ASIN -> {m:master, n:name, h:hits, s:source}
+                         // The ASIN string encodes nothing about what a thing is --
+                         // it is a registration id, not a taxonomy. Its worth here is
+                         // as a key: unique per product, stable across years, and
+                         // immune to the name-string drift that breaks a name-keyed
+                         // table. Every decision written here retires that ASIN from
+                         // ever being asked about again.
 };
 
 /* ============================================================
@@ -2719,15 +2814,24 @@ function detectAccount(filename, headers){
 }
 
 /** Build the draft mapping a file will be imported with. */
-function planImport(file, wb){
+function planImport(file, wb, d){
   const sheet = bestSheet(wb);
   if (!sheet || !sheet.grid.length) throw new Error('has no rows');
   const hIdx = findHeaderRow(sheet.grid);
   const headers = (sheet.grid[hIdx] || []).map(h => String(h ?? '').trim());
   const body = sheet.grid.slice(hIdx + 1).filter(r => r.some(c => c !== '' && c != null));
+  /* The item export carries an Order Date and a Total Amount, so it would map
+     cleanly and import 216 products as though they were charges -- double
+     counting every Amazon line already on the card. It is diverted upstream;
+     this is the backstop if that divert is ever moved or broken. */
+  if (isAmazonItems(headers))
+    throw new Error('is an Amazon item export, not a statement — it is read on the Intake screen, not mapped');
   const guess = detectAccount(file.name, headers);
   const acct = guess.acct || ACCOUNTS[0];
-  return {
+  diagStep(d, 'header row', `line ${hIdx + 1}: ${headers.filter(Boolean).join(' | ') || '(blank)'}`);
+  diagStep(d, 'data rows', body.length);
+  diagStep(d, 'account', `${acct.id}${guess.confident ? '' : ' (guessed — not confident)'}`);
+  const plan = {
     file: file.name,
     sheet: sheet.name,
     headers, body,
@@ -2748,6 +2852,12 @@ function planImport(file, wb){
     },
     flip: acct.flip,
   };
+  const named = Object.keys(plan.map).filter(f => plan.map[f] > -1)
+    .map(f => `${f}→${headers[plan.map[f]] || '?'}`);
+  diagStep(d, 'columns matched', named.length ? named.join(', ') : 'none');
+  const gaps = mapGaps(plan);
+  if (gaps.length) diagStep(d, 'columns missing', gaps.join(', ') + ' — no rows can be read without these');
+  return plan;
 }
 
 /* ============================================================
@@ -2821,9 +2931,25 @@ function normalize(plan){
 }
 
 /** Drop rows we already hold, so re-importing an overlapping export is safe. */
+/* A card line that a set of Amazon items has already replaced must not
+   come back when its statement is imported a second time -- the items say
+   the same money in more detail, and letting both stand doubles the
+   outflow. Matched by content, not by id, because a re-import mints new
+   ids for the same rows. */
+function rowSig(r){
+  return `${r.acct}|${isoOf(r.date)}|${Math.round(r.amount * 100)}`;
+}
 function mergeRows(incoming){
   const seen = new Set(state.rows.map(r => r.id));
-  const fresh = incoming.filter(r => !seen.has(r.id));
+  const covered = new Set(state.covered || []);
+  let blocked = 0;
+  const fresh = incoming.filter(r => {
+    if (seen.has(r.id)) return false;
+    if (covered.has(rowSig(r))){ blocked++; return false; }
+    return true;
+  });
+  if (blocked) logLine(`${blocked} card line${blocked === 1 ? '' : 's'} held back — `
+    + `Amazon items already carry that spend in detail`, 'warn');
   state.rows = state.rows.concat(fresh).sort((a,b) => b.date - a.date);
   return fresh.length;
 }
@@ -2866,6 +2992,546 @@ function loadMasterLedger(){
    is ever cleared, loadMasterLedger() from a console re-seeds all 2,124
    rows. It merges by line id, so pressing it twice costs nothing. */
 window.loadMasterLedger = loadMasterLedger;
+
+
+/* ============================================================
+   AMAZON ITEMS — the ASIN category map
+   An Amazon charge on the AMEX statement is one opaque line:
+   "AMAZON MARKEPLACE NA PA  -125.06". The item export Amazon
+   hands back says what was actually in the box. This block reads
+   that export, decides a category per item, and remembers the
+   verdict against the ASIN so the same product is never asked
+   about twice.
+
+   Resolution runs in three tiers, hardest evidence first:
+     1. ASIN already in state.asins   -> certain
+     2. a name rule matches           -> provisional, written back
+     3. neither                       -> REVIEW, waits for a hand
+   ============================================================ */
+const AMZ_REVIEW = 'REVIEW';
+/* Loose produce weighed at the till has no product listing behind it, so
+   Amazon stamps a sentinel in the ASIN column. It is a placeholder, not an
+   id: two different vegetables arrive wearing it. The money still counts,
+   but nothing may ever be written to the map under this key -- doing so
+   would teach the map that one ASIN means two things. */
+const AMZ_NOASIN = '_ASINLESS_';
+
+/* Seeded from the Jan-Aug 2026 export: 199 products already placed.
+   Grouped by category purely to keep the constant readable. */
+const AMZ_SEED = {
+  'Apparel-StoreOrOnline': 'B001BF3IQ6 B001BF3ISE B006LFV7V4 B0155D06RI B01JM77RWK B075DBRPJZ B07WMZZ3FG B082N4ZX8S B082N5989P B0BX8SRTV4 B0C3WFRB44 B0CB7566TT B0CFWKMK2L B0CMSVCRPX B0CMSVP569 B0CNRJFH2S B0CX8TH12X B0D17ZX73W B0D182QKWB B0D8BMNCHF B0DPGRCX4K B0DVH6PBHV B0F14YSYVM B0F154WV33 B0F8H24HNV B0FFGYDTW6 B0FFJRGQNP B0FG9CDBHQ B0FWXGZMX3 B0G4GS5M1T B0G575MY7G B0G5WXCXX3 B0G5WYWQHQ B0GCCYVQ67 B0GFHLRF49 B0GSZWZDJ3',
+  'Archie-StoreOrOnline': 'B07DY59SL8 B0C64RK4ZT B0CS8GCYS1 B0DJ3JR93D B0FK24MFXT',
+  'AutomotiveExpense-StoreOrOnline': 'B09KXSFYC9 B0G38XDNXS B0GH885NYD B0GJ5F36BJ',
+  'Electronics-Accessories': 'B008I25368 B08XBC1DZW B0C7244ZZC B0D2K4YWBG',
+  'Grocery-Amazon': 'B07G2P43Y2',
+  'Grocery-WholeFoods': 'B000P6G0IK B000P6G0RG B0014GLSE6 B001PLETDC B0035APRLO B004NPNRYO B00CYML9FW B00FTBO8O4 B00IFK6RB8 B01F8VMDFK B074H4SHGV B074H4SHH4 B074H67HR9 B074H6VQNN B074H7L855 B075QJ8M1K B0787VGWS3 B079N9ZS2H B07B5X6V1B B07CYL8JKJ B07D6VM7K2 B07FY54JJV B07FYCTGX9 B07FZ21R4T B07FZ3VTKC B07G592VN5 B07GC1GTVY B07GDYQ9NW B07NQDMJVB B07NQVC7VR B07NRBX8QT B07NRDMGJ4 B07NRSVSYT B07NS5RVVF B07NSXNWKD B07Q5BN5M9 B07Q6D3ZJM B07VM5L943 B07ZDTK5KV B085DGRN8R B08K8Y453C B08P4V7X7S B08T8Y1FVZ B0914SP14R B0989TJPKV B09GZSQMM3 B09V3QLFWK B09W7RTNXC B09XBK6CXT B09XBKCCKB B0BCXNTXQ8 B0BJ7HBQ22 B0BTJ24BZJ B0BVDB7Z78 B0BYQC9JW3 B0C4K3L8QW B0C6V3416T B0CBQ7F79F B0CC3SXM61 B0CNPRJ959 B0CNPSP6WN B0CYC587LF B0D3F13QBG B0DLP5J1BZ B0DPRBBPSB B0DQLL39ZV B0DT1JXN6L B0DYVMNXZQ B0DYVMS6TB B0DYVNSBSG B0FF1BQYQK B0FHJML7FQ B0FPG7QVBV B0GMJFW5SP',
+  'HealthCare-Pharmacy': 'B0145QI7O0',
+  'Hobbies-Craft': 'B00OW7C85W B0C53Y6RT5 B0CHB11F32 B0CZNZY2BH',
+  'HomeImprovement-LandscapingGarden': 'B0000AH849 B002CAHWUW B016LGJV7O B01L8WA6SY B07R3FR392 B082QXJR29 B08P2QDMFT B095BSPC81 B099ZCDL4X B09WS1RKK1 B0BPSN3N15 B0BTHMMNJJ B0BWHVHNNM B0BX5BKBRR B0CD2XLQ96 B0CHS3129X B0CT2WRS34 B0CZ7PFQ1T B0CZRXK5WQ B0DJ1BRBGZ B0DLGXXD2F B0DSRNNP29 B0FGHWJCSN B0FPDD497L B0FXG5BQXJ B0FXG7RY79 B0FZBSQ4BY B0G1M98GV6 B0G768DL42 B0GGB2T3P5',
+  'Household-Items': 'B00006IE8K B003PWNGQU B00E4GACB8 B07C8P3CGW B089Q4QHTF B08JCNZX25 B08Z431QVL B09CGF6C7L B09P4PL3KW B0BCK3TSNJ B0BY8VZ5Y5 B0DMM7XCCK B0DPHH1ZNX B0DT9XYYC3 B0F4T2JNCT B0F9KTYM21 B0GHMQ9DX2 B0GHMXW9Q9',
+  'PersonalCare': 'B002K9PY0A B00CPKH9Y8 B00UU3IAT0 B017UYDYUG B07CJD1GT7 B07G75DJTC B08HSF2RNM B08HSGJ58P B08XBGBRZR B097NNR535 B09CPPCCHN B09LLQ2QZJ B09Y4H2KSS B0BHCJBJXC B0CSMBCT35 B0CWS4XC3K B0CYL19VL4 B0D7C85K88 B0DX3RYKY9 B0G4RB63NX B0G4X4759S B0G4X7YSCK',
+};
+
+/* Name rules, most specific first. Only consulted on an ASIN miss.
+   The order matters where two rules could both fire -- a car coaster
+   is automotive before it is anything else, a clothes shaver is an
+   appliance before it is apparel. */
+const AMZ_RULES = [
+  ['Apparel-StoreOrOnline', 'clutch|purse|tote bag|crossbody'],
+  ['Archie-StoreOrOnline', 'dog|puppy|paw |pupsicle|poop bag|nail grinder|pet bowl|pet brands'],
+  ['Hobbies-Craft', 'embroider|cross stitch|sashiko|floss|stabilizer|skein|hoops'],
+  ['HomeImprovement-LandscapingGarden',
+   'garden|planter|plant stand|plant stake|seed start|nursery pot|potted|fertilizer|' +
+   'coco liner|landscape stap|hanging plant|weed|water nozzle|bamboo pole|plant label|' +
+   'plant tag|propagation|mosquito (dunk|repell)|soft tie for plants|suncatcher|' +
+   'rope stakes|solar light|solar floor|hydrangea|artificial flower|wind chime|' +
+   'snail (figurine|key hider)|cast iron snail|rocks for planters|polished black stones'],
+  ['PersonalCare',
+   'shampoo|conditioner|conditioning|moisturi|serum|cleanser|face wash|makeup|bronzer|' +
+   'skin tint|hair|mousse|nail (lacquer|polish|spackle)|cuticle|toenail|foot peel|' +
+   'daily peel|swabs|sunscreen|spf \\d|smoothing lotion|thermal brush|blowout|' +
+   'surf infusion|styling cream|taming wand|curl shaper'],
+  ['HealthCare-Pharmacy', 'melatonin|gummy supplement|supplement with'],
+  ['AutomotiveExpense-StoreOrOnline',
+   'car (coaster|storage|seat|key|air freshener)|headrest hook|keychain for car|auto air'],
+  ['Electronics-Accessories',
+   'remote control|headlamp|paper shredder|fabric shaver|clothes shaver'],
+  ['Household-Items',
+   'sofa cover|mattress protector|throw pillow|dustpan|ant killer|lint |dryer vent|' +
+   'cleaning pail|detergent bucket|trunk & case|pens|sticky note|badge|nametag|' +
+   'no soliciting|greeting card|hot water bottle|toe warmer|fire starter'],
+  ['Apparel-StoreOrOnline',
+   'women|underwear|camisole|cami\\b|slip short|bra\\b|sock|sandal|swimsuit|swimwear|' +
+   'bathing suit|rash guard|pajama|sweater|t.?shirt|tees\\b|shirt|pants|skort|dress\\b|' +
+   'blazer|outfit|scarf|bucket hat|shoelace|boot lace|arm sleeve|beanie|key keeper|' +
+   'havaianas|activewear'],
+  ['Grocery-Amazon', 'sauce|vegan|gluten|syrup free'],
+];
+let amzRx = null;
+function amzRules(){
+  if (!amzRx) amzRx = AMZ_RULES.map(([m, s]) => [m, new RegExp(s, 'i')]);
+  return amzRx;
+}
+
+/* A Whole Foods run announces itself with a department token at the head
+   of a name -- PRODUCE, FLORAL, PREPARED FOODS, CUSTOMER SERVICES. The
+   tempting alternative, a trailing net weight (", 12 Fl Oz"), looks like
+   the same signal and is not: cosmetics carry it too, and reading it
+   alone quietly moved a fifth of PersonalCare into Grocery. So the test
+   is applied to the whole shipment -- one department row makes the
+   basket a grocery run -- which also rescues the bare lines that carry
+   no shape at all: "Shallot", "Boneless Pork Loin Chop". */
+const AMZ_DEPT = /^(PRODUCE|FLORAL|PREPARED FOODS|CUSTOMER SERVICES|WHOLE FOODS MARKET|365 by Whole Foods|Whole Foods Market)/i;
+
+/* Seed the memory once, on first sight. Hand-made verdicts already in
+   state.asins outrank the seed and are never overwritten. */
+function amzMap(){
+  const map = state.asins || (state.asins = {});
+  if (map.__seeded) return map;
+  Object.keys(AMZ_SEED).forEach(cat => {
+    AMZ_SEED[cat].split(' ').forEach(a => {
+      if (!map[a]) map[a] = { m: cat, n: '', h: 0, s: 'seed' };
+    });
+  });
+  map.__seeded = 1;
+  return map;
+}
+
+/** Tier 1 -> 2 -> 3. `wf` says the shipment was a Whole Foods run. */
+function amzResolve(asin, name, wf){
+  const map = amzMap();
+  const hit = asin === AMZ_NOASIN ? null : map[asin];
+  if (hit && hit.m && hit.m !== AMZ_REVIEW) return { master: hit.m, origin: 'asin' };
+  if (wf) return { master: 'Grocery-WholeFoods', origin: 'channel' };
+  const rule = amzRules().find(([, rx]) => rx.test(name));
+  if (rule) return { master: rule[0], origin: 'rule' };
+  return { master: AMZ_REVIEW, origin: 'none' };
+}
+
+/** Split a category string the way the taxonomy stores it: Cat / Cat-Sub. */
+function amzSplit(master){
+  if (!master || master === AMZ_REVIEW) return { cat: CAT_NONE, sub: '' };
+  const i = master.indexOf('-');
+  return i < 0 ? { cat: master, sub: master } : { cat: master.slice(0, i), sub: master };
+}
+
+/* Does this workbook look like the Amazon item export rather than a
+   statement? Six columns, and the two that no bank ever ships. */
+function isAmazonItems(headers){
+  const h = (headers || []).map(x => String(x || '').trim().toLowerCase());
+  return h.includes('asin') && h.includes('product name');
+}
+
+/* Read the export into items. Two date formats coexist in one file
+   (with and without milliseconds) and both must parse. Quantity 0 marks
+   a cancelled line and always pairs with a zero amount. Total Amount is
+   the line total, tax included and already multiplied out by quantity;
+   Shipment Item Subtotal is a SHIPMENT figure repeated on every row of
+   that shipment, so it is never summed -- doing so inflated this file
+   from $4,319 to about $14,000 on the first pass. */
+function parseAmazonItems(grid){
+  const head = (grid[0] || []).map(x => String(x || '').trim().toLowerCase());
+  const col = n => head.indexOf(n);
+  const cA = col('asin'), cD = col('order date'), cQ = col('original quantity'),
+        cN = col('product name'), cS = col('shipment item subtotal'), cT = col('total amount');
+  const rows = [];
+  for (let i = 1; i < grid.length; i++){
+    const g = grid[i] || [];
+    const asin = String(g[cA] ?? '').trim();
+    const name = String(g[cN] ?? '').trim();
+    if (!asin && !name) continue;
+    const stamp = String(g[cD] ?? '').trim();
+    const t = Date.parse(stamp);
+    rows.push({
+      asin, name,
+      ts: isFinite(t) ? t : NaN,
+      day: stamp.slice(0, 10),
+      qty: toNumber(g[cQ]) ?? 1,
+      subtotal: toNumber(g[cS]),          // null on "Not Available"
+      amount: toNumber(g[cT]) ?? 0,
+      shipKey: stamp + '|' + String(g[cS] ?? ''),
+    });
+  }
+  /* One pass over shipments to mark the grocery runs. */
+  const wf = new Set();
+  rows.forEach(r => { if (AMZ_DEPT.test(r.name)) wf.add(r.shipKey); });
+  rows.forEach(r => { r.wf = wf.has(r.shipKey); });
+  return rows;
+}
+
+/* Learn from a parsed file: place every item, write each verdict back
+   against its ASIN, and hand back a tally. Nothing touches the ledger
+   here -- that is the next step, and it waits until the categories on
+   screen have been read. */
+function amzLearn(items){
+  const map = amzMap();
+  const tally = {}; const money = {};
+  let fresh = 0, review = 0;
+  items.forEach(it => {
+    const { master, origin } = amzResolve(it.asin, it.name, it.wf);
+    it.master = master; it.origin = origin;
+    if (master === AMZ_REVIEW) review++;
+    tallyOf(tally, money, it, master);
+    if (it.asin === AMZ_NOASIN) return;          // counts, but is never learned
+    const cur = map[it.asin];
+    if (!cur){
+      map[it.asin] = { m: master, n: it.name, h: 1, s: origin };
+      if (master !== AMZ_REVIEW) fresh++;
+    } else {
+      cur.h = (cur.h || 0) + 1;
+      if (!cur.n) cur.n = it.name;                 // names drift; the ASIN does not
+      if (cur.m === AMZ_REVIEW && master !== AMZ_REVIEW){ cur.m = master; cur.s = origin; }
+    }
+  });
+  return { tally, money, fresh, review, items };
+}
+function tallyOf(tally, money, it, master){
+  tally[master] = (tally[master] || 0) + 1;
+  money[master] = (money[master] || 0) + Math.abs(it.amount);
+}
+
+
+/* Turn resolved items into ledger lines on the AMAZON feed.
+
+   One row per item, so every product carries its own category and the
+   Flow, Categories and Calendar screens need no new arithmetic. Ids are
+   built from the content -- ASIN, timestamp, cents -- so importing the
+   same export twice adds nothing twice.
+
+   Where a shipment matches a card line already on file, that line is
+   retired: the items are the same money said properly, and keeping both
+   would count it twice. The retired line's signature is remembered so a
+   later re-import of the same statement cannot resurrect it, and the
+   person who swiped is carried down onto each item. */
+function amzShipments(items){
+  const ships = new Map();
+  items.forEach(it => {
+    const s = ships.get(it.shipKey) || { total: 0, ts: it.ts, items: [] };
+    s.total = +(s.total + it.amount).toFixed(2);
+    s.items.push(it);
+    ships.set(it.shipKey, s);
+  });
+  return ships;
+}
+
+function amzLand(items){
+  const ships = amzShipments(items);
+  const parents = state.rows.filter(r => r.category === 'Amazon' && r.amount < 0);
+  const rows = [];
+  const retire = [];
+  /* A card line can only pay for one shipment. Two shipments of the same
+     amount days apart would otherwise both claim it, retiring one line
+     against two baskets of items and leaving the second basket doubled. */
+  const claimed = new Set();
+  let matched = 0;
+
+  ships.forEach(s => {
+    const parent = s.total > 0 ? parents.find(r =>
+      !claimed.has(r.id) &&
+      Math.abs(Math.abs(r.amount) - s.total) < 0.005 &&
+      Math.abs(r.date.getTime() - s.ts) <= 3 * 864e5) : null;
+    if (parent){ matched++; claimed.add(parent.id); retire.push(parent); }
+    s.items.forEach(it => {
+      const cents = Math.round(Math.abs(it.amount) * 100);
+      const { cat, sub } = amzSplit(it.master);
+      rows.push({
+        id: `AMAZON-${it.asin}-${it.ts}-${cents}`,
+        acct: 'AMAZON', side: 'asset',
+        date: new Date(it.ts),
+        amount: -Math.abs(it.amount),
+        desc: redactAccountNumbers(String(it.name).replace(/\s+/g, ' ').trim()) || '—',
+        person: parent ? parent.person : null,
+        member: null,
+        category: cat, sub,
+        asin: it.asin, ship: it.shipKey,
+        principal: null, interest: null, balance: null,
+      });
+    });
+  });
+
+  if (retire.length){
+    const gone = new Set(retire.map(r => r.id));
+    retire.forEach(r => {
+      const sig = rowSig(r);
+      if (!state.covered.includes(sig)) state.covered.push(sig);
+    });
+    state.rows = state.rows.filter(r => !gone.has(r.id));
+  }
+  const added = mergeRows(rows);
+  return { added, built: rows.length, matched, ships: ships.size, retired: retire.length };
+}
+
+/* How many of these shipments can be seen in the ledger already?
+   A shipment settles on the card at its tax-inclusive total, so an
+   Amazon line of the same amount within three days is the same
+   purchase. Reported, not acted on: this is the reconciliation the
+   next step will use to hang items under their parent row. */
+function amzMatchReport(items){
+  const ships = new Map();
+  items.forEach(it => {
+    const s = ships.get(it.shipKey) || { total: 0, ts: it.ts, n: 0 };
+    s.total = +(s.total + it.amount).toFixed(2); s.n++;
+    ships.set(it.shipKey, s);
+  });
+  const amazon = state.rows.filter(r => r.category === 'Amazon' && r.amount < 0);
+  /* Claim as we go, exactly as amzLand does, so the count reported and the
+     count acted on can never disagree: one card line pays for one shipment. */
+  const claimed = new Set();
+  let hit = 0, total = 0;
+  ships.forEach(s => {
+    if (s.total <= 0) return;
+    total++;
+    const near = amazon.find(r => !claimed.has(r.id) &&
+      Math.abs(Math.abs(r.amount) - s.total) < 0.005 &&
+      Math.abs(r.date.getTime() - s.ts) <= 3 * 864e5);
+    if (near){ claimed.add(near.id); hit++; }
+  });
+  return { hit, total };
+}
+
+/* "0 of 94 shipments already sit in the ledger" is a true sentence and a
+   useless one when the ledger holds no Amazon lines to sit in: it reads as
+   a failed match rather than as nothing yet to match against. Separate the
+   two cases. */
+function amzReconcileNote(m, hadLines){
+  /* Read the count from BEFORE the items landed. Landing retires the very
+     card lines being counted, so asking afterwards reports an empty ledger
+     and contradicts the line above it. */
+  const lines = hadLines != null ? hadLines
+    : state.rows.filter(r => r.category === 'Amazon').length;
+  if (!lines)
+    return `No Amazon lines in the ledger yet — these ${m.total} shipments will `
+      + `reconcile once the card statement covering them is imported.`;
+  if (!m.hit)
+    return `None of these ${m.total} shipments match an Amazon line in the ledger — `
+      + `the statement covering them may not be imported yet.`;
+  return `${m.hit} of ${m.total} shipments already sit in the ledger as Amazon lines`;
+}
+
+
+
+/* ============================================================
+   FILE TRACE
+   A statement that does not land leaves one word in the log:
+   "skipped". That word covers a cancelled sheet, a header row that
+   was never found, a date column that parsed to nothing, and a
+   preview that came back empty with the Import button greyed out --
+   four different faults wearing the same name. This records what
+   actually happened to each file, stage by stage, so the failure
+   names itself. It lives in memory for the session only.
+   ============================================================ */
+const DIAG_KEEP = 4;
+function diagStart(file){
+  const d = { file: file.name, size: file.size || 0, type: file.type || 'none',
+              at: Date.now(), outcome: 'reading', steps: [] };
+  state.diag.unshift(d);
+  state.diag.length = Math.min(state.diag.length, DIAG_KEEP);
+  return d;
+}
+function diagStep(d, label, value){ if (d) d.steps.push([label, String(value)]); }
+function diagEnd(d, outcome){ if (d) d.outcome = outcome; renderInstrument(); }
+
+/* Which columns a mapping is missing. normalize() needs a date and an
+   amount -- or a debit/credit pair -- and produces nothing without them,
+   which is what greys out the Import button. */
+function mapGaps(plan){
+  const m = plan.map || {};
+  const gaps = [];
+  if (!(m.date > -1)) gaps.push('date');
+  if (!(m.amount > -1) && !(m.debit > -1) && !(m.credit > -1)) gaps.push('amount');
+  if (!(m.desc > -1)) gaps.push('description');
+  return gaps;
+}
+
+/* ============================================================
+   INSTRUMENT
+   A statement can be read, mapped and still not land -- the sheet
+   gets cancelled, the cache serves an old build, a file matches an
+   account that holds nothing. None of that is visible from a log
+   that keeps six lines. This panel reports what the app is actually
+   holding right now: where state lives, how many rows survived the
+   last session, which accounts carry them, and what the item map
+   knows. It reads state and never changes it.
+   ============================================================ */
+/* How the page was opened decides whether anything can survive closing it.
+   Tapping index.html in the Files app hands it to a preview that gets its own
+   throwaway sandbox: rows land, save() reports success, and the next open
+   starts empty -- which looks exactly like an import that silently failed.
+   The deployed site on GitHub Pages is the only place storage is durable. */
+function instOrigin(){
+  const p = (typeof location === 'object' && location.protocol) || '';
+  if (p === 'https:') return { where: 'deployed site', durable: true };
+  if (p === 'http:')  return { where: 'local server', durable: true };
+  if (p === 'file:')  return { where: 'file preview', durable: false,
+    why: 'Opened straight from Files. A preview gets a throwaway sandbox, so rows land '
+       + 'for this session and are gone on the next open. Load the app from its GitHub '
+       + 'Pages address, or the Home Screen icon, before importing anything you mean to keep.' };
+  return { where: p ? p.replace(':', '') : 'unknown', durable: false,
+    why: 'The page was not opened over https, so storage may not survive closing it.' };
+}
+
+function instStore(){
+  if (window.storage) return 'artifact storage';
+  try { localStorage.setItem('tf-probe','1'); localStorage.removeItem('tf-probe');
+        return 'localStorage'; } catch(_){ return 'session memory (nothing persists)'; }
+}
+
+function instrument(){
+  const rows = state.rows;
+  const byAcct = new Map();
+  rows.forEach(r => byAcct.set(r.acct, (byAcct.get(r.acct) || 0) + 1));
+
+  const asins = Object.keys(state.asins || {}).filter(k => k !== '__seeded');
+  const bySrc = {};
+  asins.forEach(a => { const s = (state.asins[a] || {}).s || '?'; bySrc[s] = (bySrc[s] || 0) + 1; });
+
+  let bytes = null;
+  try { bytes = JSON.stringify(ledgerPayload()).length; } catch(_){}
+
+  const dates = rows.length
+    ? rows.reduce((m, r) => [Math.min(m[0], r.date), Math.max(m[1], r.date)],
+                  [Infinity, -Infinity])
+    : null;
+
+  const t = taxoTally();
+  const origin = instOrigin();
+  return {
+    build: BUILD,
+    origin,
+    store: instStore(),
+    sealed: Boolean(lock.meta),
+    bytes,
+    rows: rows.length,
+    span: dates ? [new Date(dates[0]), new Date(dates[1])] : null,
+    byAcct,
+    empty: ACCOUNTS.filter(a => !a.feed && !byAcct.get(a.id)).map(a => a.id),
+    feeds: ACCOUNTS.filter(a => a.feed).map(a => a.id),
+    asins: asins.length,
+    bySrc,
+    imports: state.imports.slice(-4).reverse(),
+    cats: t.cats, subs: t.subs,
+    pend: state.pend.length, bills: state.bills.length, rules: state.rules.length,
+  };
+}
+
+function instRow(label, value, warn){
+  return `<div class="f"><b>${esc(label)}</b><span${warn ? ' style="color:var(--warn,#e0a355)"' : ''}>`
+       + `${esc(value)}</span></div>`;
+}
+
+function renderInstrument(){
+  const host = $('#instrument');
+  if (!host) return;
+  const i = instrument();
+  const durable = i.origin.durable && !/memory/.test(i.store);
+  const kb = i.bytes == null ? 'unavailable' : (i.bytes / 1024).toFixed(0) + ' KB';
+  const span = i.span ? `${fmtDate(i.span[0])} — ${fmtDate(i.span[1])}` : 'no rows to span';
+
+  const accts = i.byAcct.size
+    ? Array.from(i.byAcct, ([id, n]) => `<div class="f"><b>${esc(id)}</b>`
+        + `<span>${n.toLocaleString()} row${n === 1 ? '' : 's'}</span></div>`).join('')
+    : `<p class="schema__note">No account holds a single row. Nothing has been imported on this
+       device, or the mapping sheet was closed before the rows landed — a file shows as
+       “skipped” in the log when that happens. Re-add the export and confirm the sheet.</p>`;
+
+  const srcs = Object.keys(i.bySrc).sort().map(s =>
+    `<div class="f"><b>${esc(s)}</b><span>${i.bySrc[s].toLocaleString()}</span></div>`).join('');
+
+  const imports = i.imports.length
+    ? i.imports.map(im => `<div class="f"><b>${esc(im.acct)}</b>`
+        + `<span>${esc(im.file)} · ${Number(im.count).toLocaleString()} · ${fmtDate(new Date(im.at))}</span></div>`).join('')
+    : `<p class="schema__note">No import has completed in this session.</p>`;
+
+  host.innerHTML = `<div class="schema">
+    ${durable ? '' : `<p class="schema__note" style="color:var(--warn,#e0a355)">
+      <b>Nothing here will persist.</b> ${esc(i.origin.why || '')}</p>`}
+    <p class="eyebrow">Where state lives</p>
+    <div class="schema__fields">
+      ${instRow('Build', i.build)}
+      ${instRow('Opened from', i.origin.where, !i.origin.durable)}
+      ${instRow('Storage', i.store, /memory/.test(i.store))}
+      ${instRow('Ledger at rest', i.sealed ? 'sealed with Face ID' : 'plaintext')}
+      ${instRow('Payload', kb)}
+    </div>
+
+    <p class="eyebrow" style="margin-top:8px">Ledger</p>
+    <div class="schema__fields">
+      ${instRow('Rows', i.rows.toLocaleString(), i.rows === 0)}
+      ${instRow('Span', span)}
+      ${instRow('Categories', `${i.cats} · ${i.subs} subcategories`)}
+      ${instRow('Also held', `${i.pend} pending · ${i.bills} bills · ${i.rules} rules`)}
+    </div>
+
+    <p class="eyebrow" style="margin-top:8px">Rows by account</p>
+    <div class="schema__fields">${accts}</div>
+    ${i.empty.length ? `<p class="schema__note">Holding nothing yet: ${i.empty.map(esc).join(', ')}.</p>` : ''}
+    ${i.feeds.length ? `<p class="schema__note">${i.feeds.map(esc).join(', ')} ${i.feeds.length === 1 ? 'is a feed' : 'are feeds'}: one line per item, no balance.</p>` : ''}
+    ${state.covered.length ? `<p class="schema__note">${state.covered.length} card line${state.covered.length === 1 ? '' : 's'} retired — Amazon items carry that spend in detail, and a re-import cannot bring them back.</p>` : ''}
+
+    <p class="eyebrow" style="margin-top:8px">Item map</p>
+    <div class="schema__fields">
+      ${instRow('Products remembered', i.asins.toLocaleString(), i.asins === 0)}
+      ${srcs}
+    </div>
+
+    <p class="eyebrow" style="margin-top:8px">Recent imports</p>
+    <div class="schema__fields">${imports}</div>
+
+    <p class="eyebrow" style="margin-top:8px">Files through Intake</p>
+    ${state.diag.length ? state.diag.map(t => `<div class="schema__fields">
+        <div class="f"><b>${esc(t.file)}</b><span>${esc(t.outcome)}</span></div>
+        ${t.steps.map(([k, v]) => `<div class="f"><b style="opacity:.65">${esc(k)}</b>`
+          + `<span style="opacity:.75">${esc(v)}</span></div>`).join('')}
+      </div>`).join('<p class="schema__note" style="margin:6px 0 0">·</p>')
+      : `<p class="schema__note">No file has been added in this session. The trace is memory
+         only — it starts empty every time the app opens.</p>`}
+
+    <p class="eyebrow" style="margin-top:8px">Recovery</p>
+    <p class="schema__note">The Jan–Aug 2026 ledger is baked into this file. It merges by
+      line id, so loading it twice adds nothing twice${i.rows ? '' : ' — safe to press now'}.</p>
+    <button class="btn" type="button" id="instSeed">Load master ledger</button>
+  </div>`;
+  const seed = $('#instSeed');
+  if (seed) seed.addEventListener('click', () => {
+    const added = loadMasterLedger();
+    toast(added ? `${added.toLocaleString()} rows loaded` : 'Already loaded — nothing to add');
+  });
+
+  const dot = $('#instDot');
+  if (dot) dot.style.background = i.rows ? 'var(--accent)' : 'var(--warn, #e0a355)';
+}
+/* A recovery hatch for the console, same as loadMasterLedger. */
+window.instrument = instrument;
+
+/** Full intake for one Amazon item export. */
+function runAmazonItems(fileName, grid){
+  const items = parseAmazonItems(grid);
+  if (!items.length){ logLine(`${fileName}: no Amazon items found`, 'warn'); return null; }
+  const res = amzLearn(items);
+  const m = amzMatchReport(items);
+  const hadAmazon = state.rows.filter(r => r.category === 'Amazon').length;
+  const land = amzLand(items);
+  const named = Object.keys(res.tally).filter(k => k !== AMZ_REVIEW)
+    .sort((a, b) => res.money[b] - res.money[a]);
+  /* The log keeps six lines. A run that spends four of them listing
+     categories evicts everything that came before it, including its own
+     headline on the next import -- so the breakdown rides on one line. */
+  logLine(`${fileName}: ${items.length} items across ${named.length} categories — `
+    + `${res.fresh} new to the map, ${res.review} awaiting review`, 'ok');
+  if (named.length)
+    logLine('Heaviest: ' + named.slice(0, 3)
+      .map(k => `${k} ${money(res.money[k])}`).join(' · '), 'ok');
+  logLine(land.added
+    ? `${land.added.toLocaleString()} item line${land.added === 1 ? '' : 's'} landed on AMAZON`
+      + (land.retired ? ` — ${land.retired} card line${land.retired === 1 ? '' : 's'} they replace were retired` : '')
+    : `No new item lines — all ${land.built.toLocaleString()} were already in the ledger`,
+    land.added ? 'ok' : 'warn');
+  logLine(amzReconcileNote(m, hadAmazon), m.hit ? 'ok' : 'warn');
+  state.imports.push({ file: fileName, acct: 'AMAZON', count: land.added, at: Date.now() });
+  save(); render();
+  res.land = land;
+  return res;
+}
 
 /* ============================================================
    6. DERIVED FIGURES
@@ -2975,9 +3641,14 @@ function newestRow(id){
   return rs.length ? rs.reduce((m,r) => r.date > m.date ? r : m, rs[0]) : null;
 }
 
+/* Accounts that carry a balance. A feed is a source of lines, not a store
+   of value, so it is excluded from every figure the balance sheet reports --
+   otherwise Amazon would show up as an asset worth nothing. */
+function balanceAccounts(){ return ACCOUNTS.filter(a => !a.feed); }
+
 function totals(){
   let assets = 0, owed = 0;
-  ACCOUNTS.forEach(a => {
+  balanceAccounts().forEach(a => {
     const v = balanceOf(a.id).value;
     if (a.side === 'asset') assets += v; else owed += Math.abs(v);
   });
@@ -3171,6 +3842,8 @@ function ledgerPayload(){
     tripSel: state.tripSel,
     calProj: state.calProj,
     outSel: state.outSel,
+    asins: state.asins,
+    covered: state.covered,
     taxonomy: taxo(),
   };
 }
@@ -3205,6 +3878,8 @@ function applyPayload(data){
   state.outSel = (data.outSel && Array.isArray(data.outSel.cats))
     ? { cats: data.outSel.cats.slice(), subs: (data.outSel.subs || []).slice() }
     : { cats:[], subs:[] };
+  state.asins = (data.asins && typeof data.asins === 'object') ? data.asins : {};
+  state.covered = Array.isArray(data.covered) ? data.covered : [];
   state.taxonomy = data.taxonomy || JSON.parse(JSON.stringify(CATALOG));
   state.acctEdits = data.acctEdits || { added:[], changed:{}, removed:[] };
   state.acctEdits.added   = state.acctEdits.added   || [];
@@ -3667,7 +4342,8 @@ async function buildReportDocx(analysis){
 function taxoTally(t){
   const tax = t || taxo();
   const cats = Object.keys(tax);
-  return { cats: cats.length, subs: cats.reduce((n,c) => n + (tax[c] || []).length, 0) };
+  const asins = Object.keys(state.asins || {}).filter(k => k !== '__seeded').length;
+  return { cats: cats.length, subs: cats.reduce((n,c) => n + (tax[c] || []).length, 0), asins };
 }
 
 function runBackup(){
@@ -3707,7 +4383,7 @@ function runRestore(file){
        section is enough to call this a backup -- checking only rows,
        balances and bills threw away a taxonomy-only file as junk. */
     const carries = payload && typeof payload === 'object' &&
-      ['rows','balances','opens','bills','pend','totalBal','taxonomy','trips','files','rules','loans','acctEdits']
+      ['rows','balances','opens','bills','pend','totalBal','taxonomy','trips','files','rules','loans','acctEdits','asins','covered']
         .some(k => payload[k] && Object.keys(payload[k]).length);
     if (!carries){
       toast('That is not a Thompson Finances backup'); return;
@@ -4970,7 +5646,7 @@ function cardRunning(id){
 
 function renderCards(){
   const groups = {asset:new Map(), liability:new Map()};
-  ACCOUNTS.forEach(a => {
+  balanceAccounts().forEach(a => {
     const rs = rowsFor(a.id);
     const bal = balanceOf(a.id);
     const held = state.balances[a.id];
@@ -6302,6 +6978,40 @@ function visibleRows(){
 }
 
 /** How many of the sheet's controls are actually narrowing the view. */
+/* An empty table has three quite different causes and the same sentence
+   cannot serve all of them. Saying "Nothing imported yet" over a ledger
+   holding two thousand rows -- because a filter happens to exclude every
+   one of them -- reads as data loss. So the note names the actual reason,
+   and where the reason is a filter it says which one. */
+function emptyLedgerNote(){
+  if (!state.rows.length)
+    return 'Nothing imported yet. Open Intake and add a statement.';
+
+  const acct = state.filter.acct ? ACCT[state.filter.acct] : null;
+  if (acct && acct.feed){
+    const n = Object.keys(state.asins || {}).filter(k => k !== '__seeded').length;
+    return `${esc(acct.id)} holds one line per item, not one per charge, and carries no balance — `
+      + `its purchases settle on the card they were paid with. `
+      + (n ? `${n.toLocaleString()} products are remembered in the item map, but none of them are `
+             + `in the ledger yet. Add the item export in Intake.`
+           : 'Add its item export in Intake to fill it.');
+  }
+
+  const held = [];
+  if (state.filter.acct) held.push(state.filter.acct);
+  if (state.filter.cat) held.push(state.filter.cat + (state.filter.sub ? ' › ' + state.filter.sub : ''));
+  if (state.filter.who) held.push(state.filter.who);
+  if (state.filter.dir) held.push(state.filter.dir === 'out' ? 'money out' : 'money in');
+  if (state.filter.q) held.push(`“${state.filter.q}”`);
+  if (state.filter.from || state.filter.to) held.push('a date range');
+  if (state.filter.min != null || state.filter.max != null) held.push('an amount range');
+
+  const total = state.rows.length.toLocaleString();
+  return held.length
+    ? `No lines match ${held.map(esc).join(' + ')}. The ledger holds ${total} lines — widen or clear the filters to see them.`
+    : `The ledger holds ${total} lines but none are showing. Clear the filters to see them.`;
+}
+
 function activeFilterCount(){
   const f = state.filter;
   return [f.cat, f.sub, f.from, f.to, f.min != null, f.max != null].filter(Boolean).length;
@@ -6354,6 +7064,7 @@ function renderTable(){
     : state.filter.acct ? `Ledger · ${state.filter.acct}` : 'Ledger';
   $('#shown').textContent = rs.length ? `${rs.length.toLocaleString()} lines` : 'no lines';
   $('#tableEmpty').hidden = rs.length > 0;
+  if (!rs.length) $('#tableEmpty').innerHTML = emptyLedgerNote();
   const page = rs.slice(0, shownCount);
   host.innerHTML = page.length ? (wideLedger() ? ledgerTable(page) : ledgerList(page)) : '';
   $('#moreBtn').hidden = rs.length <= shownCount;
@@ -6696,6 +7407,8 @@ function syncFiltSheet(){
     b.dataset.sort === state.sort.key && +b.dataset.dir === state.sort.dir));
   const n = visibleRows().length;
   $('#filtCount').textContent = `${n.toLocaleString()} line${n === 1 ? '' : 's'} match`;
+  const top = $('#filtClearTop');
+  if (top) top.hidden = activeFilters() === 0;
 }
 
 /** Read the sheet's controls into state, then repaint. */
@@ -6719,10 +7432,22 @@ function readFiltSheet(){
   syncFiltSheet();
 }
 
+/* Every axis the ledger can be narrowed on, including the search box, which
+   lives outside the sheet and used to survive "Clear all" -- leaving a filter
+   still running after the household had been told none were. The account
+   lens is deliberately left alone: it is a place, not a filter, and clearing
+   it would move the screen out from under whoever pressed the button. */
+function activeFilters(){
+  const f = state.filter;
+  return [f.cat, f.sub, f.from, f.to, f.who, f.dir, f.q,
+          f.min != null, f.max != null].filter(Boolean).length;
+}
+
 function clearFilt(){
   const f = state.filter;
   f.cat = ''; f.sub = ''; f.from = ''; f.to = ''; f.min = null; f.max = null;
-  f.who = ''; f.dir = '';
+  f.who = ''; f.dir = ''; f.q = '';
+  const s = $('#search'); if (s) s.value = '';
   state.sort = { key:'date', dir:-1 };
   fillFiltCats();
   shownCount = 40;
@@ -6738,7 +7463,12 @@ function openFilt(){
   $('#filtModal').hidden = false;
   syncFiltSheet();
   document.addEventListener('keydown', filtKeys);
-  $('#filtCat').focus();
+  /* Focusing a <select> is enough to make iOS throw its picker open on top
+     of the sheet the moment it appears -- the whole panel arrives already
+     covered by a list of categories nobody asked for. The sheet itself takes
+     focus instead, which still moves the screen reader into the dialog and
+     still lets Escape close it, without opening anything. */
+  $('#filtSheet').focus({ preventScroll: true });
 }
 function closeFilt(){
   $('#filtModal').hidden = true;
@@ -6756,6 +7486,7 @@ function initFiltSheet(){
   $('#filtX').addEventListener('click', closeFilt);
   $('#filtDone').addEventListener('click', closeFilt);
   $('#filtClear').addEventListener('click', clearFilt);
+  $('#filtClearTop').addEventListener('click', clearFilt);
   $('#filtModal').addEventListener('click', e => { if (e.target === $('#filtModal')) closeFilt(); });
   $('#filtCat').addEventListener('change', () => { fillFiltSubs(); readFiltSheet(); });
   ['#filtSub','#filtFrom','#filtTo'].forEach(sel =>
@@ -8586,7 +9317,8 @@ function aliasWrap(id){
 function schemaFieldLabel(f){
   return {date:'Date', desc:'Description', amount:'Amount', debit:'Debit', credit:'Credit',
     category:'Category', member:'Card member', balance:'Balance', principal:'Principal',
-    interest:'Interest', escrow:'Escrow'}[f] || f;
+    interest:'Interest', escrow:'Escrow', asin:'ASIN', qty:'Quantity',
+    subtotal:'Shipment subtotal'}[f] || f;
 }
 function renderSchemaDetail(){
   const host = $('#schemaDetail');
@@ -8602,7 +9334,7 @@ function renderSchemaDetail(){
         const use = SCHEMAS[a.schema].use
           .map(f => `<i>${esc(schemaFieldLabel(f))}</i>`).join('');
         return `<div class="f"><b>${aliasWrap(a.id)}</b><span>${esc(a.name)} — `
-          + `${SCHEMAS[a.schema].label.toLowerCase()}${a.flip?', sign flipped':''}`
+          + `${SCHEMAS[a.schema].label.toLowerCase()}${a.feed?', no balance':a.flip?', sign flipped':''}`
           + `<span class="schema__cols" style="margin-top:3px">${use}</span></span></div>`;
       }).join('')}
       </div></div>`;
@@ -8623,14 +9355,20 @@ function renderSchemaDetail(){
       <tr>${sch.example.headers.map(h => `<td class="dt">${esc(h)}</td>`).join('')}</tr>
       <tr>${sch.example.row.map(v => `<td class="amt" style="text-align:left">${esc(v)}</td>`).join('')}</tr>
     </table></div>
-    <p class="schema__note">${a.flip
+    <p class="schema__note">${a.feed
+      ? `This one is a feed, not an account: it holds no balance and never appears on Position. `
+        + `A shipment settles on the card at its subtotal plus tax, so the subtotal column is a `
+        + `SHIPMENT figure repeated on every row of that shipment — it is never summed. `
+        + `Items are read straight through: no mapping sheet, no rows added, and each verdict `
+        + `is remembered against its ASIN so the same product is never asked about twice.`
+      : a.flip
       ? 'Sign is flipped on import: this issuer exports charges as positive numbers, so they land as outflows.'
       : a.side === 'liability'
         ? 'Payments land positive (debt paid down); draws and charges land negative.'
         : 'Deposits land positive; withdrawals land negative.'}
       ${sch.use.includes('member')
         ? `A card-member column names whoever swiped on each line; matched against the household it fills The Family with no rule needed. `
-        : ''}Files added now go straight to ${esc(a.id)} — the mapping sheet still opens for confirmation.</p>
+        : ''}${a.feed ? '' : `Files added now go straight to ${esc(a.id)} — the mapping sheet still opens for confirmation.`}</p>
   </div>`;
 }
 function initSchemaJump(){
@@ -8645,7 +9383,7 @@ function initSchemaJump(){
   renderSchemaDetail();
 }
 
-function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTrip(); renderFamily(); renderTable(); renderCategories(); renderFiles(); }
+function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTrip(); renderFamily(); renderTable(); renderCategories(); renderFiles(); renderInstrument(); }
 
 /* ---------- log + toast ---------- */
 function logLine(text, kind='ok'){
@@ -8716,7 +9454,27 @@ function closeReview(){
   if (lastFocus && lastFocus.focus) lastFocus.focus();
   next();
 }
-function modalKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); logLine(`${current.file} skipped`,'warn'); closeReview(); } }
+/* Closing the sheet is not one event. If the preview read rows and the
+   Import button was live, the household chose not to import. If it read
+   none, the button was greyed out and closing was the only move left --
+   that is a mapping failure, and it deserves to say so. */
+function abandonReview(){
+  const rows = $('#modalConfirm').disabled ? 0 : 1;
+  const d = state.diag.find(x => x.plan === current);
+  if (rows){
+    logLine(`${current.file} skipped`,'warn');
+    diagEnd(d, 'mapping was fine — closed without importing');
+  } else {
+    const gaps = mapGaps(current);
+    const why = gaps.length
+      ? `no ${gaps.join(' or ')} column was matched`
+      : 'the mapped columns produced no readable rows';
+    logLine(`${current.file}: nothing to import — ${why}. Open Instrument for the trace.`,'err');
+    diagEnd(d, `no rows readable — ${why}`);
+  }
+  closeReview();
+}
+function modalKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); abandonReview(); } }
 function confirmImport(){
   readModal();
   scrubTally = 0;
@@ -8741,6 +9499,9 @@ function confirmImport(){
       logLine(`${acct.id}: statement balance is older than the figure on file — kept the newer one`,'warn');
     }
   }
+  diagEnd(state.diag.find(x => x.plan === current),
+    `${added.toLocaleString()} of ${rows.length.toLocaleString()} rows landed on ${acct.id}`
+    + (added < rows.length ? ' — the rest were already on file' : ''));
   state.imports.push({ file:current.file, acct:acct.id, count:added, at:Date.now() });
   const claimed = applyRules();
   if (claimed) logLine(`${claimed} lines matched by ownership rules`,'ok');
@@ -8766,6 +9527,8 @@ function next(){
 }
 async function handleFiles(files){
   for (const file of Array.from(files)){
+    const d = diagStart(file);
+    diagStep(d, 'picked', `${(file.size/1024).toFixed(0)} KB · ${file.type || 'no type reported'}`);
     try {
       let plan;
       if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf'){
@@ -8774,9 +9537,28 @@ async function handleFiles(files){
         logLine(`${file.name}: ${plan.body.length} transaction lines found`,'ok');
       } else {
         const wb = await readWorkbook(file);
-        plan = planImport(file, wb);
+        diagStep(d, 'workbook', `${wb.SheetNames.length} sheet(s): ${wb.SheetNames.join(', ')}`);
+        const sheet = bestSheet(wb);
+        diagStep(d, 'sheet chosen', sheet ? `“${sheet.name}” · ${sheet.grid.length} grid rows` : 'none');
+        /* The Amazon item export is not a statement -- it is a list of
+           things, not of charges. It carries no account and no balance,
+           so it never reaches planImport or the confirm sheet. */
+        if (sheet && isAmazonItems(sheet.grid[0])){
+          const res = runAmazonItems(file.name, sheet.grid);
+          diagEnd(d, res
+            ? `read as an item export — ${res.items.length} items, `
+              + `${res.land.added.toLocaleString()} rows landed on AMAZON`
+            : 'item export held no items');
+          continue;
+        }
+        plan = planImport(file, wb, d);
       }
-      if (state.routeAcct){
+      /* A feed holds no rows, so a statement pointed at one has nowhere to
+         land. Say so and fall back to detection rather than filing bank
+         lines against a merchant. */
+      if (state.routeAcct && ACCT[state.routeAcct] && ACCT[state.routeAcct].feed){
+        logLine(`${file.name}: ${state.routeAcct} takes item exports only — detecting the account instead`,'warn');
+      } else if (state.routeAcct){
         plan.acctId = state.routeAcct;
         plan.flip = ACCT[state.routeAcct].flip;
         plan.confident = true;
@@ -8784,8 +9566,13 @@ async function handleFiles(files){
       } else if (!plan.confident){
         logLine(`${file.name}: account guessed — confirm it in the sheet`,'warn');
       }
+      diagStep(d, 'queued', 'waiting for the mapping sheet');
+      d.plan = plan;
       queue.push(plan);
-    } catch(err){ logLine(`${file.name} ${err.message}`,'err'); }
+    } catch(err){
+      diagEnd(d, `failed while reading: ${err.message}`);
+      logLine(`${file.name} ${err.message}`,'err');
+    }
   }
   next();
 }
@@ -8874,7 +9661,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-11f';
+const BUILD = '2026-08-11q';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -9089,8 +9876,8 @@ function wire(){
   drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
 
   $('#modalConfirm').addEventListener('click', confirmImport);
-  $('#modalCancel').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
-  $('#modalX').addEventListener('click', () => { logLine(`${current.file} skipped`,'warn'); closeReview(); });
+  $('#modalCancel').addEventListener('click', abandonReview);
+  $('#modalX').addEventListener('click', abandonReview);
   ['#mapAccount','#mapDate','#mapDesc','#mapAmount','#mapCategory','#mapMember','#mapBalance','#mapFlip'].forEach(sel => {
     $(sel).addEventListener('change', () => {
       if (sel === '#mapAccount') $('#mapFlip').checked = ACCT[$('#mapAccount').value].flip;
@@ -9188,7 +9975,18 @@ function wire(){
   if (!lock.meta){
     const restored = await load();
     if (restored) applyRules();
-    if (restored) logLine(`${state.rows.length} rows restored from your last session`,'ok');
+    /* A session can restore with no rows in it -- an edited taxonomy alone is
+       worth keeping. Reporting that as "0 rows restored" reads like the rows
+       were lost, when in truth none were ever there. */
+    if (restored) logLine(state.rows.length
+      ? `${state.rows.length.toLocaleString()} rows restored from your last session`
+      : `Session restored — no rows yet, ${taxoTally().cats} categories. Open Instrument for the full picture.`,
+      state.rows.length ? 'ok' : 'warn');
+    /* Said once, at the top of the session, because every later symptom --
+       an empty ledger, an import that vanishes -- follows from it. */
+    const og = instOrigin();
+    if (!og.durable) logLine(`Opened from ${og.where}: nothing saved here survives closing the page. `
+      + `Open Instrument for what to do about it.`, 'warn');
     refreshAcctSelects();               /* registry edits reach every dropdown */
   }
   renderLockRow();
