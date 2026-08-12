@@ -407,6 +407,10 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .calc__row .why{grid-column:1/3;font-family:var(--data);font-size:10.5px;color:var(--muted);line-height:1.5}
 .calc__row--sum{border-bottom:0;border-top:1px solid var(--rule);margin-top:3px;padding-top:11px}
 .calc__row--sum b{font-weight:600;font-size:14.5px}
+/* a breakdown of the line above it -- indented, quieter, no rule of its own */
+.calc__row--sub{border-bottom:0;padding:0 0 9px 14px;margin-top:-6px}
+.calc__row--sub b{font-weight:400;font-size:12.5px;color:var(--muted)}
+.calc__row--sub .v{font-size:12.5px;font-weight:500;color:var(--muted)}
 /* ---------- the statement pair on a card ----------
    Total Balance is stated by hand -- the figure the card issuer shows
    as owed in full. Running Balance is derived from it and never typed.
@@ -3881,6 +3885,54 @@ function taxo(){
   if (!state.taxonomy) state.taxonomy = JSON.parse(JSON.stringify(CATALOG));
   return state.taxonomy;
 }
+
+/* ------------------------------------------------------------
+   The catalog is what the household curates. It is not the same
+   thing as what the ledger uses. A statement arrives carrying the
+   bank's own labels -- "Mortgage & Rent", "Atm Fee", "Electronics
+   & Software" -- and those land on the line item as its category
+   without ever joining the catalog. The Categories screen hides
+   the gap by drawing a card for anything the rows point at, so
+   the picture looks whole while state.taxonomy knows nothing
+   about it.
+   A backup that carried only the catalog therefore described the
+   ledger it came from incorrectly: the rows kept their filing,
+   but the file could not say what that filing was. These two
+   read the ledger instead.
+   ------------------------------------------------------------ */
+/** Every category and subcategory a line item points at, catalogued or not. */
+function taxoInUse(){
+  const out = {};
+  const note = (c, sub) => {
+    const k = c || CAT_NONE;
+    (out[k] = out[k] || new Set());
+    if (sub) out[k].add(sub);
+  };
+  state.rows.forEach(r => note(r.category, r.sub));
+  (state.pend || []).forEach(p => note(p.category, p.sub));
+  const flat = {};
+  Object.keys(out).sort().forEach(c => { flat[c] = Array.from(out[c]).sort(); });
+  return flat;
+}
+/** The catalog reconciled against the ledger -- curated names plus in-use ones. */
+function taxoFiled(){
+  const tax = taxo(), used = taxoInUse(), out = {};
+  Array.from(new Set(Object.keys(tax).concat(Object.keys(used)))).sort().forEach(c => {
+    out[c] = Array.from(new Set((tax[c] || []).concat(used[c] || []))).sort();
+  });
+  return out;
+}
+/** What the ledger uses that the catalog does not list. */
+function offCatalog(){
+  const tax = taxo(), used = taxoInUse();
+  const cats = Object.keys(used).filter(c => !tax[c]);
+  let subs = 0;
+  Object.keys(used).forEach(c => {
+    const listed = tax[c] || [];
+    subs += used[c].filter(x => !listed.includes(x)).length;
+  });
+  return { cats, subs };
+}
 const CAT_PAL = ['#5C8C43','#1F8C7C','#B07A22','#3F7288','#8A5787','#4E8C2E','#A2701F','#2A7049','#7C581D','#638C4F','#8C5A3F','#496B8C','#6E8C3A','#8C3F5E','#3F8C6B','#8C7A22'];
 const catHue = c => c === CAT_NONE ? 'var(--danger)'
   : CAT_PAL[Array.from(c).reduce((a,ch) => a + ch.charCodeAt(0), 0) % CAT_PAL.length];
@@ -4029,6 +4081,10 @@ function ledgerPayload(){
     asins: state.asins,
     covered: state.covered,
     taxonomy: taxo(),
+    /* The catalog as the household curates it is `taxonomy`. This is
+       what the line items actually point at, which is not the same
+       set, and the file has to state both to describe itself. */
+    inUse: taxoInUse(),
   };
 }
 
@@ -4529,6 +4585,21 @@ function taxoTally(t){
   const asins = Object.keys(state.asins || {}).filter(k => k !== '__seeded').length;
   return { cats: cats.length, subs: cats.reduce((n,c) => n + (tax[c] || []).length, 0), asins };
 }
+/* The same count taken over the reconciled picture, so a log line can
+   say how much of the ledger's filing the catalog does not list. */
+function filedTally(){
+  const full = taxoFiled(), off = offCatalog();
+  const cats = Object.keys(full);
+  return { cats: cats.length, subs: cats.reduce((n,c) => n + full[c].length, 0),
+           offCats: off.cats.length, offSubs: off.subs };
+}
+function offNote(f){
+  if (!f.offCats && !f.offSubs) return '';
+  const bits = [];
+  if (f.offCats) bits.push(`${f.offCats} categor${f.offCats === 1 ? 'y' : 'ies'}`);
+  if (f.offSubs) bits.push(`${f.offSubs} subcategor${f.offSubs === 1 ? 'y' : 'ies'}`);
+  return ` (${bits.join(' and ')} off the catalog)`;
+}
 
 function runBackup(){
   const wrap = { app:'thompson-finances', version:1, build:BUILD,
@@ -4538,10 +4609,10 @@ function runBackup(){
   const file = new File([blob], name, { type:'application/json' });
   const done = () => {
     const n = state.rows.length;
-    const t = taxoTally();
+    const f = filedTally();
     logLine(`Backup written — ${n.toLocaleString()} row${n === 1 ? '' : 's'}, `
-      + `${t.cats} categor${t.cats === 1 ? 'y' : 'ies'} / ${t.subs} subcategories, `
-      + `${(blob.size/1024).toFixed(0)} KB`, 'ok');
+      + `${f.cats} categor${f.cats === 1 ? 'y' : 'ies'} / ${f.subs} subcategories filed`
+      + offNote(f) + `, ${(blob.size/1024).toFixed(0)} KB`, 'ok');
   };
   if (navigator.canShare && navigator.canShare({ files:[file] })){
     navigator.share({ files:[file] }).then(done).catch(err => {
@@ -4567,7 +4638,7 @@ function runRestore(file){
        section is enough to call this a backup -- checking only rows,
        balances and bills threw away a taxonomy-only file as junk. */
     const carries = payload && typeof payload === 'object' &&
-      ['rows','balances','opens','bills','pend','totalBal','taxonomy','trips','files','rules','loans','acctEdits','asins','covered']
+      ['rows','balances','opens','bills','pend','totalBal','taxonomy','inUse','trips','files','rules','loans','acctEdits','asins','covered']
         .some(k => payload[k] && Object.keys(payload[k]).length);
     if (!carries){
       toast('That is not a Thompson Finances backup'); return;
@@ -4577,9 +4648,20 @@ function runRestore(file){
     fillBulkCats();          /* the bulk pickers read the restored taxonomy */
     save(); render(); refreshAcctSelects(); showFoldbar();
     const when = data && data.savedAt ? ` from ${fmtDate(new Date(data.savedAt))}` : '';
-    const t = taxoTally();
+    const f = filedTally();
     logLine(`Backup restored${when} — ${state.rows.length.toLocaleString()} rows, ${state.bills.length} bills, `
-      + `${Object.keys(state.balances).length} balances, ${t.cats} categor${t.cats === 1 ? 'y' : 'ies'} / ${t.subs} subcategories`, 'ok');
+      + `${Object.keys(state.balances).length} balances, ${f.cats} categor${f.cats === 1 ? 'y' : 'ies'} / ${f.subs} subcategories filed`
+      + offNote(f), 'ok');
+    /* A file written before backups carried `inUse` still restores whole --
+       the filing rides on the rows either way. Where the two disagree, say
+       so, so a short count reads as a stale file and not as lost work. */
+    if (payload.inUse){
+      const want = payload.inUse, have = taxoInUse();
+      const lost = Object.keys(want).filter(c => !have[c]);
+      if (lost.length) logLine(`${lost.length} categor${lost.length === 1 ? 'y' : 'ies'} named in the file `
+        + `have no lines behind them here — ${lost.slice(0,6).join(', ')}`
+        + (lost.length > 6 ? '…' : ''), 'warn');
+    }
     toast(`Backup restored${when}`);
   };
   r.readAsText(file);
@@ -6419,9 +6501,104 @@ function clearBalance(){
    the cushion multiple, the rebuild window, and the debt share.
    ============================================================ */
 const WEEKS_PER_MONTH = 365 / 84;      /* 4.345 — a month is not four weeks */
+const AHEAD_DAYS      = 30;
 const CUSHION_MONTHS  = 1;
 const REBUILD_MONTHS  = 6;
 const DEBT_SHARE      = 0.20;
+
+/* ------------------------------------------------------------
+   Pending charges are commitments. The Daily Ledger holds every
+   charge made but not yet posted, and that money is as spent as
+   any bill on the calendar -- it simply has not cleared. Leaving
+   it out let the card hand back an allowance the household had
+   already spent.
+   The window is read forwards only at its far edge. A charge made
+   last Tuesday is still in flight and still lands inside the next
+   30 days, so a lower bound would throw out almost every line the
+   register holds; only a charge dated past the horizon sits
+   outside the window. A line with an unreadable date is treated
+   as in flight now, which is the safe way to be wrong.
+   ------------------------------------------------------------ */
+/* The next monthly turn of a date on or after `from`, with the day
+   clamped into each month it passes through. The clamp is always taken
+   against the original day, never against the last clamped one, or a
+   charge made on the 31st would ratchet down to the 28th in February
+   and stay there for the rest of its life. */
+function nextMonthly(d, from){
+  const day = d.getDate();
+  const y = d.getFullYear();
+  let out = null;
+  for (let k = 1; k <= 25; k++){
+    const m = d.getMonth() + k;
+    const dim = new Date(y, m + 1, 0).getDate();
+    out = new Date(y, m, Math.min(day, dim));
+    if (out >= from) return out;
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------
+   CARRIED FORWARD — the recurring charges the ledger already knows
+   The household does not type its mortgage, its insurance or its
+   utilities onto the calendar; they are in the ledger every month
+   under FixedExpense, and the Calendar screen already carries them
+   forward. The budget has to charge for them too, or a month of
+   real obligations sits outside the figure that says what is left
+   to spend.
+   Two things differ from the calendar's own roll. It advances a
+   line exactly one month, which is right for a month grid -- the
+   square either holds the charge or it does not. A 30-day window
+   is not a month grid: a mortgage charged on the 3rd, read on the
+   12th, has already rolled past, and its real next appearance is
+   the 3rd of next month, 22 days out and squarely inside the
+   window. Rolling once would drop it and the household would watch
+   its largest commitment vanish for nine days a month, so this
+   walks forward until the date is no longer behind today.
+   And it keys on the charge, not on the charge in a given month.
+   Six statements of PEPCO at six different amounts are one bill,
+   not six, so the lines are grouped by account and description and
+   only the most recent survives -- the latest amount is the honest
+   estimate of the next one.
+   ------------------------------------------------------------ */
+function fixedAhead(){
+  const from = startOfToday();
+  /* The horizon here is a calendar month, not AHEAD_DAYS. A monthly
+     charge turns up once in any one-month window and that is the whole
+     point of the line, but 30 days is shorter than most months: the
+     mortgage that posted this morning turns again in 31 days, one day
+     past a 30-day edge, and would drop off Committed on exactly the day
+     the household is most aware of it. Measured a month out instead,
+     every recurring line has exactly one occurrence inside the window --
+     never none, never two. */
+  const to = addMonthClamped(from);
+  const latest = new Map();
+  state.rows.forEach(r => {
+    if (!r.amount || !(r.date instanceof Date) || isNaN(r.date)) return;
+    if (!rowProjected(r)) return;
+    const k = `${r.acct || ''}|${norm(r.desc)}`;
+    const held = latest.get(k);
+    if (!held || r.date > held.date) latest.set(k, r);
+  });
+  const out = [];
+  latest.forEach(r => {
+    const next = nextMonthly(r.date, from);
+    if (!next || next > to) return;
+    out.push({ kind:'fixed', id:'FX-' + r.id, name:r.desc, amount:r.amount,
+               acct:r.acct, cat:String(r.category || ''), sub:r.sub || '',
+               date:next, from:r.date });
+  });
+  return out.sort((a,b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
+}
+
+function pendAhead(days = AHEAD_DAYS){
+  const from = startOfToday();
+  const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
+  return (state.pend || []).filter(p => {
+    if (!p || typeof p.amount !== 'number' || !p.amount) return false;
+    const d = toDate(p.date);
+    return !d || d <= to;
+  });
+}
 
 /** Monday-based start of the week containing d. */
 function weekStart(d = new Date()){
@@ -6433,32 +6610,129 @@ function weekStart(d = new Date()){
 function budgetPlan(){
   const t = totals();
   const months = byMonth();
-  const ahead = billsAhead(30);
+  const ahead = billsAhead(AHEAD_DAYS);
   const dueOut = ahead.filter(o => o.bill.kind !== 'income');
   const dueIn  = ahead.filter(o => o.bill.kind === 'income');
 
-  const committed = dueOut.reduce((s,o) => s + Math.abs(o.bill.amount), 0);
+  /* A bill paid early sits in the register as a pending charge while it
+     is also still an occurrence on the calendar. Counting both would
+     charge the month twice for one payment, so a pending line that
+     matches a bill in the window on account and amount is read as that
+     bill already in flight and folds into it rather than adding to it.
+     Each bill can absorb one line; a second charge of the same size on
+     the same card is a second charge. */
+  const held = pendAhead(AHEAD_DAYS);
+  const carried = fixedAhead();
+  const sig = x => `${x.acct || ''}|${Math.round(Math.abs(x.amount) * 100)}`;
+  /* One fold, run against a pool that each pass draws down. Authority
+     runs declared, then in flight, then inferred: a bill the household
+     typed onto the calendar is the truth about that money, a pending
+     charge is that same money already moving, and a line carried out of
+     the ledger is a guess about it. So the pending lines are matched
+     against the bills first, and the carried lines are matched against
+     whatever bills are left plus the pending charges that stood -- a
+     mortgage on the calendar and a mortgage in last month's ledger are
+     one payment, and it must be charged once.
+     Each occurrence absorbs one line; a second charge of the same size
+     on the same card is a second charge. */
+  const against = (lines, pool) => {
+    const take = [], folded = [];
+    lines.forEach(p => {
+      const i = pool.indexOf(sig(p));
+      if (i > -1){ pool.splice(i, 1); folded.push(p); } else take.push(p);
+    });
+    return { take, folded };
+  };
+  const outPool = dueOut.map(o => sig(o.bill));
+  const inPool  = dueIn.map(o => sig(o.bill));
+  const out = against(held.filter(p => p.amount < 0), outPool);
+  const inn = against(held.filter(p => p.amount > 0), inPool);
+  const pendOut = out.take, pendFolded = out.folded;
+  const pendIn = inn.take, pendInFolded = inn.folded;
+  const fxOut = against(carried.filter(p => p.amount < 0),
+                        outPool.concat(pendOut.map(sig)));
+  const fxIn  = against(carried.filter(p => p.amount > 0),
+                        inPool.concat(pendIn.map(sig)));
+
+  const bills = dueOut.reduce((s,o) => s + Math.abs(o.bill.amount), 0);
+  const pendSum = pendOut.reduce((s,p) => s + Math.abs(p.amount), 0);
+  const pendInSum = pendIn.reduce((s,p) => s + p.amount, 0);
+  const pendInCount = pendIn.length;
+  const fxSum = fxOut.take.reduce((s,p) => s + Math.abs(p.amount), 0);
+  const fxInSum = fxIn.take.reduce((s,p) => s + p.amount, 0);
+  const committed = bills + pendSum + fxSum;
   const scheduled = dueIn.reduce((s,o) => s + Math.abs(o.bill.amount), 0);
   const ledgerIn = months.length ? months.reduce((s,x) => s + x.in, 0) / months.length : 0;
 
-  const income = scheduled > 0 ? scheduled : ledgerIn;
-  const basis = scheduled > 0
-    ? `${dueIn.length} scheduled deposit${dueIn.length === 1 ? '' : 's'} in the next 30 days`
+  /* A pending credit is money the household is owed and has not been
+     handed yet -- a refund, a reimbursement, a deposit on its way. It
+     arrives inside the same window the charges land in, so it belongs
+     on the same side of the same sum. The base figure still comes from
+     the declared schedule where there is one and the ledger average
+     where there is not; the credits are added to whichever it is,
+     never used in place of it, because one refund is not a payday. */
+  const base = scheduled > 0 ? scheduled : ledgerIn;
+  const income = base + pendInSum + fxInSum;
+  const baseBasis = scheduled > 0
+    ? `${dueIn.length} scheduled deposit${dueIn.length === 1 ? '' : 's'} in the next ${AHEAD_DAYS} days`
     : months.length ? `ledger average across ${months.length} month${months.length === 1 ? '' : 's'}`
-    : 'nothing on file';
+    : '';
+  const pendBasis = pendInCount
+    ? `${pendInCount} pending credit${pendInCount === 1 ? '' : 's'} worth ${money(pendInSum)}`
+      + (pendInFolded.length ? `, ${pendInFolded.length} more already counted as scheduled` : '')
+    : '';
+  const fxBasis = fxIn.take.length
+    ? `${fxIn.take.length} carried from the ledger worth ${money(fxInSum)}` : '';
+  const basis = [baseBasis, pendBasis, fxBasis].filter(Boolean).join(' + ') || 'nothing on file';
 
   if (income <= 0 && committed <= 0) return null;
 
-  const cushion = committed * CUSHION_MONTHS;
+  /* The cushion is a month of the household's recurring floor. A carried
+     line belongs in it -- the mortgage is the floor, whether it was typed
+     onto the calendar or read out of the ledger. A pending charge does
+     not: it is this month's money, not next month's baseline, and letting
+     one heavy week raise the target would make the household look
+     permanently larger than it is and then charge six months of rebuild
+     against the mistake. */
+  const recurring = bills + fxSum;
+  const cushion = recurring * CUSHION_MONTHS;
   const short = Math.max(0, cushion - t.assets);
   const rebuild = short / REBUILD_MONTHS;
   const afterFixed = Math.max(0, income - committed - rebuild);
   const debt = t.owed > 0 ? afterFixed * DEBT_SHARE : 0;
   const spendable = Math.max(0, afterFixed - debt);
 
-  return { income, basis, committed, billCount: dueOut.length, cushion, short, rebuild,
+  return { income, basis, committed, bills, billCount: dueOut.length,
+           pendSum, pendCount: pendOut.length, pendFolded: pendFolded.length,
+           pendInSum, pendInCount, pendInFolded: pendInFolded.length,
+           fxSum, fxCount: fxOut.take.length, fxFolded: fxOut.folded.length,
+           fxInSum, fxInCount: fxIn.take.length,
+           recurring, cushion, short, rebuild,
            debt, spendable, weekly: spendable / WEEKS_PER_MONTH,
            assets: t.assets, owed: t.owed, thin: income > 0 && spendable === 0 };
+}
+
+/* One sentence for the Committed row, which now has two sources. */
+function commitWhy(p){
+  const bits = [];
+  if (p.billCount) bits.push(`${p.billCount} bill${p.billCount === 1 ? '' : 's'}`);
+  if (p.pendCount) bits.push(`${p.pendCount} pending charge${p.pendCount === 1 ? '' : 's'}`);
+  if (p.fxCount) bits.push(`${p.fxCount} carried forward`);
+  /* Bills and pending are read over AHEAD_DAYS, carried lines over a
+     calendar month, so the sentence names neither and says the month
+     ahead -- which is true of all three. */
+  if (!bits.length) return 'nothing due in the month ahead';
+  const last = bits.pop();
+  return `${bits.length ? bits.join(', ') + ' and ' : ''}${last} in the month ahead`;
+}
+
+/** Which categories the carried lines were read from. */
+function carriedFrom(){
+  const s = projSel();
+  const names = s.cats.concat(s.subs.map(k => k.split(CATSUB_SEP).filter(Boolean).pop()));
+  if (!names.length) return 'nothing is set to carry forward';
+  return names.length <= 3 ? names.join(', ')
+    : `${names.slice(0,2).join(', ')} and ${names.length - 2} more`;
 }
 
 function renderBudget(){
@@ -6504,17 +6778,34 @@ function renderBudget(){
       </div>
       <div class="wtd__row" style="margin-top:6px">
         <span>${over ? 'over by ' + money(-left) : money(left) + ' left this week'}</span>
-        <span>every outflow line counts, transfers included</span>
+        <span>${p.pendCount ? 'posted lines only — pending is already off the allowance' : 'every outflow line counts, transfers included'}</span>
       </div>
     </div>
 
     <p class="eyebrow" style="margin-top:18px">How the figure was reached</p>
     <div class="calc">
       ${row('Income', p.basis, '+' + money(p.income), 'tone-asset')}
-      ${row('Committed bills', `${p.billCount} due in the next 30 days`, '−' + money(p.committed), 'tone-owe')}
+      ${p.pendInCount ? row('\u21b3 pending',
+          `${p.pendInCount} credit${p.pendInCount === 1 ? '' : 's'} expected but not yet posted`,
+          money(p.pendInSum), '', 'calc__row--sub') : ''}
+      ${p.fxInCount ? row('\u21b3 carried from the ledger',
+          `${p.fxInCount} recurring deposit${p.fxInCount === 1 ? '' : 's'} rolled to ${p.fxInCount === 1 ? 'its' : 'their'} next date`,
+          money(p.fxInSum), '', 'calc__row--sub') : ''}
+      ${row('Committed', commitWhy(p), '−' + money(p.committed), 'tone-owe')}
+      ${p.billCount ? row('\u21b3 on the calendar',
+          `${p.billCount} bill${p.billCount === 1 ? '' : 's'} the household put there`,
+          money(p.bills), '', 'calc__row--sub') : ''}
+      ${p.pendCount ? row('\u21b3 pending',
+          `${p.pendCount} charge${p.pendCount === 1 ? '' : 's'} made but not yet posted`
+          + (p.pendFolded ? `, ${p.pendFolded} more already counted as ${p.pendFolded === 1 ? 'a bill' : 'bills'}` : ''),
+          money(p.pendSum), '', 'calc__row--sub') : ''}
+      ${p.fxCount ? row('\u21b3 carried from the ledger',
+          `${p.fxCount} recurring charge${p.fxCount === 1 ? '' : 's'} rolled to ${p.fxCount === 1 ? 'its' : 'their'} next due date`
+          + (p.fxFolded ? `, ${p.fxFolded} more already counted` : ''),
+          money(p.fxSum), '', 'calc__row--sub') : ''}
       ${row('Cushion rebuild', p.short > 0
-          ? `${money(p.assets)} on hand against a ${money(p.cushion)} target — closing the gap over ${REBUILD_MONTHS} months`
-          : `${money(p.assets)} on hand already covers the ${money(p.cushion)} target`,
+          ? `${money(p.assets)} on hand against a ${money(p.cushion)} target — one month of the recurring floor, closing the gap over ${REBUILD_MONTHS} months`
+          : `${money(p.assets)} on hand already covers the ${money(p.cushion)} target — one month of the recurring floor`,
         '−' + money(p.rebuild), p.rebuild > 0 ? 'tone-owe' : '')}
       ${row('Toward debt', p.owed > 0
           ? `${Math.round(DEBT_SHARE * 100)}% of what remains, against ${moneyShort(p.owed)} owed`
@@ -6523,8 +6814,10 @@ function renderBudget(){
       ${row('Left for the month', `÷ ${WEEKS_PER_MONTH.toFixed(2)} weeks`, money(p.spendable), '', 'calc__row--sum')}
     </div>
 
-    <p class="hint" style="margin:14px 0 0">A first pass: the cushion target, the rebuild window and the debt
-    share are fixed for now. Add bills and paydays on the Calendar and this figure sharpens.</p>`;
+    <p class="hint" style="margin:14px 0 0">${p.fxCount || p.fxInCount
+      ? `Carried lines are read from ${esc(carriedFrom())} — the same categories the Calendar projects, changed from its picker. `
+      : ''}The cushion target, the rebuild window and the debt share are fixed for now.
+    Add bills and paydays on the Calendar and this figure sharpens.</p>`;
 }
 
 /* ============================================================
@@ -9017,7 +9310,7 @@ function renderDaily(){
   $$('#dlList [data-pend]').forEach(btn => btn.addEventListener('click', () => {
     const p = state.pend.find(x => x.id === btn.dataset.pend);
     state.pend = state.pend.filter(x => x.id !== btn.dataset.pend);
-    save(); renderDaily(); syncFoldbar('scr-calendar');
+    save(); renderDaily(); renderBudget(); syncFoldbar('scr-calendar');
     if (p) toast(`${p.name} cleared from pending`);
   }));
 
@@ -9391,7 +9684,9 @@ const CAL_MSEL = mselCreate({
   root:'calCatSel', btn:'calCatBtn', label:'calCatLabel', menu:'calCatMenu',
   q:'calCatQ', none:'calCatNone', list:'calCatList',
   sel: projSel,
-  onChange: () => { save(); renderCalendar(); },
+  /* the weekly budget charges for whatever this picker carries, so it
+     redraws alongside the calendar that named it */
+  onChange: () => { save(); renderCalendar(); renderBudget(); },
   clearToast: 'Nothing is carried onto the calendar now',
   emptyLabel: 'Nothing selected',
 });
@@ -9482,7 +9777,8 @@ function initCalendar(){
     });
     $('#dlName').value = ''; $('#dlAmount').value = '';
     $('#dlDate').value = isoOf(startOfToday());
-    save(); renderDaily(); syncFoldbar('scr-calendar');
+    /* the weekly budget spends against this register now, so it redraws with it */
+    save(); renderDaily(); renderBudget(); syncFoldbar('scr-calendar');
     $('#dlName').focus();
     toast(`${name} pending ${dlKind === 'in' ? 'into' : 'on'} ${ACCT[acct] ? ACCT[acct].name : acct}`);
   });
@@ -9973,7 +10269,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-12h';
+const BUILD = '2026-08-12l';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
