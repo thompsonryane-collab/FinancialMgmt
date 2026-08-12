@@ -407,6 +407,25 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .calc__row .why{grid-column:1/3;font-family:var(--data);font-size:10.5px;color:var(--muted);line-height:1.5}
 .calc__row--sum{border-bottom:0;border-top:1px solid var(--rule);margin-top:3px;padding-top:11px}
 .calc__row--sum b{font-weight:600;font-size:14.5px}
+/* ---------- the statement pair on a card ----------
+   Total Balance is stated by hand -- the figure the card issuer shows
+   as owed in full. Running Balance is derived from it and never typed.
+   The input keeps the inherited 16px so iOS does not zoom the page
+   when it takes focus. */
+.card__extra{grid-column:1/3;margin-top:9px;padding-top:9px;border-top:1px solid var(--rule);
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 10px;align-items:center}
+.card__xlab{font-family:var(--data);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card__xfield{width:160px;justify-self:end}
+.clr.card__xfield{width:160px}          /* outranks .clr{width:100%} */
+input[data-total]{width:160px;background:var(--ink);border:1px solid var(--rule);
+  border-radius:9px;padding:6px 9px;min-height:38px;font-family:var(--data);font-weight:600;
+  color:var(--paper);text-align:right}
+input[data-total]::placeholder{color:var(--muted);font-weight:500}
+input[data-total]:focus{border-color:var(--accent-deep);outline:none}
+.card__xval{justify-self:end;font-family:var(--data);font-size:16px;font-weight:600;
+  white-space:nowrap;padding-right:9px}
+.card__xval.fig--none{color:var(--muted);font-weight:500;letter-spacing:.06em}
 .card__spark{grid-column:1/3;margin-top:7px;height:24px}
 .card__spark svg{display:block;width:100%;height:24px;overflow:visible}
 
@@ -485,7 +504,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 /* Ledger — card rows, not a table */
 .filters{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px}
 .select,.search{background:var(--slab);border:1px solid var(--rule);border-radius:12px;min-height:44px;padding:8px 12px;width:100%}
-.search{font-family:var(--data);font-size:14px}
+.search{font-family:var(--data)}   /* 16px from the iOS zoom guard above */
 .txn{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .txn li{background:var(--slab);border:1px solid var(--rule);border-radius:12px;padding:11px 13px;display:grid;grid-template-columns:1fr auto;gap:2px 10px}
 .txn .desc{font-weight:500;font-size:14.5px;grid-column:1/2}
@@ -499,7 +518,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .cchips button{font-family:var(--data);font-size:11px;letter-spacing:.05em;padding:6px 11px;border-radius:999px;
   border:1px solid var(--rule);background:var(--rise);cursor:pointer;min-height:32px;color:var(--paper)}
 .cchips button.on{background:var(--accent);border-color:var(--accent);color:#101B10;font-weight:600}
-.catgrid{display:grid;grid-template-columns:1fr auto;gap:8px}
 .catx .acc__count b{color:var(--paper);font-weight:600;font-size:13px;letter-spacing:-.01em}
 .catx.zero > summary{color:var(--muted)}
 .catx__stat{font-family:var(--data);font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.75}
@@ -516,7 +534,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .icox.locked{border-color:var(--rule);color:var(--muted);background:transparent}
 .icox.armed{background:var(--danger);border-color:var(--danger);color:#FFF3EF}
 .icox.armed svg{transform:scale(1.05)}
-.subx{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.subx{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:5px}
 .subx li{background:var(--ink);border:1px solid var(--rule);border-radius:10px;padding:6px 8px;
   display:flex;align-items:center;gap:8px}
 .subx .snm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
@@ -535,9 +553,40 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
    so nothing has to be discovered by tapping it twice. The ledger
    and the catalog both run on this. */
 .rail__n{margin-left:auto;font-family:var(--data);font-size:11px;color:var(--muted);flex:none;line-height:1}
-/* a rail standing directly on a screen, rather than inside a grid that
-   already spaces it: same 12px gap a .fold leaves under itself */
-.rail--screen{margin:2px 0 12px}
+/* A rail standing directly on a screen, rather than inside a grid that
+   already spaces it: same 12px gap a .fold leaves under itself.
+
+   It also stays put. The catalog is long enough that the controls for
+   narrowing it used to scroll away exactly when they were wanted, so
+   the row pins to the top of its own scrollport and the cards travel
+   underneath. The negative margin lets the pinned background reach the
+   screen's gutters -- without it, cards would slide past in the 16px
+   strips either side. The blur is what makes the pin read as a surface
+   rather than as a slab of flat colour dropped over the page gradient.
+
+   z-index 6 clears the cards and the folds, and clears the pops it owns
+   at 5, while staying under the whole fixed stack above it: the ledger
+   at 65, the dock at 66, the selection bar at 70, the drawer at 72. */
+/* .rail{position:relative} is declared below this block, so a single
+   class would lose the cascade on equal specificity. Both classes. */
+.rail.rail--screen{
+  /* The screen carries 16px of padding, and a sticky top:0 pins at that
+     padding edge -- leaving a 16px strip above the row where cards slid
+     past in the clear. Pulling the box up by the gutter on all four
+     sides and handing that space back as padding puts the buttons in
+     exactly the same place while the background reaches the scrollport
+     corner, so nothing passes the row unblurred. */
+  position:sticky; top:-16px; z-index:6;
+  margin:-16px -16px 12px; padding:23px 16px 7px;
+  background:color-mix(in srgb, var(--ink) 86%, transparent);
+  -webkit-backdrop-filter:saturate(1.5) blur(13px);
+  backdrop-filter:saturate(1.5) blur(13px);
+}
+/* Safari draws no backdrop-filter while a scroll is in flight on some
+   builds; an opaque fallback keeps the row legible if it ever drops. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .rail.rail--screen{background:var(--ink)}
+}
 .rail + .rail{margin-top:8px}
 .rail{position:relative;display:flex;gap:12px;align-items:center;
   /* the row claims its own height rather than inheriting it from whatever
@@ -558,6 +607,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   --rail-pick:#3F7288;       /* what is selected or open */
   --rail-order:#1F8C7C;      /* how a list is sorted */
   --rail-more:#8C5A3F;       /* everything behind a sheet: dates, amounts, order */
+  --rail-add:#4E8C2E;        /* making something new */
 }
 .railbtn{position:relative;width:42px;height:42px;flex:none;display:grid;place-items:center;padding:0;
   cursor:pointer;border-radius:12px;
@@ -583,6 +633,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .railbtn--cat{--tint:var(--rail-cat)}
 .railbtn--pick{--tint:var(--rail-pick)}
 .railbtn--order{--tint:var(--rail-order)}
+.railbtn--add{--tint:var(--rail-add)}
 .railbtn--more{--tint:var(--rail-more)}
 /* direction takes the ledger's own colours for money once it is set */
 .railbtn.on--owe{--tint:var(--owe)}
@@ -609,6 +660,10 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .pop__empty{padding:16px 12px;text-align:center;color:var(--muted);font-size:12.5px}
 /* a popover wide enough to hold a checkable list rather than four words */
 .pop--pick{width:min(330px, calc(100vw - 44px))}
+/* the add list is one field and one button, so its tools row is the
+   whole body and has nothing beneath it to be divided from */
+.pop--add{width:min(300px, calc(100vw - 44px))}
+.pop--add .msel__tools{border-bottom:0}
 
 /* Categories — accordion dropdowns */
 .acc{border:1px solid var(--rule);border-radius:14px;background:var(--slab);margin-bottom:10px;overflow:hidden}
@@ -649,7 +704,28 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .cal__pips i.pip--proj{background:transparent;box-shadow:inset 0 0 0 1.5px var(--owe)}
 .cal__day--sel .cal__pips i.pip--proj{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(23,30,20,.6)}
 
-.daylist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.daylist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+
+/* ---------- Daily Ledger: pending charges and the running balance ----------
+   A charge lives here from the moment it is made until the statement
+   carries it. It is not a ledger row and never touches an import; it
+   only leans on the posted balance so the household can see what the
+   account will read once everything lands. */
+.runbal{list-style:none;margin:0 0 11px;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+.runbal li{background:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:9px 12px;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px;align-items:center}
+.runbal li.runbal--held{border-color:color-mix(in srgb, var(--owe) 45%, var(--rule))}
+.runbal__nm{font-weight:500;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.runbal__meta{grid-column:1/2;font-family:var(--data);font-size:10.5px;color:var(--muted);
+  min-width:0;line-height:1.5}
+.runbal__val{grid-row:1/3;grid-column:2/3;font-family:var(--data);font-weight:600;font-size:15px;
+  text-align:right;white-space:nowrap}
+.runbal__val small{display:block;font-size:9.5px;font-weight:500;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted)}
+.bill--pend{border-left:3px solid var(--owe)}
+.dl__day{font-family:var(--data);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);margin:9px 0 -2px;padding-left:2px}
+.dl__day:first-child{margin-top:0}
 .bill{background:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:10px 10px 10px 13px;
   display:grid;grid-template-columns:1fr auto auto;gap:2px 10px;align-items:center}
 .bill__name{font-weight:500;font-size:14.5px;grid-column:1/2}
@@ -786,7 +862,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .selbar.on{display:block}
 .selbar .top{display:flex;align-items:baseline;gap:9px;margin-bottom:8px;font-size:14px}
 .selbar .acts{display:grid;grid-template-columns:1fr 1fr auto;gap:7px}
-.selbar .select{min-height:40px;font-size:13.5px}
+.selbar .select{min-height:40px}  /* 16px from the iOS zoom guard above */
 .selbar .btn{min-height:40px}
 
 /* wide view — landscape gets the full table */
@@ -1023,7 +1099,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .fold>summary::-webkit-details-marker{display:none}
 .fold__dot{width:10px;height:10px;border-radius:3px;flex:none;background:var(--rule)}
 .fold__tag{margin-left:auto;font-family:var(--data);font-size:11.5px;font-weight:600;letter-spacing:.04em;
-  color:var(--muted);white-space:nowrap}
+  color:var(--muted);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .fold__tag.tone-asset{color:var(--asset)}
 .fold__tag.tone-owe{color:var(--owe)}
 .fold__chev{color:var(--muted);transition:transform .2s;font-size:12px;flex:none}
@@ -1347,6 +1423,31 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 
     <!-- 2 · CALENDAR -->
     <section class="screen" id="scr-calendar" aria-label="Calendar" data-title="Calendar" tabindex="-1">
+      <details class="fold" data-fold id="dlFold">
+        <summary><span class="fold__dot" style="background:var(--owe)"></span>Daily Ledger
+          <span class="fold__tag" id="dlTag">nothing pending</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <ul class="runbal" id="dlBal"></ul>
+          <p class="eyebrow" style="margin:0 0 8px">Pending</p>
+          <div id="dlList"></div>
+          <div class="rule-form" style="margin-top:12px">
+            <input class="search" id="dlName" type="text" placeholder="What was it? e.g. Whole Foods"
+                   aria-label="What the charge was" autocapitalize="words">
+            <div class="rule-form__row">
+              <input class="search" id="dlAmount" type="text" inputmode="decimal" placeholder="Amount" aria-label="Amount">
+              <input class="search" id="dlDate" type="date" aria-label="Day it was charged">
+            </div>
+            <select class="select" id="dlAcct" aria-label="Account the charge will land on"></select>
+            <button class="btn btn--primary" id="dlAdd" type="button">Add pending charge</button>
+          </div>
+          <p class="hint" style="margin:11px 0 0">A pending charge is money already spent that no statement
+            has carried yet. It never enters the ledger and never moves a posted balance &mdash; the running
+            figure above simply leans on it, so you can see what each account will read once everything lands.
+            Delete a charge the day its real line imports.</p>
+        </div>
+      </details>
+
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>Month
           <span class="fold__tag" id="calMonthTag">&mdash;</span>
@@ -1451,15 +1552,11 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
     <!-- 3 · CATEGORIES -->
     <section class="screen" id="scr-categories" aria-label="Categories" data-title="Categories" tabindex="-1">
 
-      <input class="search" id="cq" type="search" placeholder="Find a category or subcategory"
-             autocomplete="off" style="margin-bottom:8px">
-      <div class="catgrid" style="margin-bottom:10px">
-        <input class="search" id="newCat" type="text" placeholder="New category" autocomplete="off">
-        <button class="btn" id="addCatBtn" type="button">Add</button>
-      </div>
       <div class="rail rail--screen" id="catRail" role="group" aria-label="Narrow the catalog">
         <button class="railbtn railbtn--cat" id="cFlagBtn" type="button" aria-haspopup="true" aria-expanded="false"
                 aria-label="Filter the catalog"></button>
+        <button class="railbtn railbtn--add" id="cAddBtn" type="button" aria-haspopup="true" aria-expanded="false"
+                aria-label="Add a category"></button>
         <button class="railbtn railbtn--order" id="cSortBtn" type="button" aria-haspopup="true" aria-expanded="false"
                 aria-label="Sort the catalog"></button>
         <button class="railbtn railbtn--pick" id="cFoldBtn" type="button" aria-pressed="false"
@@ -1473,6 +1570,14 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
           <div class="msel__list" id="cPickList"></div>
         </div>
         <div class="pop" id="cSortPop" hidden></div>
+        <div class="pop pop--add" id="cAddPop" hidden>
+          <p class="pop__head">New category</p>
+          <div class="msel__tools">
+            <input class="search" id="cNewCat" type="text" placeholder="Name it" autocomplete="off"
+                   autocapitalize="words" aria-label="New category name">
+            <button class="btn btn--sm btn--primary" id="cNewAdd" type="button">Add</button>
+          </div>
+        </div>
       </div>
 
       <details class="fold" data-fold>
@@ -2328,6 +2433,12 @@ const state = {
   tripSel:'',            // which trip the screen is looking at
   files:[],              // saved schedules: {id, name, acct, params, summary, savedAt}
   bills:[],              // scheduled due dates: {id, name, date, acct, kind, amount, repeat}
+  totalBal:{},           // acctId -> the Total Balance stated by hand on the card.
+                         // Only the accounts in TOTAL_BAL_ACCTS carry one; the
+                         // Running Balance beside it is derived, never stored.
+  pend:[],               // Daily Ledger: charges made but not yet posted to any
+                         // account -- {id, name, amount, date, acct, at}. Signed
+                         // the way the ledger signs: negative is money out.
   cal:{ y:new Date().getFullYear(), m:new Date().getMonth(), sel:null },
   calProj:{ cats:['FixedExpense'], subs:[] },   // what the calendar rolls forward: whole
                          // categories, plus single subcategories written 'Cat\u241FSub'
@@ -3053,6 +3164,8 @@ function ledgerPayload(){
     loans: state.loans,
     files: state.files,
     bills: state.bills,
+    totalBal: state.totalBal,
+    pend: state.pend,
     acctEdits: state.acctEdits,
     trips: state.trips,
     tripSel: state.tripSel,
@@ -3081,6 +3194,8 @@ function applyPayload(data){
   state.loans = data.loans || {};
   state.files = data.files || [];
   state.bills = data.bills || [];
+  state.totalBal = (data.totalBal && typeof data.totalBal === 'object') ? data.totalBal : {};
+  state.pend = (data.pend || []).filter(p => p && typeof p.amount === 'number');
   state.trips = data.trips || [];
   state.tripSel = data.tripSel || '';
   if (state.tripSel && !state.trips.some(t => t.id === state.tripSel)) state.tripSel = '';
@@ -3100,7 +3215,7 @@ function applyPayload(data){
      rather than let every renderer trip over a missing entry */
   state.rows = state.rows.filter(r => ACCT[r.acct]);
   /* An edited taxonomy on its own is a restored session too */
-  return state.rows.length > 0 || state.bills.length > 0 ||
+  return state.rows.length > 0 || state.bills.length > 0 || state.pend.length > 0 ||
          Boolean(data.taxonomy && Object.keys(data.taxonomy).length);
 }
 
@@ -3592,7 +3707,7 @@ function runRestore(file){
        section is enough to call this a backup -- checking only rows,
        balances and bills threw away a taxonomy-only file as junk. */
     const carries = payload && typeof payload === 'object' &&
-      ['rows','balances','opens','bills','taxonomy','trips','files','rules','loans','acctEdits']
+      ['rows','balances','opens','bills','pend','totalBal','taxonomy','trips','files','rules','loans','acctEdits']
         .some(k => payload[k] && Object.keys(payload[k]).length);
     if (!carries){
       toast('That is not a Thompson Finances backup'); return;
@@ -4231,6 +4346,15 @@ function renderTrip(){
    ============================================================ */
 const FOLDBARS = [];
 
+/* The banner tools -- Restore, Back up, and Expand-all -- belong to one
+   screen. They are whole-ledger operations, and carrying them on every
+   banner put a wipe-and-reload pair a thumb's width from the controls
+   for reading a single screen. Position is the balance sheet, which is
+   where you go to act on the ledger as a whole, so they live there and
+   nowhere else. A screen's own action -- Intake's Clear imports, Trip's
+   analysis -- is unaffected; those are about the screen you are on. */
+const TOOLBAR_SCREEN = 'scr-position';
+
 /* Per-screen foldbar actions, wired as the bar is built so nothing
    depends on markup that no longer exists. */
 const FOLDBAR_ACTIONS = {
@@ -4261,11 +4385,12 @@ function initFolds(){
     const folds = () => $$('details[data-fold]', screen);
     if (!folds().length) return;
 
+    const owns = screen.id === TOOLBAR_SCREEN;
     const bar = document.createElement('div');
     bar.className = 'foldbar';
-    bar.innerHTML = `<span class="foldbar__globals" data-globals></span>
-      <button class="btn btn--sm btn--ico btn--fold" type="button"></button>`;
-    const btn = bar.querySelector('.btn--fold');
+    bar.innerHTML = `<span class="foldbar__globals" data-globals></span>`
+      + (owns ? `<button class="btn btn--sm btn--ico btn--fold" type="button"></button>` : '');
+    const btn = bar.querySelector('.btn--fold');   /* null off the toolbar screen */
 
     /* Screens can hang an action on their own foldbar. Intake keeps the
        wipe here rather than buried in a section, because it is the one
@@ -4296,7 +4421,7 @@ function initFolds(){
       } else {
         b.addEventListener('click', act.run);
       }
-      btn.before(b);
+      if (btn) btn.before(b); else bar.appendChild(b);
     });
 
     const CHEV_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
@@ -4306,13 +4431,14 @@ function initFolds(){
       + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
       + '<path d="M6 17.4l6-6 6 6"/><path d="M6 11.4l6-6 6 6"/></svg>';
     const sync = () => {
+      if (!btn) return;
       const f = folds();
       const allOpen = f.length > 0 && f.every(d => d.open);
       btn.innerHTML = allOpen ? CHEV_UP : CHEV_DOWN;
       btn.setAttribute('aria-label', `${allOpen ? 'Collapse' : 'Expand'} all sections on ${screen.dataset.title}`);
     };
 
-    btn.addEventListener('click', () => {
+    if (btn) btn.addEventListener('click', () => {
       const f = folds();
       const expand = !f.every(d => d.open);
       f.forEach(d => { d.open = expand; });
@@ -4327,6 +4453,10 @@ function initFolds(){
     /* the bar rides the banner, not the screen — one strip of tools
        that swaps as you pan, so content starts at the very top */
     bar.dataset.screen = screen.id;
+    /* Off the toolbar screen a bar may now carry nothing at all. Mark
+       it so showFoldbar leaves it down rather than raising an empty
+       strip beside the title. */
+    if (!bar.querySelector('button')) bar.dataset.bare = '1';
     bar.hidden = true;
     $('#foldDock').append(bar);
     FOLDBARS.push({screen, sync});
@@ -4344,14 +4474,17 @@ function showFoldbar(){
   let live = null;
   Array.from(dock.children).forEach(b => {
     if (!b.dataset.screen) return;              /* the cluster, not a bar */
-    b.hidden = b.dataset.screen !== id;
-    if (!b.hidden) live = b;
+    const mine = b.dataset.screen === id;
+    b.hidden = !mine || b.dataset.bare === '1';
+    if (mine) live = b;
   });
-  /* Backup and Restore ride whichever bar is up — one element, one set
-     of listeners, moved rather than cloned. A screen with no folds
-     hosts them directly on the dock so they never disappear. */
+  /* Backup and Restore are one element with one set of listeners, moved
+     rather than cloned. They ride the toolbar screen's bar and are put
+     away everywhere else — the markup stays mounted so the listeners
+     wired at boot keep working when you pan back. */
   const g = $('#tbGlobals');
   if (!g) return;
+  g.hidden = id !== TOOLBAR_SCREEN;
   const slot = live && live.querySelector('[data-globals]');
   if (slot){ if (g.parentElement !== slot) slot.appendChild(g); }
   else if (g.parentElement !== dock) dock.appendChild(g);
@@ -4804,6 +4937,37 @@ function instTint(name){
   return `hsl(${h % 360} 24% 42%)`;
 }
 
+/* ============================================================
+   TOTAL BALANCE AND RUNNING BALANCE
+   A card issuer states two figures the ledger cannot derive: the
+   balance owed in full, and whatever the household is tracking
+   against it. Total Balance is typed on the card; Running Balance
+   is Total minus the balance the app already holds for the account,
+   and is never stored -- it is recomputed wherever it is shown, so
+   the two can never fall out of step.
+   ============================================================ */
+
+/* Which cards carry the pair. Listed as ids so USAAVISA joins by
+   being added here, and filtered against the registry so an id with
+   no account behind it yet is simply skipped. */
+const TOTAL_BAL_ACCTS = ['AMEX', 'USAAVISA'];
+const carriesTotal = id => TOTAL_BAL_ACCTS.includes(id) && Boolean(ACCT[id]);
+
+/** The stated Total Balance, or null when none has been typed. */
+function totalBalOf(id){
+  const v = state.totalBal[id];
+  return typeof v === 'number' && isFinite(v) ? v : null;
+}
+
+/** Total minus the balance on file. Null until a Total is stated. */
+function cardRunning(id){
+  if (!carriesTotal(id)) return null;
+  const total = totalBalOf(id);
+  if (total == null) return null;
+  const current = balanceOf(id).value;
+  return { total, current, running: total - current };
+}
+
 function renderCards(){
   const groups = {asset:new Map(), liability:new Map()};
   ACCOUNTS.forEach(a => {
@@ -4855,6 +5019,19 @@ function renderCards(){
         </button>
         <div class="card__meta">${esc(base)}${src ? ' · ' + esc(src) : ''}</div>
         <div class="card__spark">${sparkline(rs)}</div>
+        ${carriesTotal(a.id) ? (() => {
+          const cr = cardRunning(a.id);
+          const t = totalBalOf(a.id);
+          return `<div class="card__extra">
+            <span class="card__xlab" id="tbl-${esc(a.id)}">Total Balance</span>
+            <input class="card__xfield" type="text" inputmode="decimal" data-total="${esc(a.id)}"
+                   value="${t == null ? '' : esc(formatMoneyField(Math.abs(t).toFixed(2)))}"
+                   placeholder="$0.00" aria-labelledby="tbl-${esc(a.id)}">
+            <span class="card__xlab">Running Balance</span>
+            <span class="card__xval ${cr ? (a.side === 'asset' ? 'tone-asset' : 'tone-owe') : 'fig--none'}"
+                  data-running="${esc(a.id)}">${cr ? moneyShort(cr.running) : '—'}</span>
+          </div>`;
+        })() : ''}
         ${a.side === 'liability' ? `
         <div class="card__acts">
           <button type="button" class="btn btn--sm card__amort" data-amort="${a.id}"
@@ -4905,6 +5082,23 @@ function renderCards(){
     e.stopPropagation();
     openBalance(b.dataset.acct);
   }));
+  /* The card itself opens the ledger, so every event the field raises
+     has to stop where it is or typing a balance would navigate away. */
+  $$('input[data-total]').forEach(el => {
+    attachMoneyInput(el);
+    ['click','keydown','keyup','focus'].forEach(ev =>
+      el.addEventListener(ev, e => e.stopPropagation()));
+    el.addEventListener('change', () => {
+      const id = el.dataset.total;
+      const raw = el.value.trim();
+      const v = raw ? toNumber(raw) : null;
+      if (raw && v == null){ toast('That is not an amount'); el.focus(); return; }
+      if (v == null) delete state.totalBal[id];
+      else state.totalBal[id] = Math.abs(v);
+      save(); renderCards(); renderCalendar();
+    });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); el.blur(); } });
+  });
   $$('.card__amort').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
     openAmort(b.dataset.amort);
@@ -5211,6 +5405,8 @@ function deleteAcctEditor(){
   delete state.loans[id];
   const bills = state.bills.filter(x => x.acct === id).length;
   state.bills = state.bills.filter(x => x.acct !== id);
+  state.pend = state.pend.filter(x => x.acct !== id);
+  delete state.totalBal[id];
   state.rules = state.rules.filter(x => x.acct !== id);
   const files = state.files.filter(f => f.acct === id).length;
   state.files = state.files.filter(f => f.acct !== id);
@@ -5237,6 +5433,7 @@ function deleteAcctEditor(){
 function refreshAcctSelects(){
   $('#billAcct').innerHTML = ACCOUNTS.map(a =>
     `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
+  fillDailyAccts();
   $('#acctFilter').innerHTML = '<option value="">All accounts</option>' +
     ACCOUNTS.map(a => `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
   $('#acctFilter').value = state.filter.acct || '';
@@ -6834,8 +7031,9 @@ function subLineHtml(c, name){
   const bare = name === '';
   const cls = [st.rows ? '' : 'zero', bare ? 'bare' : '', st.listed ? '' : 'orphan'].filter(Boolean).join(' ');
   const label = bare ? 'no subcategory' : name;
+  const disp  = bare ? 'no subcategory' : (shortSub(c, name) || name);
   return `<li class="${cls}">
-    <span class="snm">${esc(label)}</span>
+    <span class="snm" title="${esc(label)}">${esc(disp)}</span>
     <span class="sct">${st.rows} · ${moneyShort(st.out)}${st.listed ? '' : ' · off-catalog'}</span>
     <button class="icox" data-rows-sub="${esc(name)}" data-cat="${esc(c)}" type="button"
       ${st.rows ? '' : 'disabled'} aria-label="Show the ${esc(label)} lines">→</button>
@@ -6951,6 +7149,9 @@ const CAT_ICON = {
   expand: railIcon('<path d="m6.4 9.6 5.6-5.2 5.6 5.2"/><path d="m6.4 14.4 5.6 5.2 5.6-5.2"/>'),
   /* chevrons drawn together */
   collapse: railIcon('<path d="m6.4 4.4 5.6 5.2 5.6-5.2"/><path d="m6.4 19.6 5.6-5.2 5.6 5.2"/>'),
+  /* a plus inside the same optical box the other four are drawn in, so
+     the rail's stroke weight and spacing stay even across the row */
+  add: railIcon('<path d="M12 5.2v13.6"/><path d="M5.2 12h13.6"/>'),
 };
 
 /* Two buttons for one question. The catalog is either open or it is not,
@@ -7030,8 +7231,9 @@ function renderCatPick(){
 
 /** Paint the rail from catUI. *//** Paint the rail from catUI. */
 function syncCatRail(){
-  const f = $('#cFlagBtn'), s = $('#cSortBtn'), x = $('#cFoldBtn');
+  const f = $('#cFlagBtn'), s = $('#cSortBtn'), x = $('#cFoldBtn'), n = $('#cAddBtn');
   if (!f || !s || !x) return;
+  if (n) n.innerHTML = CAT_ICON.add;
   const picked = selCount(catPick());
   f.innerHTML = CAT_ICON.flag + (picked ? '<i class="railbtn__dot"></i>' : '');
   f.classList.toggle('on', picked > 0);
@@ -7053,9 +7255,28 @@ function initCatRail(){
   if (!$('#cFlagBtn')) return;
   registerPop('cFlagPop','cFlagBtn');
   registerPop('cSortPop','cSortBtn');
+  registerPop('cAddPop','cAddBtn');
   $('#cFlagBtn').addEventListener('click', () =>
     openPop('cFlagPop', () => { catPickStaged.clear(); renderCatPick(); }));
   $('#cSortBtn').addEventListener('click', () => openPop('cSortPop', buildCatSortPop));
+
+  /* The Add rail button drops the one field the deleted cell used to
+     hold. A named category lands and the list shuts; an empty field
+     leaves the list open so the household can simply carry on typing. */
+  $('#cAddBtn').addEventListener('click', () => openPop('cAddPop', () => { $('#cNewCat').value = ''; }));
+  const commitCat = () => {
+    const name = $('#cNewCat').value.trim();
+    if (!name){ $('#cNewCat').focus(); return; }
+    const had = Boolean(taxo()[name]);
+    catAdd(name);
+    if (had) return;                       /* catAdd already said why */
+    $('#cNewCat').value = '';
+    closePop('cAddPop');
+  };
+  $('#cNewAdd').addEventListener('click', commitCat);
+  $('#cNewCat').addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); commitCat(); }
+  });
 
   $('#cPickQ').addEventListener('input', renderCatPick);
   $('#cPickNone').addEventListener('click', () => {
@@ -7326,9 +7547,12 @@ function dlFile(name, text, type){
 /* ---------- one-time wiring; renders are all delegated ---------- */
 function initCatalog(){
   CAT_STATS = catStats();
-  $('#addCatBtn').addEventListener('click', () => { catAdd($('#newCat').value); $('#newCat').value = ''; });
-  $('#newCat').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#addCatBtn').click(); } });
-  $('#cq').addEventListener('input', e => { state.catUI.q = e.target.value; renderCategories(); });
+  /* The standing search and New-category cells are gone: finding a
+     category is the filter list's job and making one is the Add rail
+     button's, so nothing on this screen holds a field open any more.
+     catUI.q stays on state, unset, because the catalog renderer and
+     the backup shape both still read it. */
+  state.catUI.q = '';
   initCatRail();
 
   const host = $('#catList');
@@ -7701,6 +7925,126 @@ function wireBillDeletes(){
   }));
 }
 
+/* ============================================================
+   DAILY LEDGER — what has been spent but not yet posted
+   A running balance is the posted figure with the pending charges
+   leaned against it. The lean follows the same sign convention the
+   rest of the app uses: rows are negative when money leaves, an asset
+   adds them and a liability subtracts them, because a charge raises
+   what is owed. Nothing here is a ledger row -- no import sees it, no
+   category counts it, and the posted balance on the Position screen
+   never moves.
+   ============================================================ */
+
+/* The accounts a daily charge can land on: the cards and the checking
+   account the household actually spends from. Written as ids so a new
+   one -- USAAVISA, when its schema lands -- only has to be added here,
+   and filtered against the registry so an id with no account yet is
+   simply skipped rather than throwing. */
+const DAILY_ACCTS = ['USAAC', 'PenFed', 'AMEX', 'USAAVISA'];
+const dailyAccts = () => DAILY_ACCTS.filter(id => ACCT[id]);
+
+/** Every pending charge on one account, newest first. */
+const pendFor = id => state.pend
+  .filter(p => p.acct === id)
+  .sort((a,b) => String(b.date).localeCompare(String(a.date)));
+
+/** Posted, pending and the figure the account will read once it lands.
+
+    A card carrying a stated Total Balance leans on its Running Balance
+    instead of the posted figure -- AMEX is the case this was built for:
+    the household states what the card says is owed in full, the card
+    derives Running as Total minus the balance on file, and the Daily
+    Ledger adds the pending charges to that rather than to the posted
+    number. Until a Total Balance is typed there is nothing to lean on,
+    so the account falls back to the posted figure and behaves exactly
+    as every other account does.
+
+    Pending charges are stored the way the ledger signs them -- negative
+    is money out -- so a liability subtracts the sum, which is what adds
+    the magnitude of the charges to what is owed. */
+function runningBalance(id){
+  const acct = ACCT[id];
+  if (!acct) return null;
+  const posted = balanceOf(id);
+  const cr = cardRunning(id);
+  const base = cr ? cr.running : posted.value;
+  const held = pendFor(id);
+  const move = held.reduce((s,p) => s + p.amount, 0);
+  const running = acct.side === 'liability' ? base - move : base + move;
+  return { id, name: acct.name, side: acct.side, posted: posted.value,
+           source: posted.source, base, fromCard: Boolean(cr),
+           total: cr ? cr.total : null, move, running, n: held.length };
+}
+
+/** The whole Daily Ledger: the running rows, the register, the pill. */
+function renderDaily(){
+  const host = $('#dlBal');
+  if (!host) return;
+  const ids = dailyAccts();
+
+  host.innerHTML = ids.length ? ids.map(id => {
+    const b = runningBalance(id);
+    const owed = b.side === 'liability';
+    const from = b.fromCard
+      ? `running ${moneyShort(b.base)} · total ${moneyShort(b.total)}`
+      : `posted ${moneyShort(b.posted)}`;
+    const meta = b.n
+      ? `${from} · ${b.n} pending ${moneyShort(Math.abs(b.move))}`
+      : `${from} · nothing pending`;
+    return `<li class="${b.n ? 'runbal--held' : ''}">
+      <span class="runbal__nm">${esc(b.name)}</span>
+      <span class="runbal__meta">${meta}</span>
+      <span class="runbal__val ${owed ? 'tone-owe' : 'tone-asset'}">${moneyShort(b.running)}
+        <small>${owed ? 'will owe' : 'will hold'}</small></span>
+    </li>`;
+  }).join('') : `<li><span class="runbal__nm">No spending accounts on file</span>
+      <span class="runbal__meta">Add one on the Position screen</span></li>`;
+
+  /* the register, grouped by the day the charge was made */
+  const list = $('#dlList');
+  const held = state.pend.slice().sort((a,b) =>
+    String(b.date).localeCompare(String(a.date)) || (b.at || 0) - (a.at || 0));
+  if (!held.length){
+    list.innerHTML = '<div class="empty">Nothing pending. Every charge you have made has posted.</div>';
+  } else {
+    let html = '', day = null;
+    held.forEach(p => {
+      if (p.date !== day){
+        day = p.date;
+        const d = toDate(day);
+        html += `<p class="dl__day">${d ? d.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'}) : esc(day)}</p>`;
+      }
+      const a = ACCT[p.acct];
+      html += `<ul class="daylist"><li class="bill bill--pend">
+        <span class="bill__name">${esc(p.name)}</span>
+        <span class="bill__meta">${esc(a ? a.name : p.acct)}</span>
+        <span class="bill__amt tone-owe">${moneyShort(p.amount)}</span>
+        <button class="bill__del" type="button" data-pend="${esc(p.id)}"
+          aria-label="Delete the pending charge ${esc(p.name)}">&#10005;</button>
+      </li></ul>`;
+    });
+    list.innerHTML = html;
+  }
+
+  $$('#dlList [data-pend]').forEach(btn => btn.addEventListener('click', () => {
+    const p = state.pend.find(x => x.id === btn.dataset.pend);
+    state.pend = state.pend.filter(x => x.id !== btn.dataset.pend);
+    save(); renderDaily(); syncFoldbar('scr-calendar');
+    if (p) toast(`${p.name} cleared from pending`);
+  }));
+
+  const tag = $('#dlTag');
+  if (tag){
+    const n = state.pend.length;
+    const sum = state.pend.reduce((s,p) => s + p.amount, 0);
+    tag.textContent = n
+      ? `${n} pending · ${moneyShort(Math.abs(sum))}`
+      : 'nothing pending';
+    tag.classList.toggle('tone-owe', n > 0);
+  }
+}
+
 function renderCalendar(){
   const { y, m } = state.cal;
   const today = startOfToday();
@@ -7710,6 +8054,8 @@ function renderCalendar(){
   $('#calMonth').textContent = monthName;
   const mt = $('#calMonthTag');
   if (mt) mt.textContent = new Date(y, m, 1).toLocaleDateString('en-US',{month:'short', year:'numeric'});
+
+  renderDaily();
 
   /* one pass of the forecast feeds every surface below */
   const fx = calForecasts();
@@ -8057,12 +8403,56 @@ function renderCalCats(fx){
 }
 const initCalCats = () => CAL_MSEL.init();
 
+/** The Daily Ledger dropdown, held to the accounts a charge can land on
+    and remembering whatever was picked last. */
+function fillDailyAccts(){
+  const sel = $('#dlAcct');
+  if (!sel) return;
+  const was = sel.value;
+  const ids = dailyAccts();
+  sel.innerHTML = ids.length
+    ? ids.map(id => `<option value="${id}">${esc(id)} — ${esc(ACCT[id].name)}</option>`).join('')
+    : '<option value="">No spending account on file</option>';
+  sel.disabled = !ids.length;
+  if (was && ids.includes(was)) sel.value = was;
+}
+
 function initCalendar(){
   state.cal.sel = isoOf(startOfToday());
 
   $('#billAcct').innerHTML = ACCOUNTS.map(a =>
     `<option value="${a.id}">${esc(a.id)} — ${esc(a.name)}</option>`).join('');
   $('#billDate').value = isoOf(startOfToday());
+
+  fillDailyAccts();
+  $('#dlDate').value = isoOf(startOfToday());
+
+  $('#dlAdd').addEventListener('click', () => {
+    const name = $('#dlName').value.trim();
+    const amount = toNumber($('#dlAmount').value);
+    const date = toDate($('#dlDate').value);
+    const acct = $('#dlAcct').value;
+    if (!acct){ toast('No account to charge this to yet'); return; }
+    if (!name){ toast('Give the charge a name so you know what it was'); $('#dlName').focus(); return; }
+    if (amount == null || amount === 0){ toast('Enter an amount, like 42.80'); $('#dlAmount').focus(); return; }
+    if (!date){ toast('Pick the day it was charged'); $('#dlDate').focus(); return; }
+    /* A daily charge is money going out. The household types 42.80, not
+       -42.80, so the sign is applied here and the register only ever
+       holds ledger-signed figures. */
+    state.pend.push({
+      id: `P-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      name, amount: -Math.abs(amount), date: isoOf(date), acct, at: Date.now(),
+    });
+    $('#dlName').value = ''; $('#dlAmount').value = '';
+    $('#dlDate').value = isoOf(startOfToday());
+    save(); renderDaily(); syncFoldbar('scr-calendar');
+    $('#dlName').focus();
+    toast(`${name} pending on ${ACCT[acct] ? ACCT[acct].name : acct}`);
+  });
+
+  ['#dlName','#dlAmount'].forEach(sel => $(sel).addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); $('#dlAdd').click(); }
+  }));
 
   let billKind = 'expense';
   const setKind = k => {
@@ -8484,7 +8874,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-10n';
+const BUILD = '2026-08-11f';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
