@@ -3134,6 +3134,10 @@ function mergeRows(incoming){
   if (blocked) logLine(`${blocked} card line${blocked === 1 ? '' : 's'} held back — `
     + `Amazon items already carry that spend in detail`, 'warn');
   state.rows = state.rows.concat(fresh).sort((a,b) => b.date - a.date);
+  /* The count is what every caller reads, but the rows themselves are
+     what category memory needs to file. Handed back on the side so no
+     existing caller changes shape. */
+  mergeRows.fresh = fresh;
   return fresh.length;
 }
 
@@ -3175,6 +3179,214 @@ function loadMasterLedger(){
    is ever cleared, loadMasterLedger() from a console re-seeds all 2,124
    rows. It merges by line id, so pressing it twice costs nothing. */
 window.loadMasterLedger = loadMasterLedger;
+
+
+/* ============================================================
+   CATEGORY MEMORY — how a new posting learns its own filing
+
+   A statement arrives carrying the issuer's labels, not the
+   household's: "Bills & Utilities", "Atm Fee", "Electronics &
+   Software", or nothing at all. Filing those by hand, month after
+   month, is the same work repeated -- because the household has
+   almost always filed that merchant before.
+
+   So the ledger files the new lines itself, from what it already
+   knows. Every line already carrying a household category teaches
+   one merchant. A new line looks its merchant up and inherits the
+   filing. Nothing else changes: a line that already carries a
+   household category is never touched, and a merchant the ledger
+   has never seen is left as Uncategorized for a person to decide.
+
+   The lookup runs a ladder, most specific first, and stops at the
+   first rung that answers:
+
+     1. this account, exact description
+     2. this account, merchant stem
+     3. any account, exact description
+     4. any account, merchant stem
+     5. any account, longest stem that is a prefix of this one
+
+   The stem is what survives after the store number, the terminal
+   reference, and the payment gateway are removed -- so GIANT 0366
+   and GIANT 0354 file together, SPOTIFY*P3EA and SPOTIFY*P44E file
+   together, and PAYPAL *UBER EATS files with UBER EATS. Rung 5
+   exists because AMEX truncates its own descriptions at twenty
+   characters: MOBILE PAYMENT - THA and MOBILE PAYMENT THANK YOU are
+   the same line, and only a prefix can say so.
+
+   Account comes before merchant on the ladder deliberately. "Silver
+   Spring" on USAA Checking is an ATM withdrawal; on AMEX it is a
+   shop. Same words, different money.
+
+   Amazon is excluded throughout. Those rows are filed per item from
+   the ASIN map, which knows what was actually in the box -- a
+   merchant name would only overwrite better knowledge with worse.
+   ============================================================ */
+
+/* Card processors stamp their own name on the front of the merchant:
+   PAYPAL *UBER EATS, TST* YIA YIAS, SQ *THE BAGELRY. The merchant is
+   what follows. Stripped from both sides of the comparison, so even a
+   gateway this list misses still matches itself. */
+const MEM_GATEWAY = /^(paypal|pp|sq|sqc|tst|dd|sp|spo|cke|med|loy|phr|crb|bt|uep|msb|til|ctlp|snack|pay|wpy|aplpay|ee|par|abc|eur)$/;
+
+/* The stem: lowercase words up to the first one carrying a digit.
+   A leading digit is kept -- 7 ELEVEN and 5GUYS are names, not
+   store numbers -- but GIANT 0366, MCDONALD'S F21092 00 and
+   KINDLE SVCS*W93Z638I all come back to their merchant. */
+function memStem(desc){
+  let t = norm(desc).split(' ').filter(Boolean);
+  while (t.length > 1 && MEM_GATEWAY.test(t[0])) t = t.slice(1);
+  const out = [];
+  for (let i = 0; i < t.length; i++){
+    if (i > 0 && /\d/.test(t[i])) break;
+    out.push(t[i]);
+  }
+  return out.join(' ');
+}
+
+/* A household category, as opposed to whatever the bank called it.
+   Three sources count: the catalog as shipped, the catalog as the
+   household has since edited it, and the categories the baked-in
+   master ledger uses. Everything else -- every issuer label -- is
+   treated as unfiled, which is exactly what it is. */
+let MEM_VOCAB = null;
+function catKnown(cat){
+  if (!cat || cat === CAT_NONE) return false;
+  if (!MEM_VOCAB){
+    MEM_VOCAB = new Set(Object.keys(CATALOG));
+    MASTER_ROWS.forEach(r => MEM_VOCAB.add(r[4]));
+    MEM_VOCAB.delete(CAT_NONE);
+  }
+  return MEM_VOCAB.has(cat) || Object.prototype.hasOwnProperty.call(taxo(), cat);
+}
+
+/* Is this line still waiting to be filed? Blank, Uncategorized, or
+   carrying a label the household never wrote all count as waiting. */
+const memUnfiled = r => !catKnown(r.category);
+
+/* Build the lookup. Two ranks of teacher: the ledger on this phone
+   outranks the baked-in master, so a line the household re-filed by
+   hand overrules the original filing of the same merchant. Within a
+   rank, the filing used most often wins; ties go to the most recent. */
+function buildCatMemory(){
+  const shelf = new Map();
+  const stems = new Set();
+
+  const teach = (acct, desc, cat, sub, rank, at) => {
+    if (!catKnown(cat)) return;
+    const n = norm(desc), s = memStem(desc);
+    if (!n) return;
+    const val = String(cat) + CATSUB_SEP + String(cleanSub(sub) || '');
+    [acct + '|' + n, acct + '|' + s, '*|' + n, '*|' + s].forEach(k => {
+      let bin = shelf.get(k);
+      if (!bin){ bin = new Map(); shelf.set(k, bin); }
+      const e = bin.get(val) || { cat, sub: cleanSub(sub) || '', n: 0, rank: 0, at: 0 };
+      e.n++; e.rank = Math.max(e.rank, rank); e.at = Math.max(e.at, at || 0);
+      bin.set(val, e);
+    });
+    if (s.length >= 12) stems.add(s);
+  };
+
+  MASTER_ROWS.forEach(r => {
+    if (r[3] === 'AMAZON') return;
+    teach(r[3], r[1], r[4], r[5], 1, Date.parse(r[0]) || 0);
+  });
+  state.rows.forEach(r => {
+    if (r.acct === 'AMAZON') return;
+    teach(r.acct, r.desc, r.category, r.sub, 2, r.date instanceof Date ? r.date.getTime() : 0);
+  });
+
+  const stemList = Array.from(stems);
+  const winner = k => {
+    const bin = shelf.get(k);
+    if (!bin) return null;
+    let top = null, all = 0;
+    bin.forEach(e => {
+      all += e.n;
+      if (!top || e.rank > top.rank || (e.rank === top.rank
+        && (e.n > top.n || (e.n === top.n && e.at > top.at)))) top = e;
+    });
+    return top ? { cat: top.cat, sub: top.sub, share: all ? top.n / all : 1 } : null;
+  };
+
+  return {
+    size: shelf.size,
+    /* The ladder. Returns the filing and how it was reached, or null. */
+    look(acct, desc){
+      const n = norm(desc), s = memStem(desc);
+      if (!n) return null;
+      const rungs = [[acct + '|' + n, 'exact'], [acct + '|' + s, 'merchant'],
+                     ['*|' + n, 'exact'], ['*|' + s, 'merchant']];
+      for (const [k, how] of rungs){
+        const hit = winner(k);
+        if (hit) return { ...hit, how };
+      }
+      if (s.length < 12) return null;
+      /* Truncated descriptions: the longer of the two must begin with
+         the shorter, and the shorter must be long enough to mean
+         something. Longest agreement wins. */
+      let found = null, best = 0;
+      for (const m of stemList){
+        if (m === s) continue;
+        const short = m.length > s.length ? s : m;
+        const long  = m.length > s.length ? m : s;
+        if (short.length <= best || !long.startsWith(short)) continue;
+        const hit = winner(acct + '|' + m) || winner('*|' + m);
+        if (hit){ found = { ...hit, how: 'prefix' }; best = short.length; }
+      }
+      return found;
+    },
+  };
+}
+
+/* File a set of lines from memory. Only untouched lines are written:
+   anything already carrying a household category is left exactly as
+   the household left it. Returns what it did, so the caller can say so.
+
+   `share` is how much of the merchant's history agrees with the filing
+   chosen. GIANT has been filed both as Grocery and as Household over
+   the year, so its share is low and the line is worth a second look;
+   PARKMOBILE has only ever been one thing. Split decisions are counted
+   and reported rather than refused -- a probable filing beats no
+   filing, and the count says how much of it to check. */
+function fileByMemory(rows, mem){
+  const memory = mem || buildCatMemory();
+  const out = { filed: 0, split: 0, left: 0, seen: 0 };
+  (rows || []).forEach(r => {
+    if (!r || r.acct === 'AMAZON') return;
+    if (!memUnfiled(r)) return;
+    out.seen++;
+    const hit = memory.look(r.acct, r.desc);
+    if (!hit){ out.left++; return; }
+    r.category = hit.cat;
+    r.sub = hit.sub;
+    out.filed++;
+    if (hit.share < 0.6) out.split++;
+  });
+  return out;
+}
+
+/* Say what a run did, in one line, in the terms the household uses. */
+function logMemoryRun(res, where){
+  if (!res.seen){ logLine(`${where}: every line already filed`, 'ok'); return; }
+  if (res.filed) logLine(`${where}: ${res.filed} of ${res.seen} line${res.seen===1?'':'s'} filed from memory`
+    + (res.split ? ` — ${res.split} where the merchant has been filed more than one way` : ''), 'ok');
+  if (res.left) logLine(`${res.left} line${res.left===1?'':'s'} left uncategorized — `
+    + `${res.left===1?'that merchant is':'those merchants are'} new to the ledger`, 'warn');
+}
+
+/* The whole ledger, on demand. Restoring a backup that predates a
+   filing, or importing before this existed, leaves a run of unfiled
+   lines behind; this catches them up in one pass. */
+function autoFileLedger(){
+  const mem = buildCatMemory();
+  const res = fileByMemory(state.rows, mem);
+  logMemoryRun(res, 'Ledger');
+  if (res.filed){ save(); render(); toast(`${res.filed} lines filed from memory`); }
+  else toast(res.left ? `${res.left} lines have no match yet` : 'Nothing left to file');
+  return res;
+}
+window.autoFileLedger = autoFileLedger;
 
 
 /* ============================================================
@@ -5309,6 +5521,13 @@ const FOLDBAR_ACTIONS = {
         + '<path d="M6.2 6.4 7 19a2 2 0 0 0 2 1.9h6a2 2 0 0 0 2-1.9l.8-12.6"/>'
         + '<path d="M10 10.6v6"/><path d="M14 10.6v6"/></svg>',
       run:() => clearLedger() },
+    { label:'File by memory',
+      aria:'File every uncategorized line from what the ledger already knows about that merchant',
+      icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M3 7.4a2 2 0 0 1 2-2h3.6l1.8 2.2H19a2 2 0 0 1 2 2v8.6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>'
+        + '<path d="M9.4 14.2 11.3 16l3.6-3.9"/></svg>',
+      run:() => autoFileLedger() },
   ],
   'scr-trip': [
     { label:'Trip Analysis',
@@ -10089,7 +10308,13 @@ function confirmImport(){
   if (pendingTally) logLine(`${pendingTally} pending line${pendingTally === 1 ? '' : 's'} held out `
     + `— not posted yet, and the settled charge will arrive in a later export`, 'warn');
   const added = mergeRows(rows);
+  const landed = mergeRows.fresh || [];
   const acct = ACCT[current.acctId];
+  /* Before anything else is said about this import, the new lines are
+     filed from what the ledger already knows. Doing it here rather than
+     at the end means every figure drawn afterwards -- the log, the
+     screens, the categories -- reads the filed ledger, not the raw one. */
+  const memo = added ? fileByMemory(landed) : { filed:0, split:0, left:0, seen:0 };
   if (lastBalance){
     /* A balance is an anchor: a figure AND the day it was true.
        Import an older statement after a newer one — or after a figure
@@ -10112,6 +10337,7 @@ function confirmImport(){
     + (added < rows.length ? ' — the rest were already on file' : ''));
   state.imports.push({ file:current.file, acct:acct.id, count:added, at:Date.now() });
   const claimed = applyRules();
+  if (added) logMemoryRun(memo, acct.id);
   if (claimed) logLine(`${claimed} lines matched by ownership rules`,'ok');
   if (scrubbed) logLine(`${scrubbed} account-number fragment${scrubbed===1?'':'s'} scrubbed before storing`,'ok');
   if (current.map.member > -1){
@@ -10269,7 +10495,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-12l';
+const BUILD = '2026-08-12m';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
