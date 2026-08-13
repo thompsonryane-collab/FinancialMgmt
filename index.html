@@ -4879,7 +4879,7 @@ function runBackup(){
        from the attempt -- a cancelled share sheet leaves the copy owed. */
     bkPref.lastAt = Date.now(); bkSavePref();
     bkDue = false; bkPaint();
-    bkSnapshot();
+    bkSnapshot();                        /* fire and forget: the file is written either way */
     if (!$('#backupModal').hidden) closeBackup();
     const n = state.rows.length;
     const f = filedTally();
@@ -4931,6 +4931,11 @@ const BK_MINS = [5, 10, 15, 30, 60, 120, 360];
 
 let bkPref = { on:false, mins:15, replace:true, lastAt:0 };
 let bkTimer = null, bkDue = false, bkSnapAt = 0, bkSnapRows = 0;
+/* The clock is wired during wire(), which runs before the sealed ledger
+   is opened. A tick in that window would photograph an empty room and
+   file it over the real snapshot. Nothing ticks until boot says the
+   ledger is actually in memory. */
+let bkReady = false, bkSnapWarned = false;
 
 function bkLoadPref(){
   try {
@@ -4992,23 +4997,42 @@ function bkIn(ms){
    the everyday accident -- an import that went wrong, a clear that
    should not have happened -- without a file or a tap. It cannot
    answer the deleted icon, which is what the file is for. */
-function bkSnapshot(){
+async function bkSnapshot(){
+  if (!bkReady) return false;
   try {
-    const body = JSON.stringify({ at: Date.now(), rows: state.rows.length, wrap: bkWrap() });
-    localStorage.setItem(BK_SNAP_KEY, body);
+    /* Sealed with the same key as the live ledger. A phone protected by
+       Face ID keeps a ciphertext ledger in storage; a plaintext snapshot
+       beside it would hand back everything the lock was for. The date and
+       the row count stay outside the envelope so the sheet can say how
+       old the snapshot is without asking for a face. */
+    const sealed = await sealLedger(JSON.stringify(bkWrap()));
+    localStorage.setItem(BK_SNAP_KEY, JSON.stringify(
+      { at: Date.now(), rows: state.rows.length, sealed }));
     bkSnapAt = Date.now(); bkSnapRows = state.rows.length;
+    bkSnapWarned = false;
     return true;
   } catch(_){
-    /* out of room: the file copy is still owed, and now more than ever */
+    /* Out of room, most likely. Said once, not once a minute -- and the
+       file copy is still owed, now more than ever. */
+    if (!bkSnapWarned){
+      bkSnapWarned = true;
+      logLine('The phone had no room for a snapshot — the backup file is the only copy', 'warn');
+    }
     return false;
   }
 }
 
-function bkRestoreSnapshot(){
+async function bkRestoreSnapshot(){
   let s = null;
   try { s = JSON.parse(localStorage.getItem(BK_SNAP_KEY) || 'null'); } catch(_){}
-  if (!s || !s.wrap || !s.wrap.payload){ toast('No snapshot on the phone'); return; }
-  applyPayload(s.wrap.payload);
+  if (!s){ toast('No snapshot on the phone'); return; }
+  let wrap = s.wrap || null;                 /* the older, unsealed shape */
+  if (!wrap && s.sealed != null){
+    try { wrap = JSON.parse(await unsealLedger(s.sealed)); }
+    catch(_){ toast('Unlock the ledger first'); return; }
+  }
+  if (!wrap || !wrap.payload){ toast('That snapshot could not be read'); return; }
+  applyPayload(wrap.payload);
   applyRules();
   save(); render();
   closeBackup();
@@ -5023,12 +5047,21 @@ function bkMarkDue(snapped){
   toast(snapped ? 'Snapshot taken — a file copy is due' : 'A backup file is due');
 }
 
-function bkTick(){
-  if (!bkPref.on) return;
-  const due = Date.now() - (bkPref.lastAt || 0) >= bkPref.mins * 60000;
-  if (!due || bkDue) return;
-  bkMarkDue(bkSnapshot());
+async function bkTick(){
+  if (!bkPref.on || !bkReady) return;
+  const span = bkPref.mins * 60000, now = Date.now();
+  if (now - (bkPref.lastAt || 0) < span) return;
+  /* The deadline has passed. The snapshot is refreshed on every interval
+     from here on, not just the first: a file copy can stay owed for a
+     day, and a snapshot frozen at the moment it fell due is worth less
+     with every row that lands after it. */
+  const stale = now - bkSnapAt >= span;
+  const snapped = stale ? await bkSnapshot() : false;
+  if (bkDue){ if (snapped) bkRender0(); return; }
+  bkMarkDue(snapped || bkSnapAt > 0);
 }
+/* redraw the sheet only if it happens to be open */
+function bkRender0(){ if (!$('#backupModal').hidden) bkRender(); }
 
 /* One timer, rebuilt whenever the schedule changes. It runs on a
    minute so a phone that slept through the interval catches up on
@@ -5037,9 +5070,36 @@ function bkArm(){
   if (bkTimer){ clearInterval(bkTimer); bkTimer = null; }
   bkPaint();
   if (!bkPref.on) return;
-  if (!bkPref.lastAt) bkPref.lastAt = Date.now();
+  /* A clock that has never been written starts now -- and is written
+     down. Held only in memory, it restarted at every launch, so an
+     interval longer than the gap between opening the app could never
+     come round at all. */
+  if (!bkPref.lastAt){ bkPref.lastAt = Date.now(); bkSavePref(); }
   bkTimer = setInterval(bkTick, 60000);
   bkTick();
+}
+
+/* An interval is not a clock on a phone. iOS suspends timers the moment
+   the app goes to the background and may discard the page entirely, so a
+   deadline that falls while the phone is asleep passes unnoticed. These
+   are the moments the app can be sure it is awake again; each one asks
+   the question the timer could not. */
+function bkWake(){
+  if (!bkPref.on) return;
+  if (!bkTimer) bkTimer = setInterval(bkTick, 60000);
+  bkTick();
+}
+function initBackupWake(){
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) bkWake(); });
+  window.addEventListener('pageshow', bkWake);
+  window.addEventListener('focus', bkWake);
+}
+
+/* Boot calls this once the ledger is really in memory. Everything the
+   scheduler does is held back until then. */
+function bkStart(){
+  bkReady = true;
+  bkArm();
 }
 
 function bkPaint(){
@@ -5114,7 +5174,8 @@ function initBackupSheet(){
     bkPref.replace = e.target.checked;
     bkSavePref(); bkRender();
   });
-  bkArm();
+  initBackupWake();
+  bkArm();                 /* paints the icon; the gate keeps it from ticking */
 }
 
 function runRestore(file){
@@ -10778,7 +10839,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-12n';
+const BUILD = '2026-08-12o';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -11107,6 +11168,7 @@ function wire(){
     refreshAcctSelects();               /* registry edits reach every dropdown */
   }
   renderLockRow();
+  bkStart();               /* the ledger is in memory — the clock may run */
   render();
 })();
 </script>
