@@ -433,6 +433,39 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .card__spark{grid-column:1/3;margin-top:7px;height:24px}
 .card__spark svg{display:block;width:100%;height:24px;overflow:visible}
 
+/* ---------- payment due date ----------
+   The bottom-left corner of a revolving card. What is owed is stated at
+   the top right; when it has to be paid belongs at the far corner from
+   it, opposite Amortize, where a glance down the column reads a row of
+   dates without the figures moving.
+
+   Only the day of the month is stored. A card is due on the same day
+   every month, so the day is the durable fact and the date is derived
+   from it -- which also means the corner is never stale and never needs
+   rolling forward.
+
+   The control is a select wearing our own text. iOS zooms any focused
+   control under 16px, which is why this file pins form text at 16, and
+   a due date set at 16px in the corner competes with the balance. So
+   the select keeps its 16px and its opacity goes to zero, laid over the
+   two lines that actually get read. It carries the label and the value;
+   the text under it is aria-hidden so nothing is announced twice. */
+.card__due{position:relative;margin-right:auto;min-width:0;min-height:38px;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px}
+.card__duesel{position:absolute;inset:0;width:100%;height:100%;opacity:0;
+  border:0;background:none;padding:0;margin:0;cursor:pointer;
+  -webkit-appearance:none;appearance:none}
+.card__duetop{font-family:var(--data);font-size:11.5px;font-weight:600;letter-spacing:.04em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.card__duetop.is-unset{color:var(--muted);font-weight:500}
+.card__duewhen{font-family:var(--data);font-size:10.5px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* Due inside three days, and due today, are the two states worth a
+   colour. Anything further out is just a date. */
+.card__duewhen.is-soon{color:var(--owe)}
+.card__duewhen.is-today{color:var(--danger);font-weight:600}
+.card__duesel:focus ~ .card__duetop{text-decoration:underline;text-underline-offset:3px}
+
 /* Intake */
 .drop{border:1.5px dashed var(--rule);border-radius:14px;padding:34px 18px;text-align:center;
   background:repeating-linear-gradient(45deg,transparent 0 12px,rgba(26,33,22,.05) 12px 24px);cursor:pointer}
@@ -715,8 +748,41 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .cal__day--proj{background:color-mix(in srgb, var(--owe) 12%, transparent)}
 .cal__pips i.pip--proj{background:transparent;box-shadow:inset 0 0 0 1.5px var(--owe)}
 .cal__day--sel .cal__pips i.pip--proj{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(23,30,20,.6)}
+/* a card payment is square, so three kinds are told apart at 4.5px:
+   solid round is declared, square is a card coming due, outline is a
+   projection */
+.cal__pips i.pip--card{background:var(--owe);border-radius:2px}
 
 .daylist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+
+/* ---------- Tasks ----------
+   A task is a note to yourself about money, not money. It sits on the
+   same slab a bill does so the two read as one family, but it carries
+   a box instead of an amount: the only figure a task has is whether it
+   is finished. Long names wrap rather than ellipsing -- a bill name is
+   a merchant and fits, a task is a sentence and does not. */
+.tasks{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.tasks li{background:var(--ink);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 10px 10px 12px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+  gap:2px 11px;align-items:center}
+.task__box{grid-row:1/3;grid-column:1/2;width:21px;height:21px;flex:none;
+  accent-color:var(--accent-deep);cursor:pointer;margin:0}
+.task__nm{grid-column:2/3;font-weight:500;font-size:14.5px;min-width:0;
+  overflow-wrap:anywhere;line-height:1.35}
+.task__due{grid-column:2/3;font-family:var(--data);font-size:11px;color:var(--muted)}
+/* Three states worth a colour, and no others: past, today, and inside
+   the next few days. A task due in three weeks is just a date. */
+.task__due.is-soon{color:var(--owe)}
+.task__due.is-today{color:var(--danger)}
+.task__due.is-late{color:var(--danger);font-weight:600}
+.task__del{grid-row:1/3;grid-column:3/4;background:none;border:1px solid var(--rule);
+  border-radius:9px;width:34px;height:34px;color:var(--muted);cursor:pointer;font-size:13px;flex:none}
+.tasks li.task--late{border-left:3px solid var(--danger);padding-left:9px}
+/* Finished work stays legible but stops competing: dashed, struck
+   through, and off the solid slab the open list sits on. */
+.tasks li.task--done{background:transparent;border-style:dashed}
+.task--done .task__nm{color:var(--muted);text-decoration:line-through}
+.task--done .task__due{opacity:.7}
 
 /* ---------- Daily Ledger: pending charges and the running balance ----------
    A charge lives here from the moment it is made until the statement
@@ -749,6 +815,12 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 /* a projection is a dashed promise: nothing to delete, nothing banked */
 .bill--proj{grid-template-columns:1fr auto;background:transparent;border-style:dashed}
 .bill--proj .bill__amt{grid-column:2/3}
+/* A card payment is derived from a balance and a due day, so there is
+   nothing to delete here either -- clearing the due day on the Position
+   card is what removes it. The left edge marks it as money the household
+   already spent and now has to settle, rather than a new charge. */
+.bill--card{grid-template-columns:1fr auto;border-left:3px solid var(--owe)}
+.bill--card .bill__amt{grid-column:2/3}
 .fixed-sum{display:flex;align-items:baseline;gap:8px;margin:0 0 10px;padding-bottom:9px;border-bottom:1px solid var(--rule)}
 .fixed-sum b{margin-left:auto;font-family:var(--data);font-size:15px;font-weight:600;color:var(--owe)}
 .fixed-sum--net{margin:12px 0 0;padding:9px 0 0;border-bottom:0;border-top:1px solid var(--rule)}
@@ -773,11 +845,32 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .msel__field[aria-expanded="true"] .msel__chev{transform:rotate(180deg)}
 .msel__menu{margin-top:8px;background:var(--ink);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
 .msel__tools{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px;border-bottom:1px solid var(--rule)}
+/* Two buttons rather than one. Scoped to the row that has them: the
+   other three tools rows in this file carry a single button, and
+   widening the shared rule would leave each of them an 8px gap where a
+   button they do not have would sit. On a narrow phone the field drops
+   to its own line and the pair sits under it, rather than the search
+   being squeezed to nothing. */
+.msel__tools--pair{grid-template-columns:1fr auto auto}
+@media (max-width:380px){
+  .msel__tools--pair{grid-template-columns:auto auto;justify-content:end}
+  .msel__tools--pair .search{grid-column:1/3;justify-self:stretch}
+}
 .msel__list{max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0}
 .msel__row{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer}
 .msel__row input{width:18px;height:18px;flex:none;accent-color:var(--accent-deep)}
 .msel__nm{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .msel__n{font-family:var(--data);font-size:10.5px;color:var(--muted);flex:none}
+/* Share of outflow, beside the line count. Tabular figures so a column
+   of them lines up on the decimal, and a fixed width so the counts to
+   their right do not shuffle as the numbers change width. It carries
+   the outflow colour: two muted greys side by side read as one smudge,
+   and this figure is the one the picker was opened to look at. */
+.msel__pct{font-family:var(--data);font-size:10.5px;color:var(--owe);flex:none;
+  min-width:44px;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.msel__pct.is-none{color:var(--muted);opacity:.55}
+.msel__row--sub .msel__pct{font-size:10px;opacity:.82}
+.msel__row--sub .msel__pct.is-none{opacity:.45}
 /* Two jobs, two buttons. The caret only unfolds; the + only adds.
    One control doing both is what made a + look like it would add
    something when all it did was open a drawer. */
@@ -899,7 +992,8 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .tbl .c-amt{font-family:var(--data);font-weight:600;white-space:nowrap}
 
 /* the amortize button that sits on every card */
-.card__acts{grid-column:1/3;display:flex;justify-content:flex-end;margin-top:9px}
+.card__acts{grid-column:1/3;display:flex;align-items:center;justify-content:flex-end;
+  gap:10px;flex-wrap:wrap;margin-top:9px}
 .card__edit{
   display:inline-flex;align-items:center;justify-content:center;
   width:24px;height:24px;margin:-6px 0 -6px 2px;padding:0;vertical-align:middle;
@@ -1629,7 +1723,42 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <p class="hint" style="padding:0 4px">Due dates live beside the ledger, not inside it — nothing here changes a balance until the real transaction imports.</p>
     </section>
 
-    <!-- 3 · CATEGORIES -->
+    <!-- 3 · TASKS -->
+    <section class="screen" id="scr-tasks" aria-label="Tasks" data-title="Tasks" tabindex="-1">
+      <details class="fold" data-fold id="taskFold">
+        <summary><span class="fold__dot" style="background:#B4732B"></span>Open
+          <span class="fold__tag" id="taskTag">nothing open</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <ul class="tasks" id="taskOpen"></ul>
+          <div class="rule-form" style="margin-top:12px">
+            <input class="search" id="taskName" type="text"
+                   placeholder="What has to be done? e.g. Move $500 to savings"
+                   aria-label="What the task is" autocapitalize="sentences">
+            <div class="rule-form__row">
+              <input class="search" id="taskDue" type="date" aria-label="Due date, optional">
+              <button class="btn btn--primary" id="taskAdd" type="button">Add task</button>
+            </div>
+          </div>
+          <p class="hint" style="margin:11px 0 0">A note to yourself about money &mdash; a payment to make, a
+            statement to pull, a call to place. It never enters the ledger, never moves a balance and never
+            counts as a bill. The due date is optional: leave it blank and the task simply waits.</p>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--asset)"></span>Done
+          <span class="fold__tag" id="taskDoneTag">nothing done</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <ul class="tasks" id="taskDone"></ul>
+          <button class="btn btn--ghost" id="taskClear" type="button"
+                  style="width:100%;margin-top:10px" hidden>Clear the finished list</button>
+        </div>
+      </details>
+    </section>
+
+    <!-- 4 · CATEGORIES -->
     <section class="screen" id="scr-categories" aria-label="Categories" data-title="Categories" tabindex="-1">
 
       <div class="rail rail--screen" id="catRail" role="group" aria-label="Narrow the catalog">
@@ -1693,7 +1822,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       </details>
     </section>
 
-    <!-- 4 · INTAKE -->
+    <!-- 5 · INTAKE -->
     <section class="screen" id="scr-intake" aria-label="Intake" data-title="Intake" tabindex="-1">
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf" multiple class="sr-only">
 
@@ -1729,7 +1858,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 
     </section>
 
-    <!-- 5 · FLOW -->
+    <!-- 6 · FLOW -->
     <section class="screen" id="scr-flow" aria-label="Flow" data-title="Flow" tabindex="-1">
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>By month
@@ -1767,8 +1896,10 @@ input[type=date]{-webkit-appearance:none;appearance:none}
               <span class="msel__chev" aria-hidden="true">&#9662;</span>
             </button>
             <div class="msel__menu" id="outCatMenu" hidden role="group" aria-label="Categories to show as outflows">
-              <div class="msel__tools">
+              <div class="msel__tools msel__tools--pair">
                 <input class="search" id="outCatQ" type="search" placeholder="Find a category or subcategory" autocomplete="off">
+                <button class="btn btn--sm btn--ghost" id="outCatAll" type="button"
+                        aria-label="Select every category shown">All</button>
                 <button class="btn btn--sm btn--ghost" id="outCatNone" type="button">Clear</button>
               </div>
               <div class="msel__list" id="outCatList"></div>
@@ -1781,7 +1912,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       </details>
     </section>
 
-    <!-- 6 · PROJECTIONS -->
+    <!-- 7 · PROJECTIONS -->
     <section class="screen" id="scr-project" aria-label="Projections" data-title="Projections" tabindex="-1">
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>Net position, 12 months out
@@ -1820,7 +1951,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       </details>
     </section>
 
-    <!-- 7 · TRIP -->
+    <!-- 8 · TRIP -->
     <section class="screen" id="scr-trip" aria-label="Trip" data-title="Trip" tabindex="-1">
 
       <details class="fold" data-fold>
@@ -1857,7 +1988,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <p class="hint" style="padding:0 4px">Trip money lives beside the ledger — logging a spend here plans the pot, and the real charge still imports through Intake as usual.</p>
     </section>
 
-    <!-- 8 · THE FAMILY -->
+    <!-- 9 · THE FAMILY -->
     <section class="screen" id="scr-family" aria-label="The Family" data-title="The Family" tabindex="-1">
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>Who you're looking at
@@ -1914,7 +2045,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       </details>
     </section>
 
-    <!-- 9 · FILES -->
+    <!-- 10 · FILES -->
     <section class="screen" id="scr-files" aria-label="Files" data-title="Files" tabindex="-1">
       <div id="fileList"></div>
       <p class="hint" style="padding:0 4px">A saved file keeps the numbers you ran — amount, rate, term and start date — so the schedule redraws exactly as it was. Nothing here changes a balance.</p>
@@ -2666,9 +2797,17 @@ const state = {
   tripSel:'',            // which trip the screen is looking at
   files:[],              // saved schedules: {id, name, acct, params, summary, savedAt}
   bills:[],              // scheduled due dates: {id, name, date, acct, kind, amount, repeat}
+  tasks:[],              // things to DO about the money, as opposed to money:
+                         // {id, name, due:'YYYY-MM-DD'|'', done, at, doneAt}.
+                         // A task is never a row, never a bill and never an
+                         // amount -- nothing here reaches a balance or a total.
   totalBal:{},           // acctId -> the Total Balance stated by hand on the card.
                          // Only the accounts in TOTAL_BAL_ACCTS carry one; the
                          // Running Balance beside it is derived, never stored.
+  dueDay:{},             // acctId -> the day of the month a card payment is due, 1-31.
+                         // Only the accounts in DUE_DATE_ACCTS carry one. The day is
+                         // stored; the next due date is derived from it every render,
+                         // so it cannot go stale the way a stored date would.
   pend:[],               // Daily Ledger: charges made but not yet posted to any
                          // account -- {id, name, amount, date, acct, at}. Signed
                          // the way the ledger signs: negative is money out.
@@ -4338,7 +4477,9 @@ function ledgerPayload(){
     loans: state.loans,
     files: state.files,
     bills: state.bills,
+    tasks: state.tasks,
     totalBal: state.totalBal,
+    dueDay: state.dueDay,
     pend: state.pend,
     acctEdits: state.acctEdits,
     trips: state.trips,
@@ -4374,7 +4515,30 @@ function applyPayload(data){
   state.loans = data.loans || {};
   state.files = data.files || [];
   state.bills = data.bills || [];
+  /* Shaped on the way in rather than trusted. A task carries no figure,
+     so the only things that can be wrong are a missing name, a due date
+     that is not a date, and a `done` that is not a boolean -- and a task
+     with no name is not a task. */
+  state.tasks = (Array.isArray(data.tasks) ? data.tasks : [])
+    .filter(t => t && String(t.name || '').trim())
+    .map(t => ({
+      id: String(t.id || `T-${Date.now()}-${Math.random().toString(36).slice(2,7)}`),
+      name: String(t.name).trim(),
+      due: toDate(t.due) ? isoOf(toDate(t.due)) : '',
+      done: t.done === true,
+      at: Number(t.at) || 0,
+      doneAt: Number(t.doneAt) || 0,
+    }));
   state.totalBal = (data.totalBal && typeof data.totalBal === 'object') ? data.totalBal : {};
+  /* Guard the range on the way in: a backup written by hand, or by an
+     older build that never held this key, must not seat a 0 or a 47 on
+     a card and hand nextDue an impossible month. */
+  state.dueDay = {};
+  if (data.dueDay && typeof data.dueDay === 'object')
+    Object.keys(data.dueDay).forEach(id => {
+      const v = Math.trunc(Number(data.dueDay[id]));
+      if (v >= 1 && v <= 31) state.dueDay[id] = v;
+    });
   state.pend = (data.pend || []).filter(p => p && typeof p.amount === 'number');
   state.trips = data.trips || [];
   state.tripSel = data.tripSel || '';
@@ -5192,7 +5356,7 @@ function runRestore(file){
        section is enough to call this a backup -- checking only rows,
        balances and bills threw away a taxonomy-only file as junk. */
     const carries = payload && typeof payload === 'object' &&
-      ['rows','balances','opens','bills','pend','totalBal','taxonomy','inUse','trips','files','rules','loans','acctEdits','asins','covered']
+      ['rows','balances','opens','bills','tasks','pend','totalBal','dueDay','taxonomy','inUse','trips','files','rules','loans','acctEdits','asins','covered']
         .some(k => payload[k] && Object.keys(payload[k]).length);
     if (!carries){
       toast('That is not a Thompson Finances backup'); return;
@@ -6015,8 +6179,9 @@ function clearLedger(){
   state.rows = [];
   stmtIds.forEach(id => { delete state.balances[id]; });
   state.imports = [];
-  /* state.opens, state.loans, state.bills, state.rules and state.files
-     are deliberately untouched — all of it was entered by hand. */
+  /* state.opens, state.loans, state.bills, state.tasks, state.rules,
+     state.files, state.totalBal and state.dueDay are deliberately
+     untouched — all of it was entered by hand. */
 
   save(); render();
   const heldBack = [
@@ -6079,6 +6244,11 @@ const TABS = {
   'scr-family':      {color:'#8B3568', icon:
     '<circle cx="9.2" cy="8" r="3.1"/><path d="M3.2 20.4c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/>'
     + '<circle cx="17.4" cy="9.6" r="2.2"/><path d="M16.4 14.9c2.5.1 4.4 2 4.4 4.6"/>'},
+  /* a checklist — what still has to be done about the money */
+  'scr-tasks':       {color:'#B4732B', icon:
+    '<path d="M3.6 6.8 5.3 8.5 8.6 5.2"/><path d="M3.6 12.8 5.3 14.5 8.6 11.2"/>'
+    + '<path d="M3.6 18.8 5.3 20.5 8.6 17.2"/>'
+    + '<path d="M12 7.2h8.4"/><path d="M12 13.2h8.4"/><path d="M12 19.2h8.4"/>'},
   /* four bins — where each dollar gets filed */
   'scr-categories':  {color:'#9A4520', icon:
     '<rect x="3.6" y="3.6" width="7.2" height="7.2" rx="1.8"/>'
@@ -6463,6 +6633,79 @@ function totalBalOf(id){
   return typeof v === 'number' && isFinite(v) ? v : null;
 }
 
+/* ============================================================
+   PAYMENT DUE DATE
+   A revolving card is due on the same day every month. That day is
+   the only thing stored; the next date is derived from it on every
+   render, so the corner of the card is never a stale date waiting to
+   be rolled forward by hand.
+
+   The loans are left out deliberately: a mortgage, a HELOC and a car
+   loan are all on autopay against the checking account and already
+   speak for themselves on the Calendar. These three are the cards a
+   payment has to be pushed at.
+   ============================================================ */
+const DUE_DATE_ACCTS = ['AMEX', 'USAAVISA', 'PenFed'];
+const carriesDue = id => DUE_DATE_ACCTS.includes(id) && Boolean(ACCT[id]);
+
+/** The stated day of the month, or null when none has been picked. */
+function dueDayOf(id){
+  const v = state.dueDay[id];
+  return Number.isInteger(v) && v >= 1 && v <= 31 ? v : null;
+}
+
+/** 1st, 2nd, 3rd, 11th, 21st, 23rd -- the teens are the exception. */
+function ordinalDay(n){
+  const t = n % 100;
+  const s = (t >= 11 && t <= 13) ? 'th'
+    : n % 10 === 1 ? 'st' : n % 10 === 2 ? 'nd' : n % 10 === 3 ? 'rd' : 'th';
+  return `${n}${s}`;
+}
+
+/** The next time this card comes due: the date, and how far off it is.
+
+    A day past the end of a short month is clamped into it -- the 31st
+    falls due on the 30th in April, which is what the issuer does. And
+    the comparison is against the start of today, not the moment: a card
+    due today is due today all day, not overdue from one minute past
+    midnight. Null when no day has been picked. */
+function nextDue(id, from){
+  const day = dueDayOf(id);
+  if (day == null) return null;
+  const today = from || startOfToday();
+  const on = (y, m) => new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate()));
+  let d = on(today.getFullYear(), today.getMonth());
+  if (d < today) d = on(today.getFullYear(), today.getMonth() + 1);
+  const days = Math.round((d - today) / 86400000);
+  return { day, date: d, days,
+           said: days === 0 ? 'due today'
+               : days === 1 ? `${fmtDate(d)} · tomorrow`
+               : `${fmtDate(d)} · in ${days} days` };
+}
+
+/** The corner block: the day as a line of text, with the select over it. */
+function dueCornerHtml(id){
+  const a = ACCT[id];
+  const day = dueDayOf(id);
+  const nx = nextDue(id);
+  const opts = ['<option value="">no due date set</option>']
+    .concat(Array.from({length: 31}, (v, i) => {
+      const n = i + 1;
+      return `<option value="${n}"${day === n ? ' selected' : ''}>due the ${ordinalDay(n)}</option>`;
+    })).join('');
+  const when = nx
+    ? `<span class="card__duewhen ${nx.days === 0 ? 'is-today' : nx.days <= 3 ? 'is-soon' : ''}"
+             aria-hidden="true">${esc(nx.said)}</span>`
+    : `<span class="card__duewhen" aria-hidden="true">tap to set</span>`;
+  return `<div class="card__due">
+    <select class="card__duesel" data-due="${esc(id)}"
+            aria-label="Day of the month the ${esc(a.name)} payment is due">${opts}</select>
+    <span class="card__duetop${day == null ? ' is-unset' : ''}" aria-hidden="true">${
+      day == null ? 'Due date' : `Due the ${esc(ordinalDay(day))}`}</span>
+    ${when}
+  </div>`;
+}
+
 /** Total minus the balance on file. Null until a Total is stated. */
 function cardRunning(id){
   if (!carriesTotal(id)) return null;
@@ -6539,6 +6782,7 @@ function renderCards(){
         })() : ''}
         ${a.side === 'liability' ? `
         <div class="card__acts">
+          ${carriesDue(a.id) ? dueCornerHtml(a.id) : ''}
           <button type="button" class="btn btn--sm card__amort" data-amort="${a.id}"
                   aria-label="Amortization schedule for ${esc(a.name)}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -6603,6 +6847,20 @@ function renderCards(){
       save(); renderCards(); renderCalendar();
     });
     el.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); el.blur(); } });
+  });
+  $$('select[data-due]').forEach(el => {
+    ['click','keydown','keyup','focus'].forEach(ev =>
+      el.addEventListener(ev, e => e.stopPropagation()));
+    el.addEventListener('change', () => {
+      const id = el.dataset.due;
+      const v = Math.trunc(Number(el.value));
+      if (el.value === '' || !(v >= 1 && v <= 31)) delete state.dueDay[id];
+      else state.dueDay[id] = v;
+      save(); renderCards();
+      const nx = nextDue(id);
+      toast(nx ? `${ACCT[id].name} due the ${ordinalDay(nx.day)} — next ${fmtDate(nx.date)}`
+               : `${ACCT[id].name} due date cleared`);
+    });
   });
   $$('.card__amort').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
@@ -6912,6 +7170,7 @@ function deleteAcctEditor(){
   state.bills = state.bills.filter(x => x.acct !== id);
   state.pend = state.pend.filter(x => x.acct !== id);
   delete state.totalBal[id];
+  delete state.dueDay[id];
   state.rules = state.rules.filter(x => x.acct !== id);
   const files = state.files.filter(f => f.acct === id).length;
   state.files = state.files.filter(f => f.acct !== id);
@@ -7752,6 +8011,41 @@ const incomeOnFile = () => state.rows.reduce((t, r) => r.amount > 0 ? t + r.amou
 const outCounts = () => catCounts(state.rows.filter(r => r.amount < 0));
 
 /**
+ * Share of total outflow, per category and per subcategory.
+ *
+ * The denominator here is every dollar that left, which is NOT the
+ * denominator the bars below use -- those are measured against money in,
+ * and are labelled as such. Two figures on one screen with two different
+ * bases would be a trap, so this one is stated as a share of outflow
+ * everywhere it appears and the note under the chart names both totals.
+ *
+ * Shares are of outflow across every row on file, matching outCounts()
+ * exactly: the picker must not count lines one way and weigh them
+ * another. A category with nothing on file gets no entry rather than a
+ * zero, so the row can print an em dash instead of a 0.0% that looks
+ * like a measurement.
+ */
+function outShares(){
+  const cats = new Map(), subs = new Map();
+  let total = 0;
+  state.rows.forEach(r => {
+    if (!(r.amount < 0)) return;
+    const v = -r.amount;
+    total += v;
+    const c = String(r.category || '');
+    cats.set(c, (cats.get(c) || 0) + v);
+    const k = catSubKey(c, r.sub);
+    subs.set(k, (subs.get(k) || 0) + v);
+  });
+  const share = m => {
+    const out = new Map();
+    m.forEach((v, k) => out.set(k, total > 0 ? (v / total) * 100 : null));
+    return out;
+  };
+  return { total, cats: share(cats), subs: share(subs), money: { cats, subs } };
+}
+
+/**
  * The bars the Flow screen draws, with each one's share of income.
  * Returns {bars, income, custom, total, pct} -- total and pct describe
  * the bars actually shown, never some wider figure they don't add up to.
@@ -7785,16 +8079,15 @@ function outflowBars(){
 
 const OUT_MSEL = mselCreate({
   root:'outCatSel', btn:'outCatBtn', label:'outCatLabel', menu:'outCatMenu',
-  q:'outCatQ', none:'outCatNone', list:'outCatList',
+  q:'outCatQ', all:'outCatAll', none:'outCatNone', list:'outCatList',
   sel: outSel,
   counts: outCounts,
+  share: outShares,
   onChange: () => { save(); renderFlow(); },
   clearToast: 'Back to the six biggest outflows',
   emptyLabel: 'The six biggest',
 });
 const initOutflows = () => OUT_MSEL.init();
-
-const pctText = v => v == null ? '—' : (v >= 10 ? v.toFixed(0) : v.toFixed(1)) + '%';
 
 function renderOutflows(){
   const host = $('#topSpend');
@@ -7826,10 +8119,17 @@ function renderOutflows(){
     : `top 6 \u00b7 ${pctText(o.pct)}`;
 
   const note = $('#outNote');
-  if (note) note.textContent = o.income > 0
+  const sh = outShares();
+  /* Two percentages live on this screen against two different bases.
+     Saying both totals out loud is the only thing that keeps them from
+     being read as one figure. */
+  const picker = sh.total > 0
+    ? ` The percentages in the picker are shares of ${money(sh.total)} of total outflow, not of income.`
+    : '';
+  if (note) note.textContent = (o.income > 0
     ? `Shares are measured against ${money(o.income)} of money in across every row on file. `
       + 'Every outflow line counts, transfers and card payments included — pick categories above to leave those out.'
-    : 'No money in on file yet, so there is nothing to measure a share against.';
+    : 'No money in on file yet, so there is nothing to measure a share against.') + picker;
 
   OUT_MSEL.render();
 }
@@ -9621,6 +9921,63 @@ function calForecasts(){
 }
 
 /* ============================================================
+   A CARD COMING DUE
+   Three of the accounts on the Position screen now carry a payment
+   due day, and every one of them carries a balance. Together those
+   are a dated obligation, which is exactly what this screen is for:
+   what is owed, and the day it has to be paid.
+
+   Four decisions worth stating, because each had a plausible
+   alternative:
+
+   The amount is the balance the card itself prints -- balanceOf(),
+   the same call the Position card and the Daily Ledger make. A stated
+   Total Balance is NOT used in its place: the household would then
+   read one figure under Liabilities and a different one on the
+   Calendar for the same debt, which is the thing build 12p was for.
+   Where a Total is stated and disagrees, the row says so in its meta
+   and leaves the arithmetic alone.
+
+   Only the NEXT occurrence is generated, never a monthly series. A
+   bill repeats at a known amount; a card balance is known only today.
+   Rolling today's balance onto March would be inventing a figure. And
+   because the next due date is never more than thirty days out, every
+   card with a day set lands inside the rolling window regardless.
+
+   A card owing nothing draws no line. A due date against a zero
+   balance is a promise to pay nothing.
+
+   A declared bill on the same account stands the card line down.
+   Declared beats inferred everywhere else in this app, and a
+   household that typed 'AMEX payment' onto the calendar has said
+   what it intends to pay; the app must not add its own line beside
+   it and charge the month twice.
+   ============================================================ */
+function cardDueItems(){
+  const today = startOfToday();
+  /* One window wide enough to cover any next-due date. Income lines are
+     left out: a deposit scheduled on a card account is not a payment of
+     it. */
+  const declared = new Set(
+    billsAhead(31).filter(o => o.bill.kind !== 'income').map(o => o.bill.acct));
+  const out = [];
+  DUE_DATE_ACCTS.forEach(id => {
+    if (!carriesDue(id) || declared.has(id)) return;
+    const nx = nextDue(id, today);
+    if (!nx) return;
+    const bal = balanceOf(id);
+    const owed = Math.abs(bal.value);
+    if (!(owed >= 0.01)) return;
+    out.push({ kind:'card', id:'CD-' + id, acct:id,
+               name: `${ACCT[id].name} payment`,
+               amount: -owed,                 /* signed as the ledger signs */
+               date: nx.date, days: nx.days, day: nx.day,
+               balance: bal.value, source: bal.source, total: totalBalOf(id) });
+  });
+  return out.sort((a,b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
+}
+
+/* ============================================================
    ONE LIST, ONE TOTAL
    Every surface on this screen -- the month figures, the selected
    day, the rolling window -- reads the same unified list, so a
@@ -9630,23 +9987,31 @@ function billItem(o){
   return { kind:'bill', id:o.bill.id, date:o.date, name:o.bill.name,
            amount: billSigned(o.bill), acct:o.bill.acct, repeat:o.bill.repeat };
 }
+/* Within one day: what was declared, then what is coming due, then
+   what is only projected. A two-way ternary was fine for two kinds and
+   is not a total order for three -- with a card in the mix it could
+   report a < b and b < a. Rank them instead. */
+const KIND_RANK = { bill:0, card:1, proj:2 };
 const calSort = (a,b) => a.date - b.date
-  || (a.kind === b.kind ? 0 : a.kind === 'bill' ? -1 : 1)
+  || ((KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9))
   || String(a.name).localeCompare(String(b.name));
 
-/** Everything landing inside one calendar month, promises and projections alike. */
-function calItems(y, m, fx){
+/** Everything landing inside one calendar month: promises, cards and projections. */
+function calItems(y, m, fx, cds){
   const proj = (fx || calForecasts())
     .filter(f => f.date.getFullYear() === y && f.date.getMonth() === m);
-  return billOccurrences(y, m).map(billItem).concat(proj).sort(calSort);
+  const cards = (cds || cardDueItems())
+    .filter(c => c.date.getFullYear() === y && c.date.getMonth() === m);
+  return billOccurrences(y, m).map(billItem).concat(cards, proj).sort(calSort);
 }
 
 /** Everything inside a rolling window from today. */
-function calAheadItems(days = 30, fx){
+function calAheadItems(days = 30, fx, cds){
   const from = startOfToday();
   const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
   const proj = (fx || calForecasts()).filter(f => f.date >= from && f.date <= to);
-  return billsAhead(days).map(billItem).concat(proj).sort(calSort);
+  const cards = (cds || cardDueItems()).filter(c => c.date >= from && c.date <= to);
+  return billsAhead(days).map(billItem).concat(cards, proj).sort(calSort);
 }
 
 /* ============================================================
@@ -9669,10 +10034,12 @@ function calCompact(n){
 
 /** The only place a calendar figure is ever produced. */
 function calTotals(items){
-  const t = { out:0, in:0, net:0, n:items.length, bills:0, projs:0 };
+  const t = { out:0, in:0, net:0, n:items.length, bills:0, cards:0, projs:0 };
   items.forEach(it => {
     if (it.amount < 0) t.out += Math.abs(it.amount); else t.in += it.amount;
-    if (it.kind === 'bill') t.bills++; else t.projs++;
+    if (it.kind === 'bill') t.bills++;
+    else if (it.kind === 'card') t.cards++;
+    else t.projs++;
   });
   t.net = t.in - t.out;
   return t;
@@ -9689,9 +10056,29 @@ function projRow(f, showDate){
   </li>`;
 }
 
-/** One renderer for both kinds, so a list never sorts itself into two piles. */
-const calRow = (it, showDate) => it.kind === 'bill'
-  ? billRow(it, showDate)
+/** A card coming due. No delete: clearing the due day on the Position
+    card is what removes this line, and saying so beats a button that
+    would look like it dismissed the debt. */
+function cardDueRow(it, showDate){
+  const when = showDate ? fmtDate(it.date) + ' \u00b7 ' : '';
+  const soon = it.days === 0 ? 'due today'
+    : it.days === 1 ? 'due tomorrow'
+    : `in ${it.days} days`;
+  /* Only worth printing when the household stated a Total and it does
+     not agree with the balance on file -- otherwise it is the same
+     figure said twice. */
+  const stated = it.total != null && Math.abs(it.total - Math.abs(it.balance)) >= 0.01
+    ? ` \u00b7 total stated ${moneyShort(it.total)}` : '';
+  return `<li class="bill bill--card">
+    <span class="bill__name">${esc(it.name)}</span>
+    <span class="bill__amt" style="color:var(--owe)">\u2212${money(Math.abs(it.amount))}</span>
+    <span class="bill__meta">${when}${esc(it.acct)} \u00b7 balance owed \u00b7 ${soon}${stated}</span>
+  </li>`;
+}
+
+/** One renderer for every kind, so a list never sorts itself into piles. */
+const calRow = (it, showDate) => it.kind === 'bill' ? billRow(it, showDate)
+  : it.kind === 'card' ? cardDueRow(it, showDate)
   : projRow(it, showDate);
 
 function billRow(it, showDate){
@@ -9713,6 +10100,171 @@ function wireBillDeletes(){
     save(); renderCalendar(); renderBudget();
     toast(b ? `${b.name} removed from the calendar` : 'Removed from the calendar');
   }));
+}
+
+/* ============================================================
+   TASKS
+   The only screen in this app that is not about a number. A task is
+   a thing the household has to DO about its money -- move a sum,
+   pull a statement, call an issuer -- and the app's job is to hold
+   it, date it if it has one, and get out of the way.
+
+   Two decisions worth stating. A task carries no amount and no
+   account, so it can never be mistaken for a bill: nothing here is
+   summed, projected, committed against a budget or drawn on the
+   Calendar. And the due date is optional, because most of what has
+   to be done has no deadline attached and forcing one would make
+   every undated task look overdue.
+   ============================================================ */
+
+/** What a task's due date means today: how far off, and how to say it.
+    Null when the task carries no date, which is not the same as a date
+    that has passed and must not be coloured like one. */
+function taskDue(t, from){
+  const d = toDate(t && t.due);
+  if (!d) return null;
+  const today = from || startOfToday();
+  const at = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const days = Math.round((at - today) / 86400000);
+  const said = days === 0 ? 'due today'
+    : days === 1 ? `${fmtDate(at)} \u00b7 tomorrow`
+    : days > 1   ? `${fmtDate(at)} \u00b7 in ${days} days`
+    : days === -1 ? `${fmtDate(at)} \u00b7 a day late`
+    : `${fmtDate(at)} \u00b7 ${-days} days late`;
+  /* Exactly one tone per task, so the class cannot say late and soon
+     at once. Late outranks today outranks soon. */
+  const tone = days < 0 ? 'is-late' : days === 0 ? 'is-today' : days <= 3 ? 'is-soon' : '';
+  return { date: at, days, said, tone, late: days < 0 };
+}
+
+/** Open work, soonest first. An undated task is not urgent and is not
+    overdue; it waits at the bottom in the order it was written. */
+function openTasks(from){
+  return state.tasks.filter(t => !t.done).slice().sort((a, b) => {
+    const da = taskDue(a, from), db = taskDue(b, from);
+    if (da && db) return da.days - db.days || (a.at || 0) - (b.at || 0);
+    if (da) return -1;
+    if (db) return 1;
+    return (a.at || 0) - (b.at || 0);
+  });
+}
+
+/** Finished work, most recently finished first. */
+function doneTasks(){
+  return state.tasks.filter(t => t.done).slice()
+    .sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+}
+
+function taskRow(t, from){
+  const d = taskDue(t, from);
+  const late = Boolean(d && d.late && !t.done);
+  const said = d ? d.said : 'no due date';
+  /* A finished task's date is history, so it keeps the words and drops
+     the alarm -- a red "6 days late" on something already done is a
+     scolding for work that got finished. */
+  const tone = t.done ? '' : (d ? d.tone : '');
+  return `<li class="${t.done ? 'task--done' : ''}${late ? ' task--late' : ''}">
+    <input class="task__box" type="checkbox" data-task="${esc(t.id)}"${t.done ? ' checked' : ''}
+           aria-label="${t.done ? 'Reopen' : 'Finish'} ${esc(t.name)}">
+    <span class="task__nm">${esc(t.name)}</span>
+    <span class="task__due ${tone}">${esc(said)}</span>
+    <button class="task__del" type="button" data-taskdel="${esc(t.id)}"
+            aria-label="Delete ${esc(t.name)}">&#10005;</button>
+  </li>`;
+}
+
+function renderTasks(){
+  const host = $('#taskOpen');
+  if (!host) return;
+  const from = startOfToday();
+  const open = openTasks(from);
+  const done = doneTasks();
+
+  host.innerHTML = open.length
+    ? open.map(t => taskRow(t, from)).join('')
+    : '<li class="empty" style="padding:16px 6px">Nothing to do. Add the first task below.</li>';
+
+  const dhost = $('#taskDone');
+  if (dhost) dhost.innerHTML = done.length
+    ? done.map(t => taskRow(t, from)).join('')
+    : '<li class="empty" style="padding:16px 6px">Nothing finished yet.</li>';
+
+  const clear = $('#taskClear');
+  if (clear) clear.hidden = !done.length;
+
+  /* The tag is the only part of this screen most glances read, so the
+     overdue count leads: how many are open matters less than whether
+     any of them should already have been done. */
+  const late = open.filter(t => { const d = taskDue(t, from); return d && d.late; }).length;
+  const tag = $('#taskTag');
+  if (tag){
+    tag.textContent = !open.length ? 'nothing open'
+      : late ? `${late} overdue \u00b7 ${open.length} open`
+      : `${open.length} open`;
+    tag.classList.toggle('tone-owe', late > 0);
+  }
+  const dtag = $('#taskDoneTag');
+  if (dtag) dtag.textContent = done.length
+    ? `${done.length} done` : 'nothing done';
+}
+
+function initTasks(){
+  const add = $('#taskAdd');
+  if (!add) return;
+
+  const commit = () => {
+    const name = $('#taskName').value.trim();
+    if (!name){ toast('Give the task a name'); $('#taskName').focus(); return; }
+    const raw = $('#taskDue').value;
+    const d = raw ? toDate(raw) : null;
+    if (raw && !d){ toast('That is not a date'); $('#taskDue').focus(); return; }
+    state.tasks.push({
+      id: `T-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      name, due: d ? isoOf(d) : '', done: false, at: Date.now(), doneAt: 0,
+    });
+    $('#taskName').value = ''; $('#taskDue').value = '';
+    save(); renderTasks(); syncFoldbar('scr-tasks');
+    const info = d ? taskDue({ due: isoOf(d) }) : null;
+    toast(info ? `Added \u2014 ${info.said}` : 'Added to the task list');
+    $('#taskName').focus();
+  };
+  add.addEventListener('click', commit);
+  $('#taskName').addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); commit(); }
+  });
+
+  /* Delegated, because both lists are rewritten on every change and a
+     handler bound to a row would not survive its own tick. */
+  ['#taskOpen', '#taskDone'].forEach(sel => {
+    const list = $(sel);
+    if (!list) return;
+    list.addEventListener('change', e => {
+      const box = e.target.closest('[data-task]');
+      if (!box) return;
+      const t = state.tasks.find(x => x.id === box.dataset.task);
+      if (!t) return;
+      t.done = box.checked;
+      t.doneAt = box.checked ? Date.now() : 0;
+      save(); renderTasks(); syncFoldbar('scr-tasks');
+      toast(t.done ? `${t.name} \u2014 done` : `${t.name} back on the list`);
+    });
+    list.addEventListener('click', e => {
+      const del = e.target.closest('[data-taskdel]');
+      if (!del) return;
+      const t = state.tasks.find(x => x.id === del.dataset.taskdel);
+      state.tasks = state.tasks.filter(x => x.id !== del.dataset.taskdel);
+      save(); renderTasks(); syncFoldbar('scr-tasks');
+      toast(t ? `${t.name} deleted` : 'Task deleted');
+    });
+  });
+
+  $('#taskClear').addEventListener('click', () => {
+    const n = doneTasks().length;
+    if (!n) return;
+    state.tasks = state.tasks.filter(t => !t.done);
+    save(); renderTasks(); syncFoldbar('scr-tasks');
+    toast(`${n} finished task${n === 1 ? '' : 's'} cleared`);
+  });
 }
 
 /* ============================================================
@@ -9752,14 +10304,18 @@ const pendFor = id => state.pend
 
 /** Posted, pending and the figure the account will read once it lands.
 
-    A card carrying a stated Total Balance leans on its Running Balance
-    instead of the posted figure -- AMEX is the case this was built for:
-    the household states what the card says is owed in full, the card
-    derives Running as Total minus the balance on file, and the Daily
-    Ledger adds the pending charges to that rather than to the posted
-    number. Until a Total Balance is typed there is nothing to lean on,
-    so the account falls back to the posted figure and behaves exactly
-    as every other account does.
+    Every row starts from the account's balance -- balanceOf(), the same
+    call and the same figure the card on the Position screen prints. It
+    used to start from Running Balance instead whenever a card carried a
+    stated Total, and AMEX is the case that exposed it: Running Balance
+    is Total minus the balance already on file, which is the gap between
+    what the issuer states and what the ledger has seen. That is a
+    reconciliation figure, not a balance, and a line that says "will
+    owe" has to lean on a balance -- so the Calendar was quoting one
+    number for American Express and Liabilities another.
+
+    A stated Total still rides along in `total`, so the meta can print
+    it as context beside the figure without it moving the figure.
 
     Pending charges are stored the way the ledger signs them -- negative
     is money out -- so a liability subtracts the sum, which is what adds
@@ -9769,13 +10325,14 @@ function runningBalance(id){
   if (!acct || acct.feed) return null;   /* a feed has no balance to run */
   const posted = balanceOf(id);
   const cr = cardRunning(id);
-  const base = cr ? cr.running : posted.value;
+  const base = posted.value;
   const held = pendFor(id);
   const move = held.reduce((s,p) => s + p.amount, 0);
   const running = acct.side === 'liability' ? base - move : base + move;
   return { id, name: acct.name, side: acct.side, posted: posted.value,
-           source: posted.source, base, fromCard: Boolean(cr),
-           total: cr ? cr.total : null, move, running, n: held.length };
+           source: posted.source, base,
+           total: cr ? cr.total : null,
+           move, running, n: held.length };
 }
 
 /** One line for a feed: what it is holding, and no balance claim.
@@ -9808,8 +10365,8 @@ function renderDaily(){
   host.innerHTML = ids.length ? ids.map(id => {
     const b = runningBalance(id);
     const owed = b.side === 'liability';
-    const from = b.fromCard
-      ? `running ${moneyShort(b.base)} · total ${moneyShort(b.total)}`
+    const from = b.total != null
+      ? `posted ${moneyShort(b.posted)} · stated total ${moneyShort(b.total)}`
       : `posted ${moneyShort(b.posted)}`;
     /* Math.abs here read '3 pending $120.00' whether that was money
        leaving or arriving. With both directions on the register the
@@ -9905,9 +10462,12 @@ function renderCalendar(){
 
   renderDaily();
 
-  /* one pass of the forecast feeds every surface below */
+  /* one pass of the forecast and of the cards coming due feeds every
+     surface below -- the grid, the day list, the month figures and the
+     rolling window all read the same lines */
   const fx = calForecasts();
-  const items = calItems(y, m, fx);
+  const cds = cardDueItems();
+  const items = calItems(y, m, fx, cds);
 
   /* the grid */
   const dim = new Date(y, m+1, 0).getDate();
@@ -9923,14 +10483,23 @@ function renderCalendar(){
     const inMonth = d.getMonth() === m;
     const day = inMonth ? (byDay.get(iso) || []) : [];
     const bills = day.filter(it => it.kind === 'bill');
+    const cards = day.filter(it => it.kind === 'card');
     const proj  = day.filter(it => it.kind === 'proj');
-    const pips = bills.slice(0,3).map(it =>
-      `<i style="background:${it.amount > 0 ? 'var(--asset)' : 'var(--owe)'}"></i>`).join('')
-      + proj.slice(0, Math.max(0, 4 - Math.min(bills.length, 3))).map(() =>
-        `<i class="pip--proj"></i>`).join('');
+    /* Four pips fit. Build them in order of authority and cut the tail,
+       rather than arithmetic on how many slots each kind may take -- the
+       old expression already had to spell out one such budget and a
+       third kind would have needed two. */
+    const pips = [
+      ...bills.slice(0,3).map(it =>
+        `<i style="background:${it.amount > 0 ? 'var(--asset)' : 'var(--owe)'}"></i>`),
+      ...cards.map(() => `<i class="pip--card"></i>`),
+      ...proj.map(() => `<i class="pip--proj"></i>`),
+    ].slice(0,4).join('');
     const cls = ['cal__day'];
     if (!inMonth) cls.push('cal__day--out');
-    if (bills.length) cls.push('cal__day--has');
+    /* A card coming due is a dated obligation, so the cell reads as a
+       day with something on it, not as a projection. */
+    if (bills.length || cards.length) cls.push('cal__day--has');
     else if (proj.length) cls.push('cal__day--proj');
     if (iso === todayIso) cls.push('cal__day--today');
     if (iso === state.cal.sel) cls.push('cal__day--sel');
@@ -9944,7 +10513,9 @@ function renderCalendar(){
       : '';
     const said = dt
       ? `, ${dt.out ? `${money(dt.out)} out` : ''}${dt.out && dt.in ? ' and ' : ''}${dt.in ? `${money(dt.in)} in` : ''}`
-        + `${dt.bills ? `, ${dt.bills} due` : ''}${dt.projs ? `, ${dt.projs} projected` : ''}`
+        + `${dt.bills ? `, ${dt.bills} due` : ''}`
+        + `${dt.cards ? `, ${dt.cards} card payment${dt.cards === 1 ? '' : 's'}` : ''}`
+        + `${dt.projs ? `, ${dt.projs} projected` : ''}`
       : '';
     html += `<button type="button" class="${cls.join(' ')}" data-day="${iso}"
       aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${said}">
@@ -9970,7 +10541,9 @@ function renderCalendar(){
     ? `${mtot.net >= 0 ? '+' : '\u2212'}${moneyShort(Math.abs(mtot.net))} net`
     : 'nothing scheduled';
   $('#calMonthNote').textContent = mtot.n
-    ? `${mtot.n} line${mtot.n === 1 ? '' : 's'} — ${mtot.bills} scheduled, ${mtot.projs} projected`
+    ? `${mtot.n} line${mtot.n === 1 ? '' : 's'} — ${mtot.bills} scheduled`
+      + (mtot.cards ? `, ${mtot.cards} card payment${mtot.cards === 1 ? '' : 's'}` : '')
+      + `, ${mtot.projs} projected`
     : 'Nothing scheduled or projected in this month.';
 
   /* the selected day */
@@ -9989,10 +10562,15 @@ function renderCalendar(){
     : `<li class="empty" style="padding:14px 6px">${sel ? 'Nothing due on this day.' : 'Tap a date above to see what lands on it.'}</li>`;
 
   /* the rolling window */
-  const ahead = calAheadItems(30, fx);
+  const ahead = calAheadItems(30, fx, cds);
   const atot = calTotals(ahead);
+  /* The card payments are already inside `out` -- they are lines in the
+     same list, summed by the same function. The count is called out
+     because a figure that jumps by five figures the day a due date is
+     set needs to say what put it there. */
   $('#calUpNote').textContent = atot.n
     ? `${moneyShort(atot.out)} out${atot.in ? ` \u00b7 ${moneyShort(atot.in)} in` : ''}`
+      + (atot.cards ? ` \u00b7 ${atot.cards} card${atot.cards === 1 ? '' : 's'}` : '')
     : '';
   $('#calUpcoming').innerHTML = atot.n
     ? ahead.map(it => calRow(it, true)).join('')
@@ -10024,6 +10602,13 @@ function catCounts(rows){
   return { cats, subs };
 }
 
+/** A percentage as it is printed anywhere in the app: one decimal
+    under ten, none at or above it, an em dash for nothing to measure.
+    It sits here rather than beside the Outflows chart because the
+    category picker prints it too, and the picker is built before the
+    chart is. */
+const pctText = v => v == null ? '\u2014' : (v >= 10 ? v.toFixed(0) : v.toFixed(1)) + '%';
+
 /** Everything a selection covers, category first: {cats, subs}. */
 function selCount(s){ return s.cats.length + s.subs.length; }
 
@@ -10043,8 +10628,21 @@ function selMatch(s, r){
 const MSEL_CARET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
   + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
 
-function mselListHtml({ sel, counts, q, open, tax, staged }){
+function mselListHtml({ sel, counts, q, open, tax, staged, share }){
   const wait = staged || new Set();
+  /* One optional column. Without a share table this returns '' and the
+     row is byte-for-byte what it was, which is what keeps the Calendar
+     picker and the catalog popover out of this change. */
+  const pctCell = (m, k) => {
+    if (!share) return '';
+    const v = m.get(k);
+    return `<span class="msel__pct${v == null ? ' is-none' : ''}">${pctText(v)}</span>`;
+  };
+  const pctSaid = (m, k) => {
+    if (!share) return '';
+    const v = m.get(k);
+    return v == null ? ', no outflow on file' : `, ${pctText(v)} of outflow`;
+  };
   const coll = new Intl.Collator('en', { numeric:true, sensitivity:'base' });
   const html = Object.keys(tax).sort(coll.compare).map(c => {
     const allSubs = (tax[c] || []).slice().sort(coll.compare);
@@ -10063,8 +10661,9 @@ function mselListHtml({ sel, counts, q, open, tax, staged }){
       const sn = counts.subs.get(k) || 0;
       return `<label class="msel__row msel__row--sub${carried ? ' msel__row--on' : ''}${held ? ' msel__row--pending' : ''}">
         <input type="checkbox" data-mselsub="${esc(k)}"${carried || held ? ' checked' : ''}${catOn ? ' disabled' : ''}
-               aria-label="${esc(x)}">
+               aria-label="${esc(x)}${esc(pctSaid(share ? share.subs : null, k))}">
         <span class="msel__nm">${esc(x)}</span>
+        ${pctCell(share ? share.subs : null, k)}
         <span class="msel__n">${sn}</span>
       </label>`;
     }).join('');
@@ -10075,8 +10674,10 @@ function mselListHtml({ sel, counts, q, open, tax, staged }){
       : `Tick a subcategory of ${c} first`;
     return `<div class="msel__cat${isSubOpen ? ' is-open' : ''}" data-cat="${esc(c)}">
       <div class="msel__row${catOn ? ' msel__row--on' : ''}">
-        <input type="checkbox" data-mselcat="${esc(c)}"${catOn ? ' checked' : ''} aria-label="${esc(c)}">
+        <input type="checkbox" data-mselcat="${esc(c)}"${catOn ? ' checked' : ''}
+               aria-label="${esc(c)}${esc(pctSaid(share ? share.cats : null, c))}">
         <span class="msel__nm">${esc(c)}</span>
+        ${pctCell(share ? share.cats : null, c)}
         <span class="msel__n">${n} line${n === 1 ? '' : 's'}</span>
         ${isSubOpen ? `<button class="msel__more${pending ? ' ready' : ''}" type="button"
                 data-mseladd="${esc(c)}"${pending ? '' : ' disabled'}
@@ -10170,6 +10771,7 @@ function mselCreate(cfg){
     list.innerHTML = mselListHtml({
       sel: cfg.sel(),
       counts: cfg.counts ? cfg.counts() : catCounts(),
+      share: cfg.share ? cfg.share() : null,
       q: norm((el('q') && el('q').value) || ''),
       open,
       staged,
@@ -10177,10 +10779,64 @@ function mselCreate(cfg){
     });
   }
 
+  /**
+   * Take everything the list is currently showing.
+   *
+   * It mirrors the visible rows rather than the whole taxonomy, because
+   * the search box sits inches away and "All" under a search that has
+   * narrowed the list to four rows has to mean those four. The rule is
+   * the same one mselListHtml draws by: a category whose own name hits
+   * the query is taken whole, and a category that is only on screen
+   * because some of its subcategories matched gives up exactly those
+   * subcategories. With the box empty every category hits, which is the
+   * plain reading of the word.
+   *
+   * Subcategories are added outright here, not staged. Staging exists so
+   * a handful of ticks can be carried across together by the + on the
+   * category row; a button that says All has already been pressed once
+   * and should not need pressing again per category.
+   *
+   * Returns how many were newly added, so the toast can tell the
+   * difference between having done something and having done nothing.
+   */
+  function takeAll(){
+    const s = cfg.sel();
+    const q = norm((el('q') && el('q').value) || '');
+    const tax = cfg.tax ? cfg.tax() : taxo();
+    let added = 0;
+    Object.keys(tax).forEach(c => {
+      if (!q || norm(c).includes(q)){
+        if (!s.cats.includes(c)){ s.cats.push(c); added++; }
+        /* a whole category swallows its own subcategories, carried or waiting */
+        s.subs = s.subs.filter(k => k.split(CATSUB_SEP)[0] !== c);
+        [...staged].forEach(k => { if (k.split(CATSUB_SEP)[0] === c) staged.delete(k); });
+        return;
+      }
+      if (s.cats.includes(c)) return;          /* already covered whole */
+      (tax[c] || []).forEach(x => {
+        if (!norm(x).includes(q)) return;
+        const k = catSubKey(c, x);
+        if (!s.subs.includes(k)){ s.subs.push(k); added++; }
+        staged.delete(k);
+      });
+    });
+    return added;
+  }
+
   function init(){
     if (!el('btn')) return;
     el('btn').addEventListener('click', () => setMenu(!isOpen()));
     el('q').addEventListener('input', render);
+    if (el('all')) el('all').addEventListener('click', () => {
+      const q = norm((el('q') && el('q').value) || '');
+      const added = takeAll();
+      if (!added){ toast('Everything shown is already picked'); return; }
+      cfg.onChange();
+      const n = selCount(cfg.sel());
+      toast(q
+        ? `${added} added \u2014 ${n} now picked`
+        : `All ${n} categories picked`);
+    });
     el('none').addEventListener('click', () => {
       const s = cfg.sel();
       s.cats = []; s.subs = [];
@@ -10552,7 +11208,7 @@ function initSchemaJump(){
   renderSchemaDetail();
 }
 
-function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTrip(); renderFamily(); renderTable(); renderCategories(); renderFiles(); renderInstrument(); }
+function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTasks(); renderTrip(); renderFamily(); renderTable(); renderCategories(); renderFiles(); renderInstrument(); }
 
 /* ---------- log + toast ---------- */
 function logLine(text, kind='ok'){
@@ -10839,7 +11495,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-12o';
+const BUILD = '2026-08-12u';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -11143,6 +11799,7 @@ function wire(){
   initSchemaJump();
   initRuleForm();
   initCalendar();
+  initTasks();
   initOutflows();
   initLedgerRotation();
   initAmort();
