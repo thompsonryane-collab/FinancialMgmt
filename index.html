@@ -1060,6 +1060,21 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .switch{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);margin-top:4px;min-height:44px}
 .switch input{width:18px;height:18px;accent-color:var(--accent)}
 
+/* A backup falling due is a quiet fact, not an alarm: the icon grows a
+   dot and says so on tap. Nothing blocks, nothing interrupts. */
+.tb-ico{position:relative}
+.tb-ico.is-due::after{content:'';position:absolute;top:-2px;right:-2px;width:9px;height:9px;
+  border-radius:50%;background:var(--accent);border:1.5px solid var(--bar);box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+.bk-line{display:flex;justify-content:space-between;gap:12px;font-size:13px;
+  padding:7px 0;border-bottom:1px solid var(--rule)}
+.bk-line:last-child{border-bottom:0}
+.bk-line .k{color:var(--muted)}
+.bk-line .v{font-family:var(--data);text-align:right}
+.bk-box{border:1px solid var(--rule);border-radius:12px;padding:4px 12px;margin-top:14px;background:var(--ink)}
+.bk-every{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13.5px;color:var(--muted)}
+.bk-every .select{flex:0 0 auto;width:auto;min-width:132px}
+.bk-every[hidden]{display:none}
+
 .toast{position:fixed;left:50%;bottom:calc(var(--sab) + 52px);transform:translate(-50%,16px);z-index:80;
   background:var(--rise);border:1px solid var(--rule);border-radius:12px;padding:10px 16px;font-size:13.5px;
   opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:var(--shadow);max-width:88vw;text-align:center}
@@ -2270,6 +2285,46 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <button class="btn" id="reportDownload" type="button">Download</button>
       <button class="btn" id="reportSave" type="button">Save to Files</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ BACKUP ============ -->
+<div class="modal" id="backupModal" hidden role="dialog" aria-modal="true" aria-labelledby="bkTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="bkX" type="button" aria-label="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></button>
+    <p class="eyebrow">Backup</p>
+    <h2 id="bkTitle">The whole ledger, as one file</h2>
+
+    <div class="bk-box">
+      <div class="bk-line"><span class="k">On file</span><span class="v" id="bkRows">—</span></div>
+      <div class="bk-line"><span class="k">Last written</span><span class="v" id="bkLast">—</span></div>
+      <div class="bk-line" id="bkNextRow" hidden><span class="k">Next due</span><span class="v" id="bkNext">—</span></div>
+    </div>
+
+    <button class="btn btn--primary" id="bkNow" type="button"
+            style="width:100%;margin-top:14px">Back up now</button>
+
+    <div class="bk-box">
+      <label class="switch"><input type="checkbox" id="bkAuto"> Automatic backup</label>
+      <div class="bk-every" id="bkEveryRow" hidden>
+        <label for="bkMins">Every</label>
+        <select class="select" id="bkMins">
+          <option value="5">5 minutes</option>
+          <option value="10">10 minutes</option>
+          <option value="15" selected>15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="60">1 hour</option>
+          <option value="120">2 hours</option>
+          <option value="360">6 hours</option>
+        </select>
+      </div>
+      <label class="switch"><input type="checkbox" id="bkReplace" checked> Replace the same file each time</label>
+      <p class="hint" id="bkReplaceHint" style="margin:0 0 10px"></p>
+    </div>
+
+    <p class="hint" id="bkNote" style="margin-top:12px"></p>
+    <button class="btn" id="bkSnapRestore" type="button" style="width:100%;margin-top:10px" hidden></button>
   </div>
 </div>
 
@@ -4816,10 +4871,16 @@ function offNote(f){
 function runBackup(){
   const wrap = { app:'thompson-finances', version:1, build:BUILD,
                  savedAt:new Date().toISOString(), payload: ledgerPayload() };
-  const name = 'Thompson-Backup-' + isoOf(new Date()) + '.json';
+  const name = bkFileName();
   const blob = new Blob([JSON.stringify(wrap)], { type:'application/json' });
   const file = new File([blob], name, { type:'application/json' });
   const done = () => {
+    /* The clock restarts from a file that actually got written, never
+       from the attempt -- a cancelled share sheet leaves the copy owed. */
+    bkPref.lastAt = Date.now(); bkSavePref();
+    bkDue = false; bkPaint();
+    bkSnapshot();
+    if (!$('#backupModal').hidden) closeBackup();
     const n = state.rows.length;
     const f = filedTally();
     logLine(`Backup written — ${n.toLocaleString()} row${n === 1 ? '' : 's'}, `
@@ -4834,6 +4895,226 @@ function runBackup(){
     return;
   }
   downloadBlob(blob, name); done();
+}
+
+/* ============================================================
+   AUTOMATIC BACKUP — a clock, and an honest limit
+
+   The ledger is already saved to the phone on every change. What a
+   backup adds is a copy that survives the phone: delete the Home
+   Screen icon and the storage container goes with it, and only a
+   file in iCloud Drive brings the household back.
+
+   So the icon opens this sheet rather than firing a download. One
+   button still writes the file by hand. Under it, a clock: switch
+   automatic backup on, choose an interval, and the app watches it.
+
+   The limit is worth stating plainly, because a scheduler that
+   silently does nothing is worse than none. iOS will not let a page
+   hand a file to the share sheet on its own -- writing a file needs
+   a tap, every time, by rule. So when the interval comes round the
+   app does the two things it CAN do unattended: it writes a full
+   snapshot into the phone's own storage, separate from the live
+   ledger, which is what a bad import or a mistaken clear needs; and
+   it puts a dot on the backup icon. The dot means a file copy is
+   owed. One tap on the icon, one on the button, and it is written.
+   Nothing fails quietly and nothing interrupts the household
+   mid-sentence to demand a share sheet.
+
+   The schedule lives outside the ledger payload on purpose. Restore
+   a backup from last week and the schedule should not come back with
+   it -- the clock belongs to the phone, not to the data.
+   ============================================================ */
+const BK_PREF_KEY = 'thompson:backup:pref:v1';
+const BK_SNAP_KEY = 'thompson:snapshot:v1';
+const BK_MINS = [5, 10, 15, 30, 60, 120, 360];
+
+let bkPref = { on:false, mins:15, replace:true, lastAt:0 };
+let bkTimer = null, bkDue = false, bkSnapAt = 0, bkSnapRows = 0;
+
+function bkLoadPref(){
+  try {
+    const raw = localStorage.getItem(BK_PREF_KEY);
+    if (raw){
+      const p = JSON.parse(raw);
+      bkPref = {
+        on: Boolean(p.on),
+        mins: BK_MINS.includes(Number(p.mins)) ? Number(p.mins) : 15,
+        replace: p.replace !== false,
+        lastAt: Number(p.lastAt) || 0,
+      };
+    }
+  } catch(_){}
+  try {
+    const s = JSON.parse(localStorage.getItem(BK_SNAP_KEY) || 'null');
+    if (s && s.at){ bkSnapAt = s.at; bkSnapRows = s.rows || 0; }
+  } catch(_){}
+}
+function bkSavePref(){
+  try { localStorage.setItem(BK_PREF_KEY, JSON.stringify(bkPref)); } catch(_){}
+}
+
+/* The file's name IS the replace switch. iOS Files overwrites a file
+   saved under a name already in the folder and asks first; a dated
+   name can only ever pile up beside the last one. */
+function bkFileName(){
+  return bkPref.replace ? 'Thompson-Backup.json'
+                        : 'Thompson-Backup-' + isoOf(new Date()) + '.json';
+}
+
+function bkWrap(){
+  return { app:'thompson-finances', version:1, build:BUILD,
+           savedAt:new Date().toISOString(), payload: ledgerPayload() };
+}
+
+/* Age in the words a person would use, not a timestamp to decode. */
+function bkAgo(at){
+  if (!at) return 'never';
+  const s = Math.max(0, Math.round((Date.now() - at) / 1000));
+  if (s < 60) return 'just now';
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+function bkIn(ms){
+  if (ms <= 0) return 'now';
+  const m = Math.round(ms / 60000);
+  if (m < 1) return 'in under a minute';
+  if (m < 60) return `in ${m} minute${m === 1 ? '' : 's'}`;
+  const h = Math.round(m / 60);
+  return `in ${h} hour${h === 1 ? '' : 's'}`;
+}
+
+/* The snapshot: a second copy on the phone, kept one deep. It answers
+   the everyday accident -- an import that went wrong, a clear that
+   should not have happened -- without a file or a tap. It cannot
+   answer the deleted icon, which is what the file is for. */
+function bkSnapshot(){
+  try {
+    const body = JSON.stringify({ at: Date.now(), rows: state.rows.length, wrap: bkWrap() });
+    localStorage.setItem(BK_SNAP_KEY, body);
+    bkSnapAt = Date.now(); bkSnapRows = state.rows.length;
+    return true;
+  } catch(_){
+    /* out of room: the file copy is still owed, and now more than ever */
+    return false;
+  }
+}
+
+function bkRestoreSnapshot(){
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(BK_SNAP_KEY) || 'null'); } catch(_){}
+  if (!s || !s.wrap || !s.wrap.payload){ toast('No snapshot on the phone'); return; }
+  applyPayload(s.wrap.payload);
+  applyRules();
+  save(); render();
+  closeBackup();
+  logLine(`Snapshot restored — ${state.rows.length.toLocaleString()} rows as of ${bkAgo(s.at)}`, 'ok');
+  toast('Snapshot restored');
+}
+
+/* Mark the file copy as owed and say so once, quietly. */
+function bkMarkDue(snapped){
+  bkDue = true;
+  bkPaint();
+  toast(snapped ? 'Snapshot taken — a file copy is due' : 'A backup file is due');
+}
+
+function bkTick(){
+  if (!bkPref.on) return;
+  const due = Date.now() - (bkPref.lastAt || 0) >= bkPref.mins * 60000;
+  if (!due || bkDue) return;
+  bkMarkDue(bkSnapshot());
+}
+
+/* One timer, rebuilt whenever the schedule changes. It runs on a
+   minute so a phone that slept through the interval catches up on
+   the first wake rather than waiting out a whole second interval. */
+function bkArm(){
+  if (bkTimer){ clearInterval(bkTimer); bkTimer = null; }
+  bkPaint();
+  if (!bkPref.on) return;
+  if (!bkPref.lastAt) bkPref.lastAt = Date.now();
+  bkTimer = setInterval(bkTick, 60000);
+  bkTick();
+}
+
+function bkPaint(){
+  const btn = $('#backupBtn');
+  if (!btn) return;
+  btn.classList.toggle('is-due', bkDue);
+  btn.setAttribute('aria-label', bkDue
+    ? 'Back up — a file copy is due'
+    : 'Back up — save everything to a file');
+}
+
+/* ============================================================
+   BACKUP + RESTORE — the whole ledger as one JSON file.
+   ============================================================ */
+function bkRender(){
+  const n = state.rows.length;
+  const f = filedTally();
+  $('#bkRows').textContent = `${n.toLocaleString()} row${n === 1 ? '' : 's'} · ${f.cats}/${f.subs} filed`;
+  $('#bkLast').textContent = bkAgo(bkPref.lastAt);
+  const nextRow = $('#bkNextRow');
+  nextRow.hidden = !bkPref.on;
+  if (bkPref.on){
+    $('#bkNext').textContent = bkDue ? 'now'
+      : bkIn((bkPref.lastAt || Date.now()) + bkPref.mins * 60000 - Date.now());
+  }
+  $('#bkNow').textContent = bkDue ? 'Write the backup file' : 'Back up now';
+  $('#bkAuto').checked = bkPref.on;
+  $('#bkMins').value = String(bkPref.mins);
+  $('#bkReplace').checked = bkPref.replace;
+  $('#bkEveryRow').hidden = !bkPref.on;
+  $('#bkReplaceHint').textContent = bkPref.replace
+    ? 'Saves as Thompson-Backup.json every time, so Files keeps one copy and asks before it overwrites.'
+    : 'Saves as Thompson-Backup-' + isoOf(new Date()) + '.json — a new file each time, kept side by side.';
+  $('#bkNote').textContent = bkPref.on
+    ? 'iOS will not let the app hand a file to Files on its own, so each interval takes a snapshot on the phone and marks the icon. The file itself still needs this button.'
+    : 'The ledger already saves to this phone on every change. This writes a copy that outlives it.';
+  const sr = $('#bkSnapRestore');
+  sr.hidden = !bkSnapAt;
+  if (bkSnapAt) sr.textContent = `Restore the snapshot — ${bkSnapRows.toLocaleString()} rows, ${bkAgo(bkSnapAt)}`;
+}
+
+function openBackup(){
+  bkRender();
+  $('#backupModal').hidden = false;
+  document.addEventListener('keydown', bkKeys);
+}
+function bkKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeBackup(); } }
+function closeBackup(){
+  $('#backupModal').hidden = true;
+  document.removeEventListener('keydown', bkKeys);
+}
+
+function initBackupSheet(){
+  bkLoadPref();
+  $('#backupBtn').addEventListener('click', openBackup);
+  $('#bkX').addEventListener('click', closeBackup);
+  $('#backupModal').addEventListener('click', e => { if (e.target === $('#backupModal')) closeBackup(); });
+  $('#bkNow').addEventListener('click', () => runBackup());
+  $('#bkSnapRestore').addEventListener('click', bkRestoreSnapshot);
+  $('#bkAuto').addEventListener('change', e => {
+    bkPref.on = e.target.checked;
+    if (bkPref.on) bkPref.lastAt = bkPref.lastAt || Date.now();
+    bkSavePref(); bkArm(); bkRender();
+    toast(bkPref.on ? `Automatic backup on — every ${bkPref.mins} minutes` : 'Automatic backup off');
+  });
+  $('#bkMins').addEventListener('change', e => {
+    bkPref.mins = Number(e.target.value) || 15;
+    bkSavePref(); bkArm(); bkRender();
+    toast(`Checking every ${bkPref.mins} minutes`);
+  });
+  $('#bkReplace').addEventListener('change', e => {
+    bkPref.replace = e.target.checked;
+    bkSavePref(); bkRender();
+  });
+  bkArm();
 }
 
 function runRestore(file){
@@ -5821,6 +6102,7 @@ function initPager(){
   document.addEventListener('keydown', e => {
     if (e.target.closest('input,textarea,select') || !$('#modal').hidden || !$('#balModal').hidden
         || !$('#acctModal').hidden || !$('#reportModal').hidden || !$('#tripModal').hidden
+        || !$('#backupModal').hidden
         || ledgerOpen() || amortOpen() || $('#ariaDrawer').classList.contains('is-open')) return;
     if (e.key === 'ArrowRight') goTo(activeScreen + 1);
     if (e.key === 'ArrowLeft')  goTo(activeScreen - 1);
@@ -8370,6 +8652,7 @@ function initLedgerRotation(){
     if (e.matches){
       const idle = $('#splash').hidden && $('#modal').hidden && $('#balModal').hidden
         && $('#acctModal').hidden && $('#reportModal').hidden && $('#tripModal').hidden
+        && $('#backupModal').hidden
         && !$('#ariaDrawer').classList.contains('is-open') && !ledgerOpen() && !amortOpen();
       if (idle && !ledgerRotateLock) openLedger(state.filter.acct);
     } else {
@@ -10495,7 +10778,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-12m';
+const BUILD = '2026-08-12n';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -10741,7 +11024,7 @@ function wire(){
   $('#tripModal').addEventListener('click', e => { if (e.target === $('#tripModal')) closeTripEditor(); });
   attachMoneyInput($('#tripBudget'));
   $('#ariaReport').addEventListener('click', runReport);
-  $('#backupBtn').addEventListener('click', runBackup);
+  initBackupSheet();
   $('#restoreBtn').addEventListener('click', () => $('#restoreInput').click());
   $('#restoreInput').addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
