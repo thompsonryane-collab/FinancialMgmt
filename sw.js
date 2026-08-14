@@ -1,7 +1,7 @@
 /* ============================================================
    Thompson Finances — service worker
 
-   Build 2026-08-14a
+   Build 2026-08-14d
 
    ONE RULE: bump BUILD on every ship. The cache name is derived
    from it, so a new stamp means a new cache, and the old one is
@@ -21,7 +21,7 @@
    the app, never the data.
    ============================================================ */
 
-const BUILD  = '2026-08-14a';
+const BUILD  = '2026-08-14d';
 const SHELL  = `thompson-shell-${BUILD}`;
 const VENDOR = 'thompson-vendor-v1';   /* versioned URLs; survives ships */
 
@@ -115,7 +115,20 @@ self.addEventListener('fetch', event => {
       try {
         const preload = await event.preloadResponse;
         const res = preload || await fetch(req);
-        if (res && res.ok) cache.put('./index.html', res.clone());
+        /* `redirected` is the trap here. A Home Screen icon pointed at the
+           project path without its trailing slash arrives as a redirect,
+           and a redirected response cannot be replayed for a navigation --
+           `cache.put` rejects on it, and if it ever did land, the offline
+           open would fail with "Response served by service worker has
+           redirections". Serve it, never store it.
+
+           The write is handed to waitUntil rather than left floating: a
+           put that outlives the response was being killed mid-write, and
+           its rejection escaped the try above it because an unawaited
+           promise is not caught by the block that started it. */
+        if (res && res.ok && !res.redirected){
+          event.waitUntil(cache.put('./index.html', res.clone()).catch(() => {}));
+        }
         return res;
       } catch (_) { /* no signal -- fall through to the cached copy */ }
 
@@ -143,7 +156,9 @@ self.addEventListener('fetch', event => {
         /* `opaque` covers the cross-origin font and CDN responses that
            come back without CORS. They cannot be inspected, only
            replayed -- which is exactly what is wanted. */
-        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+        if (res && (res.ok || res.type === 'opaque')){
+          event.waitUntil(cache.put(req, res.clone()).catch(() => {}));
+        }
         return res;
       } catch (_) {
         return new Response('', { status: 504, statusText: 'offline' });
@@ -160,7 +175,9 @@ self.addEventListener('fetch', event => {
       if (hit) return hit;
       try {
         const res = await fetch(req);
-        if (res && res.ok) cache.put(req, res.clone());
+        if (res && res.ok && !res.redirected){
+          event.waitUntil(cache.put(req, res.clone()).catch(() => {}));
+        }
         return res;
       } catch (_) {
         return new Response('', { status: 504, statusText: 'offline' });

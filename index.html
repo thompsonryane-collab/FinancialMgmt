@@ -5163,6 +5163,11 @@ function applyPayload(data){
   state.covered = Array.isArray(data.covered) ? data.covered : [];
   state.receipts = normReceipts(data.receipts);
   state.rxSel = new Set();
+  /* Lines picked a moment ago belonged to the ledger being replaced. Row
+     ids are minted per import and a restored statement can reissue the
+     same one, so a surviving pick is not merely a stale count — a bulk
+     file would land on a row the household never chose. */
+  state.sel.clear();
   state.rxPick = typeof data.rxPick === 'string' ? data.rxPick : '';
   state.taxonomy = data.taxonomy || JSON.parse(JSON.stringify(CATALOG));
   state.acctEdits = data.acctEdits || { added:[], changed:{}, removed:[] };
@@ -6903,36 +6908,75 @@ function showFoldbar(){
    balance, loan terms, calendar bills, ownership rules, saved schedules
    — is work that no re-import can recreate, so it stays put. */
 function clearLedger(){
+  /* A file still being read holds rows this function cannot see, because
+     they do not exist yet. Clearing around them wipes the ledger and then
+     lets the import land on the empty one a moment later — which reads
+     exactly like a clear that failed. Refuse rather than race it. */
+  if (intakeBusy || current || queue.length){
+    toast('An import is still open — finish or close it first'); return;
+  }
+
   const stmtIds = Object.keys(state.balances).filter(id => {
     const b = state.balances[id];
     return b && b.source !== 'manual';
   });
-  if (!state.rows.length && !stmtIds.length && !state.imports.length){
+  if (!state.rows.length && !stmtIds.length && !state.imports.length
+      && !state.covered.length && !state.diag.length && !state.sel.size){
     toast('Nothing imported to clear'); return;
   }
 
   const rowCount = state.rows.length;
+  const retired = state.covered.length;
+  const traced = state.diag.length;
   const kept = Object.keys(state.balances).length - stmtIds.length;
 
   state.rows = [];
   stmtIds.forEach(id => { delete state.balances[id]; });
   state.imports = [];
+  /* The retired-line register names card lines that a set of Amazon items
+     replaced. It is durable on purpose: while those item rows are on file,
+     a re-imported statement must not bring the card line back and double
+     the outflow. The item rows have just gone with everything else, so the
+     register now guards nothing and only blocks — mergeRows would hold
+     real charges out of the very next import, silently, by content match,
+     and no amount of re-uploading would bring them back. It goes with the
+     rows it was written against. */
+  state.covered = [];
+  /* Picks made against rows that no longer exist. The selection bar counts
+     the set rather than the rows it resolves to, so a stale set draws
+     "12 lines picked · $0.00" over an empty ledger. */
+  state.sel.clear();
+  /* The Intake trace describes files whose rows are no longer here. Left
+     standing it is the most visible thing on the screen after a wipe, and
+     it says the opposite of what just happened. */
+  state.diag.length = 0;
   /* Every posted receipt pointed at a row that has just gone. The
      itemization is the household's own work and is kept; the receipts
      simply go back to waiting for a line to be checked against. */
   rxReconcile();
   /* state.opens, state.loans, state.bills, state.tasks, state.rules,
-     state.files, state.totalBal and state.dueDay are deliberately
-     untouched — all of it was entered by hand. */
+     state.files, state.totalBal, state.dueDay, state.pend and state.asins
+     are deliberately untouched — all of it was entered or decided by hand
+     and no re-import recreates it. */
 
   save(); render();
+  /* The log is the running account of files through this screen. It is the
+     one place the names of the cleared imports survive, so it is cleared
+     first and the line below becomes the whole of its history. */
+  const log = $('#log');
+  if (log) log.innerHTML = '';
   const heldBack = [
     kept ? `${kept} hand-set balance${kept === 1 ? '' : 's'}` : '',
     Object.keys(state.opens).length ? `${Object.keys(state.opens).length} opening figure${Object.keys(state.opens).length === 1 ? '' : 's'}` : '',
     state.bills.length ? `${state.bills.length} bill${state.bills.length === 1 ? '' : 's'}` : '',
     state.rules.length ? `${state.rules.length} rule${state.rules.length === 1 ? '' : 's'}` : '',
   ].filter(Boolean).join(', ');
-  logLine(`Imports cleared — ${rowCount} row${rowCount === 1 ? '' : 's'} removed${heldBack ? `; kept ${heldBack}` : ''}`, 'warn');
+  const alsoGone = [
+    retired ? `${retired} retired card line${retired === 1 ? '' : 's'} released` : '',
+    traced ? `${traced} file trace${traced === 1 ? '' : 's'} dropped` : '',
+  ].filter(Boolean).join(', ');
+  logLine(`Imports cleared — ${rowCount} row${rowCount === 1 ? '' : 's'} removed`
+    + `${alsoGone ? `; ${alsoGone}` : ''}${heldBack ? `; kept ${heldBack}` : ''}`, 'warn');
   toast(heldBack ? 'Imports cleared — manual entries kept' : 'Imports cleared');
 }
 
@@ -8169,8 +8213,23 @@ function deleteAcctEditor(){
     return;
   }
   disarmAcctDelete();
-  const rows = state.rows.filter(r => r.acct === id).length;
+  const doomed = state.rows.filter(r => r.acct === id);
+  const rows = doomed.length;
   state.rows = state.rows.filter(r => r.acct !== id);
+  /* Picks made against lines that are about to stop existing. The
+     selection bar counts the set rather than the rows it resolves to, so
+     leaving them draws a figure over rows nobody can see. Only this
+     account's ids go; a pick on another account is still a live pick. */
+  doomed.forEach(r => state.sel.delete(r.id));
+  /* The retired-line register is keyed by account. Those signatures held
+     card lines out of a re-import because Amazon items already carried
+     the spend in detail — and the item rows they protected have just gone
+     with the account. Re-add the alias later and a fresh statement would
+     otherwise arrive with holes in it that no re-upload could fill. */
+  state.covered = state.covered.filter(sig => !String(sig).startsWith(id + '|'));
+  /* An import history naming an account the registry no longer holds
+     reads, on Instrument, as rows that ought to be somewhere. */
+  state.imports = state.imports.filter(im => im.acct !== id);
   delete state.balances[id];
   delete state.opens[id];
   delete state.loans[id];
@@ -8191,6 +8250,10 @@ function deleteAcctEditor(){
   } else {
     state.acctEdits.added = state.acctEdits.added.filter(a => a.id !== id);
   }
+  /* A receipt posted against a line that has just gone is not posted.
+     Same call clearLedger makes, for the same reason: the itemization is
+     the household's own work and is kept, the claim on a row is not. */
+  rxReconcile();
   rebuildRegistry(); save(); render(); refreshAcctSelects();
   const took = [rows ? `${rows} row${rows === 1 ? '' : 's'}` : '',
                 bills ? `${bills} bill${bills === 1 ? '' : 's'}` : '',
@@ -13843,6 +13906,12 @@ function toast(msg){
 const queue = [];
 let current = null;
 let lastFocus = null;
+/* Files being read. A workbook parse is synchronous enough to ignore;
+   a PDF is not, and neither is a large export off a slow phone. While
+   this is above zero there are rows on their way that no wipe can see,
+   because they do not exist yet -- they land on the ledger a second
+   later and read as a clear that did not take. */
+let intakeBusy = 0;
 
 function columnOptions(headers, chosen){
   return ['<option value="-1">— none —</option>'].concat(
@@ -13971,6 +14040,8 @@ function next(){
   openReview(queue.shift());
 }
 async function handleFiles(files){
+  intakeBusy++;
+  try {
   for (const file of Array.from(files)){
     const d = diagStart(file);
     diagStep(d, 'picked', `${(file.size/1024).toFixed(0)} KB · ${file.type || 'no type reported'}`);
@@ -14019,6 +14090,7 @@ async function handleFiles(files){
       logLine(`${file.name} ${err.message}`,'err');
     }
   }
+  } finally { intakeBusy--; }
   next();
 }
 
@@ -14103,12 +14175,16 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14a';
+const BUILD = '2026-08-14d';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
   updateReady = true;
-  const midTask = !$('#modal').hidden || busy || queue.length || current;
+  /* `intakeBusy` belongs here for the same reason it belongs in
+     clearLedger: a file still being read is a task in flight that the
+     mapping sheet does not represent yet, and reloading out from under
+     it loses the parse with nothing on screen to explain why. */
+  const midTask = !$('#modal').hidden || busy || intakeBusy || queue.length || current;
   if (midTask){
     toast('New build ready — it loads next time you open the app');
     return;
