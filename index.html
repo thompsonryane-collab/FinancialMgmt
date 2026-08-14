@@ -12115,24 +12115,39 @@ function calForecasts(){
     cards, and null for a card with no due day picked -- a payment with
     no date is not a line the calendar can draw.
 
-    The balance is the STATED Total where there is one. That is the
-    figure printed on the card, the figure on the statement, and the
-    figure the payment will actually be. The derived running balance is
-    what the imported rows add up to, which mid-cycle is a different and
-    usually smaller number -- true about the ledger, wrong about the
-    cheque. The derived figure is carried alongside so the line can say
-    which of the two it used and by how much they disagree. */
+    The amount is the RUNNING BALANCE -- what the imported rows add up
+    to right now -- not the stated Total on the card.
+
+    The two say different things. The Total is the closing figure of a
+    statement that has already been cut: it includes a month of charges
+    the payment window has moved past, and on a card carried month to
+    month it is the larger, staler number. The running balance is what
+    the account has actually reached today. A calendar answers "what is
+    leaving the account", and that is the ledger's figure.
+
+    The Total is still carried, and still printed beside the amount when
+    the two disagree, because that gap is worth seeing -- it is either a
+    statement mid-cycle or rows that never landed.
+
+    The Total does take over in one case: when the ledger has no real
+    balance to offer. `empty` means no rows and no anchor, and `netOnly`
+    means the figure is the period's movement rather than a balance --
+    neither is something to put on a calendar as a payment when a figure
+    typed on the card is sitting right there. */
 function cardLock(id, from){
   if (!CARD_ACCTS.includes(id) || !ACCT[id]) return null;
   const nx = nextDue(id, from);
   if (!nx) return null;
   const stated = totalBalOf(id);
   const bal = balanceOf(id);
-  const locked = stated != null;
+  const anchored = bal.source !== 'empty' && !bal.netOnly;
+  const basis = anchored ? 'ledger' : (stated != null ? 'stated' : 'none');
+  const owed = basis === 'ledger' ? Math.abs(bal.value)
+             : basis === 'stated' ? Math.abs(stated)
+             : 0;
   return { id, name: ACCT[id].name, nx,
-           stated, derived: bal.value,
-           owed: Math.abs(locked ? stated : bal.value),
-           locked, source: locked ? 'stated' : bal.source };
+           stated, derived: bal.value, anchored, basis, owed,
+           source: basis === 'stated' ? 'stated' : bal.source };
 }
 
 function cardDueItems(){
@@ -12155,7 +12170,7 @@ function cardDueItems(){
                amount: -lock.owed,            /* signed as the ledger signs */
                date: lock.nx.date, days: lock.nx.days, day: lock.nx.day,
                balance: lock.derived, source: lock.source,
-               locked: lock.locked, total: lock.stated });
+               basis: lock.basis, total: lock.stated });
   });
   return out.sort((a,b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
 }
@@ -12327,15 +12342,14 @@ function cardDueRow(it, showDate){
   const soon = it.days === 0 ? 'due today'
     : it.days === 1 ? 'due tomorrow'
     : `in ${it.days} days`;
-  /* Which of the two figures this line is, said plainly. The ledger
-     figure is only printed when it disagrees -- otherwise it is the
-     same number said twice -- but when it does disagree the household
-     needs to see both, because that gap is either a statement mid-cycle
-     or rows that never landed. */
-  const gap = it.balance != null && Math.abs(Math.abs(it.balance) - Math.abs(it.amount)) >= 0.01;
-  const basis = it.locked
-    ? `stated balance${gap ? ` \u00b7 ledger has ${moneyShort(Math.abs(it.balance))}` : ''}`
-    : 'balance owed \u00b7 no total stated';
+  /* Which figure this line is, said plainly, and the other one beside it
+     when they disagree -- otherwise it is the same number said twice.
+     The gap is worth seeing: it is either a statement mid-cycle or rows
+     that never landed. */
+  const gap = it.total != null && Math.abs(Math.abs(it.total) - Math.abs(it.amount)) >= 0.01;
+  const basis = it.basis === 'stated'
+    ? 'stated total \u00b7 no ledger balance yet'
+    : `balance owed${gap ? ` \u00b7 total stated ${moneyShort(Math.abs(it.total))}` : ''}`;
   return `<li class="bill bill--card">
     <span class="bill__name">${esc(it.name)}</span>
     <span class="bill__amt" style="color:var(--owe)">\u2212${money(Math.abs(it.amount))}</span>
@@ -14658,7 +14672,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14o';
+const BUILD = '2026-08-14p';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
