@@ -132,24 +132,12 @@ input,select,textarea{font-size:16px}
   overflow:auto;
 }
 .splash[hidden]{display:none}
-/* The ruled paper and the photograph are the same layer of the same
-   idea: something behind the card. They never both show, because two
-   textures under one sheet of glass reads as a mistake. */
+/* Ruled paper behind the card, and nothing else. This used to share the
+   position with a chosen photograph and hide itself whenever one was
+   set; there is no photograph now, so it simply shows. */
 .splash__ledger{position:absolute;inset:0;pointer-events:none;opacity:.45;
   background-image:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(122,136,114,.5) 31px 32px);
   mask-image:linear-gradient(to bottom,transparent,#000 20%,#000 68%,transparent);}
-.splash--photo .splash__ledger{display:none}
-
-/* ---------- the household's own photograph ----------
-   Cover, centred, and always under a scrim. A photograph chosen for
-   being nice to look at is rarely one that leaves type legible on top
-   of it, so the scrim is not optional -- only its weight is. */
-.splash__bg{position:absolute;inset:0;pointer-events:none;
-  background-size:cover;background-position:center;background-repeat:no-repeat}
-.splash__bg::after{content:"";position:absolute;inset:0;
-  background:radial-gradient(120% 90% at 50% 0%, rgba(12,17,10,.30), rgba(12,17,10,.68));
-  opacity:var(--bg-dim, .55)}
-.splash__bg[hidden]{display:none}
 
 .theme-flip{
   position:fixed;top:calc(var(--sat) + 12px);right:14px;z-index:3;
@@ -172,7 +160,6 @@ html[data-theme="dark"] .theme-flip__sun{opacity:0;transform:rotate(40deg) scale
   border:1px solid var(--rule);border-radius:22px;padding:30px 24px 18px;
   box-shadow:0 26px 60px -30px rgba(12,17,10,.62), var(--shadow);
 }
-.splash--photo .cover{background:rgba(225,230,219,.93)}
 
 /* ---------- the head of the card ----------
    One kicker, one name, one line of prose. The old card put an
@@ -205,19 +192,6 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 #lockRow{display:grid;gap:8px;margin-top:8px}
 #lockRow[hidden]{display:none}
 
-/* ---------- the background controls ----------
-   Small, quiet, and at the foot: setting a photograph is something a
-   household does once. They sit on the same rule as the build stamp
-   because both are about the app rather than about the money. */
-.cover__bg{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
-.bgbtn{background:none;border:1px solid var(--rule);border-radius:8px;cursor:pointer;
-  min-height:28px;padding:4px 9px;color:#5F6C5B;
-  font-family:var(--data);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
-  display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
-  transition:color .16s ease,border-color .16s ease}
-.bgbtn:hover{color:var(--paper)}
-.bgbtn svg{width:13px;height:13px;display:block}
-.bgbtn[hidden]{display:none}
 .cover__foot{display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:16px;border-top:1px solid var(--rule);padding-top:12px;align-items:center}
 .cover__foot span{font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#5F6C5B}
 .stamp{margin-left:auto;background:none;border:0;padding:4px 0;cursor:pointer;
@@ -628,29 +602,20 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
   border-top:1px solid var(--rule);font-family:var(--data);font-size:12.5px}
 .mom__foot b{margin-left:auto;font-weight:600}
 
-/* ---------- the status carousel ----------
-   Three slides across one strip, snapped, with dots under it. Scroll
-   snap rather than a transform so the gesture is the phone's own and
-   never fights the pager underneath: the strip claims a horizontal
-   drag that starts inside it, and the pager keeps the ones that do not.
-   Each slide is exactly the strip's width, so half a slide never sits
-   showing at the edge pretending to be a column. */
-.deck{position:relative;margin:0 0 14px}
-.deck__strip{display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;
-  scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;
-  overscroll-behavior-x:contain;border-radius:14px;
-  transition:height .22s cubic-bezier(.22,1,.36,1)}
-.deck__strip::-webkit-scrollbar{display:none}
-.deck__slide{flex:0 0 100%;width:100%;scroll-snap-align:start;scroll-snap-stop:always;
-  background:var(--slab);border:1px solid var(--rule);border-radius:14px;padding:14px}
-.deck__slide + .deck__slide{margin-left:8px}
-.deck__hd{display:flex;align-items:baseline;gap:8px;margin:0 0 12px}
-.deck__hd h3{margin:0;font-size:14px;font-weight:600}
-.deck__hd .fold__tag{margin-left:auto}
-.deck__dots{display:flex;gap:6px;justify-content:center;margin-top:9px}
-.deck__dots button{width:7px;height:7px;padding:0;border-radius:50%;border:0;cursor:pointer;
-  background:var(--rule);transition:background .18s ease,transform .18s ease}
-.deck__dots button[aria-current="true"]{background:var(--accent);transform:scale(1.35)}
+/* ---------- the month, at the top of Flow ----------
+   This was slide two of a snapped carousel. A carousel asks to be
+   discovered -- the second slide is invisible until someone thinks to
+   swipe, and a household that never swipes never learns the month is
+   there at all. So the month is drawn flat, first, and permanently.
+
+   Deliberately not a fold. A fold that opens by default can still be
+   shut, and then it is shut for good; the point of this card is that
+   the household lands on Flow and the month is simply on the screen.
+   No summary, no chevron, nothing to close. Its border matches the
+   folds beneath it so the column still reads as one stack. */
+.flowcal{background:var(--slab);border:1px solid var(--rule);border-radius:16px;
+  padding:14px;margin:0 0 12px}
+.flowcal>:last-child{margin-bottom:0}
 
 /* Four figures, two by two. The number leads and the caption explains
    it underneath, because a caption above a number reads as a heading
@@ -666,7 +631,7 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 /* A signal is a sentence with a figure in it. The bar on the left is
    the only ranking cue -- a number beside every line would invite the
    reading that they add up, and they do not. */
-/* The month slide borrows the calendar's own cells so the two screens
+/* The month card borrows the calendar's own cells so the two screens
    can never drift into drawing a day two different ways. */
 .deck__cal .cal__day{aspect-ratio:1/1.06;font-size:11px}
 .deck__cal .cal__val{font-size:8.5px}
@@ -1134,15 +1099,42 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 /* stops on top of the dock, not under it, so no line is ever unreachable */
 .ledger{position:fixed;left:0;right:0;top:0;bottom:var(--dockh);z-index:65;
   display:flex;flex-direction:column;
-  background:var(--ink);padding-top:var(--sat);
+  /* The same ceiling light every screen carries, so a full-bleed view
+     reads as one of them rather than as a sheet laid over them. */
+  background:var(--ink) radial-gradient(120% 42% at 50% -8%, rgba(99,140,79,.12), rgba(0,0,0,0) 60%);
   transform:translateY(100%);transition:transform .26s cubic-bezier(.22,1,.36,1)}
 .ledger[hidden]{display:none}
 .ledger.is-open{transform:translateY(0)}
-.ledger__head{flex:none;display:flex;align-items:center;gap:10px;padding:12px 14px;
-  background:var(--slab);border-bottom:1px solid var(--rule)}
-.ledger__head h2{font-family:var(--display);font-size:17px;font-weight:700;margin:0;letter-spacing:-.02em}
-.ledger__close{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:10px;
-  width:38px;height:38px;cursor:pointer;color:var(--muted);font-size:15px;flex:none}
+/* ---------- the header ----------
+   The ledger and the schedule are full-bleed views rather than screens,
+   but they are still places in the app, and they were wearing a card as
+   a header while every screen wore the banner: a lighter plane, a
+   heavier title, and an outlined close button that matched nothing.
+   This is the topbar's own recipe -- same gradient, same edge, same ink,
+   same safe-area handling, same height -- so moving between a screen
+   and the ledger no longer changes the shape of the top of the app. */
+.ledger__head{flex:none;display:flex;align-items:center;gap:8px;
+  padding:calc(var(--sat) + 8px) 14px 8px;min-height:calc(var(--topbar) + var(--sat));
+  background:linear-gradient(180deg,var(--bar),var(--bar-deep));
+  border-bottom:1px solid var(--bar-edge);color:var(--bar-ink);
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset, 0 10px 26px -16px rgba(10,27,16,.75)}
+/* 600, not 700: the same weight the screen titles carry. A filtered
+   ledger names its category too, so the title has to be able to run
+   long and stop cleanly rather than shove the chip off the row. */
+.ledger__head h2{flex:0 1 auto;min-width:0;margin:0;
+  font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the count reads on the banner rather than against it */
+.ledger__head .chip{flex:none;color:var(--bar-muted);
+  border-color:rgba(233,240,228,.28);background:rgba(255,255,255,.06)}
+/* The close button stands where the banner's tools stand -- pushed
+   right, with the lamp beyond it on the corner. */
+.ledger__close{margin-left:auto}
+.ledger__head .lamp{flex:none}
+/* The crest sits where it sits on every screen. Its negative left margin
+   pulls the artwork out to the same optical edge as a screen title, so
+   moving between a screen and the ledger does not shift the mark. */
+.ledger__head .crest-btn{margin-left:-6px}
 .ledger__filters{flex:none;display:grid;grid-template-columns:1fr;gap:8px;
   padding:12px 14px;border-bottom:1px solid var(--rule)}
 .ledger__body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;
@@ -1246,7 +1238,7 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .tripform{display:grid;grid-template-columns:1fr 108px;gap:8px;margin-bottom:8px}
 .tripform .wide{grid-column:1/3}
 .btn--dangerghost{color:var(--danger)}
-#tripDelete.is-armed,#acctDelete.is-armed{background:var(--danger);color:#FBEDEB;border-color:var(--danger)}
+#tripDelete.is-armed,#acctDelete.is-armed,#rxDelete.is-armed{background:var(--danger);color:#FBEDEB;border-color:var(--danger)}
 .card__amort{min-height:36px;padding:6px 12px;font-size:12.5px;border-radius:10px;gap:6px}
 .card__amort svg{flex:none;opacity:.7}
 
@@ -1417,12 +1409,13 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 }
 .topbar .btn--wipe{color:#F0938A;border-color:rgba(240,147,138,.45)}
 .topbar .btn--wipe.is-armed{background:var(--danger);background-image:none;color:#FBEDEB;border-color:var(--danger)}
-.topbar .lamp{background:rgba(255,255,255,.08);border-color:rgba(233,240,228,.24);
+.topbar .lamp,.ledger__head .lamp{background:rgba(255,255,255,.08);border-color:rgba(233,240,228,.24);
   background-image:linear-gradient(180deg,rgba(255,255,255,.09),rgba(0,0,0,.1));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
-.topbar .lamp[data-state="live"]{border-color:rgba(143,217,160,.45)}
-.topbar .lamp[data-state="live"] i{background:#4CC06A;box-shadow:0 0 0 3px rgba(76,192,106,.2),0 0 8px rgba(76,192,106,.8)}
-.topbar .lamp[data-state="offline"] i,.topbar .lamp[data-state="local"] i{
+.topbar .lamp[data-state="live"],.ledger__head .lamp[data-state="live"]{border-color:rgba(143,217,160,.45)}
+.topbar .lamp[data-state="live"] i,.ledger__head .lamp[data-state="live"] i{background:#4CC06A;box-shadow:0 0 0 3px rgba(76,192,106,.2),0 0 8px rgba(76,192,106,.8)}
+.topbar .lamp[data-state="offline"] i,.topbar .lamp[data-state="local"] i,
+.ledger__head .lamp[data-state="offline"] i,.ledger__head .lamp[data-state="local"] i{
   background:#E06156;box-shadow:0 0 0 3px rgba(224,97,86,.18)}
 /* The count holds the left edge; every control groups on the right, so
    a screen can hang its own action next to Expand all. */
@@ -1634,6 +1627,74 @@ input[type=date]{-webkit-appearance:none;appearance:none}
   *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
   .pager{scroll-behavior:auto!important}
 }
+/* ============================================================
+   RECEIPTS — a photograph, itemized, checked against the ledger
+
+   A receipt is not money. The charge is already in the ledger,
+   imported from the statement like everything else; a receipt
+   only says what that one charge actually bought. So nothing
+   here reaches a balance, and a receipt carries a status rather
+   than an amount that counts: it is a claim about a ledger line
+   until the two totals are checked against one another.
+   ============================================================ */
+.rx-alt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.rx-shot{display:block;width:100%;max-height:230px;object-fit:contain;border-radius:12px;
+  border:1px solid var(--rule);background:var(--ink);margin-top:14px}
+.rxlist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.rxlist:empty{display:none}
+.rxc{background:var(--slab);border:1px solid var(--rule);border-radius:12px;padding:10px 12px;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px;align-items:baseline;
+  cursor:pointer;-webkit-user-select:none;user-select:none}
+.rxc.ok{border-color:var(--accent-deep)}
+.rxc.bad{border-color:var(--danger)}
+.rxc .who{grid-column:1/2;font-weight:500;font-size:14px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rxc .meta{grid-column:1/2;font-family:var(--data);font-size:10.5px;color:var(--muted)}
+.rxc .tot{grid-row:1/3;grid-column:2/3;align-self:center;font-family:var(--data);
+  font-weight:600;font-size:15px;white-space:nowrap;text-align:right}
+.rxc .why{grid-column:1/3;font-family:var(--data);font-size:10.5px;color:var(--danger);
+  margin-top:6px;line-height:1.6}
+.rxempty{font-family:var(--data);font-size:11.5px;color:var(--muted);line-height:1.75;margin:0}
+
+/* the editor's lines — description, extended amount, and a way out */
+.rxln{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.rxln li{display:grid;grid-template-columns:minmax(0,1fr) 106px 34px;gap:6px;align-items:center}
+.rxln li.none{grid-template-columns:minmax(0,1fr)}
+.rxln .input{padding:9px 10px}
+.rxsum{display:flex;justify-content:space-between;gap:12px;font-size:13px;
+  padding:7px 0;border-bottom:1px solid var(--rule)}
+.rxsum:last-child{border-bottom:0}
+.rxsum .k{color:var(--muted)}
+.rxsum .v{font-family:var(--data);text-align:right}
+
+/* The match bar is the selection bar's other face: same plane, same
+   place above the dock, so only one of them is ever up. */
+.rxb__top{display:flex;align-items:baseline;gap:9px;margin-bottom:4px;font-size:14px}
+.rxb__top b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rxb__read{display:flex;align-items:baseline;gap:9px;margin-bottom:8px;
+  font-family:var(--data);font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.rxb__acts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.rxb__acts .btn{min-height:40px}
+
+/* itemized lines — the ledger's row idiom, one size down */
+.itx{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.itx li{background:var(--slab);border:1px solid var(--rule);border-radius:11px;padding:8px 10px;
+  display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:1px 9px;align-items:baseline;
+  cursor:pointer;-webkit-user-select:none;user-select:none}
+.itx li.sel{border-color:var(--accent-deep);box-shadow:inset 0 0 0 1px var(--accent-deep)}
+.itx .box{grid-row:1/3;grid-column:1/2;align-self:center;width:20px;height:20px;border-radius:6px;
+  border:1.5px solid var(--rule);background:var(--rise);display:grid;place-items:center;
+  font-size:11px;line-height:1;color:transparent}
+.itx li.sel .box{background:var(--accent);border-color:var(--accent-deep);color:#F4F7F0}
+.itx .n{grid-column:2/3;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.itx .c{grid-column:2/3;font-family:var(--data);font-size:10.5px;color:var(--muted)}
+.itx .c.none{color:var(--danger)}
+.itx .a{grid-row:1/3;grid-column:3/4;align-self:center;font-family:var(--data);
+  font-weight:600;font-size:14px;white-space:nowrap;text-align:right}
+.itfile{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-top:11px}
+.itfile .select{min-height:40px}
+.itfile .btn{min-height:40px}
+
 </style>
 </head>
 <body>
@@ -1673,7 +1734,6 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 <!-- ============ SPLASH ============ -->
 <div class="splash" id="splash">
   <div class="splash__ledger" aria-hidden="true"></div>
-  <div class="splash__bg" id="splashBg" aria-hidden="true" hidden></div>
   <section class="cover" aria-labelledby="coverTitle">
     <div class="cover__head">
       <svg class="crest crest--hero" role="img" aria-hidden="true"><use href="#tf-crest"/></svg>
@@ -1720,15 +1780,6 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <button class="btn btn--ghost" id="lockDisable" type="button" hidden>Turn off Face ID lock</button>
     </div>
     <div class="cover__foot">
-      <input type="file" id="bgInput" accept="image/*" class="sr-only" aria-label="Choose a background photograph">
-      <div class="cover__bg">
-        <button class="bgbtn" id="bgPick" type="button" aria-label="Choose a background photograph">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="5.2" width="17.2" height="13.6" rx="2.4"/><circle cx="8.6" cy="10" r="1.6"/><path d="m4.4 17 4.8-4.6 3.4 3.2 3-2.6 4 4"/></svg>
-          <span id="bgPickLabel">Backdrop</span>
-        </button>
-        <button class="bgbtn" id="bgDim" type="button" hidden aria-label="Change how much the photograph is dimmed">Dim</button>
-        <button class="bgbtn" id="bgClear" type="button" hidden aria-label="Remove the background photograph">Clear</button>
-      </div>
       <button class="stamp" id="buildStamp" type="button" title="Check for a newer build">build —</button>
     </div>
   </section>
@@ -2084,30 +2135,26 @@ input[type=date]{-webkit-appearance:none;appearance:none}
     <!-- 6 · FLOW -->
     <section class="screen" id="scr-flow" aria-label="Flow" data-title="Flow" tabindex="-1">
 
-      <div class="deck" id="flowDeck">
-        <div class="deck__strip" id="deckStrip">
-
-          <div class="deck__slide" id="deckStanding" role="group" aria-label="Where the household stands">
-            <div class="deck__hd"><h3>Where you stand</h3>
-              <span class="fold__tag" id="deckStandTag">&mdash;</span></div>
-            <div class="deck__tiles" id="deckTiles"></div>
-            <p class="hint" id="deckStandNote" style="margin:10px 0 0"></p>
-          </div>
-
-          <div class="deck__slide deck__cal" id="deckMonth" role="group" aria-label="What is due this month">
-            <div class="deck__calhd">
-              <button class="cal__nav" id="deckPrev" type="button" aria-label="Previous month">&lsaquo;</button>
-              <span class="m" id="deckMonthName">&mdash;</span>
-              <button class="cal__nav" id="deckNext" type="button" aria-label="Next month">&rsaquo;</button>
-            </div>
-            <div class="cal__dow" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
-            <div class="cal__grid" id="deckGrid"></div>
-            <p class="hint" id="deckMonthNote" style="margin:9px 0 0"></p>
-          </div>
-
+      <div class="flowcal deck__cal" id="flowCal" role="group" aria-label="What is due this month">
+        <div class="deck__calhd">
+          <button class="cal__nav" id="deckPrev" type="button" aria-label="Previous month">&lsaquo;</button>
+          <span class="m" id="deckMonthName">&mdash;</span>
+          <button class="cal__nav" id="deckNext" type="button" aria-label="Next month">&rsaquo;</button>
         </div>
-        <div class="deck__dots" id="deckDots" role="tablist" aria-label="Dashboard slides"></div>
+        <div class="cal__dow" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+        <div class="cal__grid" id="deckGrid"></div>
+        <p class="hint" id="deckMonthNote" style="margin:9px 0 0"></p>
       </div>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Where you stand
+          <span class="fold__tag" id="deckStandTag">&mdash;</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <div class="deck__tiles" id="deckTiles"></div>
+          <p class="hint" id="deckStandNote" style="margin:10px 0 0"></p>
+        </div>
+      </details>
 
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>By month
@@ -2321,6 +2368,105 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <p class="hint" style="padding:0 4px">A saved file keeps the numbers you ran — amount, rate, term and start date — so the schedule redraws exactly as it was. Nothing here changes a balance.</p>
     </section>
 
+    <!-- 11 · RECEIPTS -->
+    <section class="screen" id="scr-receipt" aria-label="Receipts" data-title="Receipts" tabindex="-1">
+      <input type="file" id="rxCam" accept="image/*" capture="environment" class="sr-only">
+      <input type="file" id="rxLib" accept="image/*" class="sr-only">
+
+      <details class="fold" data-fold open>
+        <summary><span class="fold__dot" style="background:#9C4A7A"></span>Take a receipt
+          <span class="fold__tag" id="rxModeTag">key it in</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <div class="drop" id="rxShoot" role="button" tabindex="0" aria-describedby="rxShootHelp">
+            <p class="drop__title">Photograph a receipt</p>
+            <p class="drop__sub" id="rxShootHelp">The picture is read on this phone and never stored &mdash; only the lines it produces are kept. With an API key it is sent once to be itemized; without one, key the lines in beside it.</p>
+          </div>
+          <div class="rx-alt">
+            <button class="btn btn--sm" id="rxFromLib" type="button">Choose a photo</button>
+            <button class="btn btn--sm" id="rxByHand" type="button">Key one in</button>
+          </div>
+          <ul class="log" id="rxLog" aria-live="polite" aria-label="Receipt log"></ul>
+        </div>
+      </details>
+
+      <details class="fold" data-fold open>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Waiting on a match
+          <span class="fold__tag num" id="rxDraftTag">0</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <ul class="rxlist" id="rxDrafts"></ul>
+          <p class="rxempty" id="rxDraftNote"></p>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--danger)"></span>Rejected
+          <span class="fold__tag num" id="rxRejTag">0</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <ul class="rxlist" id="rxRejects"></ul>
+          <p class="rxempty" id="rxRejNote"></p>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:var(--asset)"></span>Posted
+          <span class="fold__tag num" id="rxPostTag">0</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <ul class="rxlist" id="rxPosted"></ul>
+          <p class="rxempty" id="rxPostNote"></p>
+        </div>
+      </details>
+
+      <p class="hint" style="padding:0 4px">A receipt never moves a balance. The charge is already in the ledger &mdash; this only says what it bought, and it has to agree with the ledger line to the cent before it is allowed to say anything at all.</p>
+    </section>
+
+    <!-- 12 · ITEMIZED -->
+    <section class="screen" id="scr-items" aria-label="Itemized" data-title="Itemized" tabindex="-1">
+      <details class="fold" data-fold open>
+        <summary><span class="fold__dot" style="background:#2E6E7E"></span>What the receipts say
+          <span class="fold__tag num" id="itTag">0</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <div class="kv">
+            <div class="panel"><p class="eyebrow">Itemized</p><div class="bignum tone-owe" id="itTotal">&mdash;</div></div>
+            <div class="panel"><p class="eyebrow">Still to file</p><div class="bignum" id="itUnfiled">&mdash;</div></div>
+          </div>
+          <p class="rxempty" id="itNote"></p>
+        </div>
+      </details>
+
+      <details class="fold" data-fold open>
+        <summary><span class="fold__dot" style="background:var(--accent)"></span>Post the lines
+          <span class="fold__tag" id="itPickTag">nothing posted</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body">
+          <label class="sr-only" for="itPick">Which receipt</label>
+          <select class="select" id="itPick" style="margin-bottom:12px"></select>
+          <ul class="itx" id="itLines"></ul>
+          <div class="itfile">
+            <label class="sr-only" for="itCat">Category</label>
+            <select class="select" id="itCat"></select>
+            <label class="sr-only" for="itSub">Subcategory</label>
+            <select class="select" id="itSub"></select>
+            <button class="btn btn--primary btn--sm" id="itGo" type="button">File</button>
+          </div>
+          <p class="hint" id="itHint"></p>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#8A5787"></span>By category
+          <span class="fold__tag">itemized</span>
+          <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+        <div class="fold__body"><div class="bars" id="itCats"></div></div>
+      </details>
+
+      <p class="hint" style="padding:0 4px">Filing an item here is a note about the receipt, not about the ledger. The ledger line keeps whatever category it already carries, so nothing is counted twice.</p>
+    </section>
+
   </div>
 
 </div>
@@ -2401,9 +2547,17 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 <!-- ============ LEDGER OVERLAY ============ -->
 <div class="ledger" id="ledgerView" hidden role="dialog" aria-modal="true" aria-labelledby="ledgerTitle">
   <header class="ledger__head">
+    <button class="crest-btn" id="crestLedger" type="button" aria-label="Back to the splash screen">
+      <svg class="crest crest--bar" aria-hidden="true"><use href="#tf-crest"/></svg>
+    </button>
     <h2 id="ledgerTitle">Ledger</h2>
     <span class="chip" id="shown"></span>
-    <button class="ledger__close" id="ledgerClose" type="button" aria-label="Close the ledger">&#10005;</button>
+    <button class="tb-ico ledger__close" id="ledgerClose" type="button" aria-label="Close the ledger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>
+    </button>
+    <span class="lamp" id="netDotLedger" data-state="local" role="status" aria-live="polite"
+          aria-label="ARIA running locally"><i></i></span>
   </header>
   <div class="ledger__filters">
     <label class="sr-only" for="acctFilter">Filter by account</label>
@@ -2513,12 +2667,76 @@ input[type=date]{-webkit-appearance:none;appearance:none}
   </div>
 </div>
 
+<!-- ============ MATCH BAR — a receipt checked against the ledger ============ -->
+<!-- Shares the selection bar's plane so only one of the two is ever up. -->
+<div class="selbar" id="rxbar">
+  <div class="rxb__top"><b id="rxbWho">Receipt</b>
+    <span class="num" id="rxbWant"></span>
+    <button class="btn btn--sm" id="rxbCancel" type="button" style="margin-left:auto">Cancel</button></div>
+  <div class="rxb__read"><span id="rxbGot">no line checked</span><span class="num" id="rxbDiff"></span></div>
+  <div class="rxb__acts">
+    <button class="btn btn--sm" id="rxbOpen" type="button">Open the receipt</button>
+    <button class="btn btn--primary btn--sm" id="rxbGo" type="button">Check &amp; post</button>
+  </div>
+</div>
+
+<!-- ============ A RECEIPT, ITEMIZED ============ -->
+<div class="modal" id="rxModal" hidden role="dialog" aria-modal="true" aria-labelledby="rxTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="rxX" type="button" aria-label="Close without saving"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></button>
+    <p class="eyebrow" id="rxKind">Receipt</p>
+    <h2 id="rxTitle">Itemize</h2>
+
+    <img class="rx-shot" id="rxShotImg" alt="The receipt as photographed" hidden>
+
+    <div class="field" style="margin-top:16px">
+      <label for="rxMerchant">Merchant</label>
+      <input class="input" id="rxMerchant" type="text" placeholder="e.g. Woodmoor Pastry Shop"
+             autocomplete="off" spellcheck="false">
+    </div>
+    <div class="terms">
+      <div class="field"><label for="rxDate">Date</label>
+        <input class="input" id="rxDate" type="date"></div>
+      <div class="field"><label for="rxTotal">Receipt total</label>
+        <input class="input" id="rxTotal" type="text" inputmode="decimal" placeholder="$0.00"
+               autocomplete="off" autocorrect="off" spellcheck="false"></div>
+    </div>
+
+    <p class="eyebrow" style="margin:2px 0 8px">Lines</p>
+    <ul class="rxln" id="rxLines"></ul>
+    <button class="btn btn--sm" id="rxAddLine" type="button" style="width:100%;margin-top:8px">&#65291; Add a line</button>
+
+    <div class="bk-box">
+      <div class="rxsum"><span class="k">Lines add to</span><span class="v" id="rxLineSum">&mdash;</span></div>
+      <div class="rxsum"><span class="k">Receipt total</span><span class="v" id="rxStated">&mdash;</span></div>
+      <div class="rxsum"><span class="k">Unitemized</span><span class="v" id="rxGap">&mdash;</span></div>
+    </div>
+    <p class="hint" id="rxNote"></p>
+
+    <div class="sheet__actions">
+      <button class="btn" id="rxSave" type="button">Save</button>
+      <button class="btn btn--primary" id="rxMatchGo" type="button">Match in ledger</button>
+    </div>
+    <button class="btn btn--ghost btn--dangerghost" id="rxDelete" type="button"
+            style="width:100%;margin-top:10px">Delete this receipt</button>
+  </div>
+</div>
+
 <!-- ============ AMORTIZATION SCHEDULE ============ -->
 <div class="ledger" id="amortView" hidden role="dialog" aria-modal="true" aria-labelledby="amortTitle">
   <header class="ledger__head">
+    <button class="crest-btn" id="crestAmort" type="button" aria-label="Back to the splash screen">
+      <svg class="crest crest--bar" aria-hidden="true"><use href="#tf-crest"/></svg>
+    </button>
     <h2 id="amortTitle">Schedule</h2>
     <span class="chip" id="amortChip"></span>
-    <button class="ledger__close" id="amortClose" type="button" aria-label="Close the schedule">&#10005;</button>
+    <button class="tb-ico ledger__close" id="amortClose" type="button" aria-label="Close the schedule">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>
+    </button>
+    <span class="lamp" id="netDotAmort" data-state="local" role="status" aria-live="polite"
+          aria-label="ARIA running locally"><i></i></span>
   </header>
   <div class="ledger__body">
     <div class="amort__form">
@@ -3096,6 +3314,21 @@ const state = {
   pend:[],               // Daily Ledger: charges made but not yet posted to any
                          // account -- {id, name, amount, date, acct, at}. Signed
                          // the way the ledger signs: negative is money out.
+  /* Receipts. The photograph is read once and thrown away; what is kept
+     is the text it produced. A receipt is a claim about a ledger line
+     until the two totals are checked against one another, so it carries
+     a status rather than a figure that counts:
+       'draft'    — itemized, waiting to be matched
+       'posted'   — checked against one or more ledger lines, to the cent
+       'rejected' — checked and the totals disagreed; the work is kept
+     Nothing here reaches a balance. The charge is already in the ledger.
+     {id, merchant, date:'YYYY-MM-DD', total, status, rowIds:[], acct,
+      person, source:'photo'|'hand', at, postedAt,
+      items:[{id, desc, qty, amount, category, sub}],
+      reject:{at, want, got, rows:[]} | null} */
+  receipts:[],
+  rxSel:new Set(),       // receipt lines picked on the Itemized screen
+  rxPick:'',             // which posted receipt the Itemized screen is reading
   cal:{ y:new Date().getFullYear(), m:new Date().getMonth(), sel:null },
   calProj:{ cats:['FixedExpense'], subs:[] },   // what the calendar rolls forward: whole
                          // categories, plus single subcategories written 'Cat\u241FSub'
@@ -4288,6 +4521,11 @@ function instrument(){
     imports: state.imports.slice(-4).reverse(),
     cats: t.cats, subs: t.subs,
     pend: state.pend.length, bills: state.bills.length, rules: state.rules.length,
+    rx: {
+      draft:    state.receipts.filter(r => r.status === 'draft').length,
+      posted:   state.receipts.filter(r => r.status === 'posted').length,
+      rejected: state.receipts.filter(r => r.status === 'rejected').length,
+    },
   };
 }
 
@@ -4337,6 +4575,7 @@ function renderInstrument(){
       ${instRow('Span', span)}
       ${instRow('Categories', `${i.cats} · ${i.subs} subcategories`)}
       ${instRow('Also held', `${i.pend} pending · ${i.bills} bills · ${i.rules} rules`)}
+      ${instRow('Receipts', `${i.rx.posted} posted · ${i.rx.draft} waiting · ${i.rx.rejected} rejected`)}
     </div>
 
     <p class="eyebrow" style="margin-top:8px">Rows by account</p>
@@ -4836,6 +5075,8 @@ function ledgerPayload(){
     outSel: state.outSel,
     asins: state.asins,
     covered: state.covered,
+    /* The photographs are not here and never were — only what they said. */
+    receipts: state.receipts,
     catWho: catWho(),
     taxonomy: taxo(),
     /* The catalog as the household curates it is `taxonomy`. This is
@@ -4911,6 +5152,9 @@ function applyPayload(data){
       if (who.length) state.catWho[c] = who;
     });
   state.covered = Array.isArray(data.covered) ? data.covered : [];
+  state.receipts = normReceipts(data.receipts);
+  state.rxSel = new Set();
+  state.rxPick = typeof data.rxPick === 'string' ? data.rxPick : '';
   state.taxonomy = data.taxonomy || JSON.parse(JSON.stringify(CATALOG));
   state.acctEdits = data.acctEdits || { added:[], changed:{}, removed:[] };
   state.acctEdits.added   = state.acctEdits.added   || [];
@@ -4920,6 +5164,9 @@ function applyPayload(data){
   /* rows can reference an account deleted on another day — drop them
      rather than let every renderer trip over a missing entry */
   state.rows = state.rows.filter(r => ACCT[r.acct]);
+  /* A receipt posted against a line that no longer exists is not posted.
+     It goes back to waiting rather than pointing at nothing. */
+  rxReconcile();
   /* An edited taxonomy on its own is a restored session too */
   return state.rows.length > 0 || state.bills.length > 0 || state.pend.length > 0 ||
          Boolean(data.taxonomy && Object.keys(data.taxonomy).length);
@@ -6643,6 +6890,10 @@ function clearLedger(){
   state.rows = [];
   stmtIds.forEach(id => { delete state.balances[id]; });
   state.imports = [];
+  /* Every posted receipt pointed at a row that has just gone. The
+     itemization is the household's own work and is kept; the receipts
+     simply go back to waiting for a line to be checked against. */
+  rxReconcile();
   /* state.opens, state.loans, state.bills, state.tasks, state.rules,
      state.files, state.totalBal and state.dueDay are deliberately
      untouched — all of it was entered by hand. */
@@ -6719,6 +6970,14 @@ const TABS = {
     + '<rect x="13.2" y="3.6" width="7.2" height="7.2" rx="1.8"/>'
     + '<rect x="3.6" y="13.2" width="7.2" height="7.2" rx="1.8"/>'
     + '<rect x="13.2" y="13.2" width="7.2" height="7.2" rx="1.8"/>'},
+  /* a till roll with a torn foot — what the shop actually printed */
+  'scr-receipt':     {color:'#9C4A7A', icon:
+    '<path d="M6 3.4h12a1 1 0 0 1 1 1v16.2l-2.8-1.6-2.8 1.6-2.8-1.6-2.8 1.6-2.8-1.6V4.4a1 1 0 0 1 1-1z"/>'
+    + '<path d="M8.6 8.2h6.8"/><path d="M8.6 11.8h6.8"/><path d="M8.6 15.4h4.2"/>'},
+  /* lines totted up under a double rule — one charge broken out */
+  'scr-items':       {color:'#2E6E7E', icon:
+    '<path d="M4.4 5.4h15.2"/><path d="M4.4 9.6h10.6"/><path d="M4.4 13.8h13.2"/>'
+    + '<path d="M4.4 18h15.2"/><path d="M4.4 20.4h15.2"/>'},
   /* folder — schedules put away for later */
   'scr-files':       {color:'#6E5312', icon:
     '<path d="M3.4 7.4a2.2 2.2 0 0 1 2.2-2.2h3.5l2.1 2.6h7.2a2.2 2.2 0 0 1 2.2 2.2v8.4a2.2 2.2 0 0 1-2.2 2.2H5.6a2.2 2.2 0 0 1-2.2-2.2z"/>'
@@ -6756,6 +7015,10 @@ const DOCK_ORDER = [
   'scr-tasks',
   'scr-categories',
   LEDGER_ID,
+  /* A receipt is read against the ledger and broken out beside it, so
+     the three sit together: the line, the slip, and what it bought. */
+  'scr-receipt',
+  'scr-items',
   'scr-calendar',
   'scr-position',
   'scr-intake',
@@ -6847,12 +7110,35 @@ function initPager(){
   $('#tabCaret').addEventListener('click', () => setTabSheet(!tabSheetOpen()));
   $('#tabVeil').addEventListener('click', () => setTabSheet(false));
 
-  /* track which screen is in view as the user pans */
+  /* Track which screen is in view as the user pans -- and only then.
+
+     A smooth scroll emits the same scroll events a finger does, every
+     frame, all the way across. So goTo(6) from screen 0 set the target
+     and was then immediately overruled by its own animation: the
+     listener rounded each intermediate position and called setActive
+     for 1, 2, 3, 4, 5 in turn. The title flickered through every screen
+     on the way, and anything that read activeScreen mid-flight read a
+     screen nobody had asked for.
+
+     That is what put the app on Receipts. Tapping a category opens the
+     ledger from scr-categories, which is screen 2; Receipts is screen
+     3. A tap that nudges the pager even slightly, or a move still
+     settling from a previous one, rounds to 3 while the ledger is
+     coming up, setActive(3) lands on Receipts, and the same call wipes
+     the current-marking that markLedgerTab had just put on the ledger.
+
+     goTo now claims the pager while it drives it. The listener still
+     answers to a finger exactly as before; it simply does not answer to
+     goTo's own animation. The claim is released when the scroll arrives,
+     and on a timer as well -- an interrupted smooth scroll never
+     arrives anywhere, and a claim that outlived its scroll would leave
+     the dock deaf to panning. */
   let raf = null;
   pager.addEventListener('scroll', () => {
     if (raf) return;
     raf = requestAnimationFrame(() => {
       raf = null;
+      if (pagerDriven()) return;              /* our own animation, not a pan */
       const i = Math.round(pager.scrollLeft / pager.clientWidth);
       if (i !== activeScreen){ setActive(i); setTabSheet(false); }
     });
@@ -6862,7 +7148,7 @@ function initPager(){
   document.addEventListener('keydown', e => {
     if (e.target.closest('input,textarea,select') || !$('#modal').hidden || !$('#balModal').hidden
         || !$('#acctModal').hidden || !$('#reportModal').hidden || !$('#tripModal').hidden
-        || !$('#backupModal').hidden
+        || !$('#backupModal').hidden || !$('#rxModal').hidden
         || ledgerOpen() || amortOpen() || $('#ariaDrawer').classList.contains('is-open')) return;
     if (e.key === 'ArrowRight') goTo(activeScreen + 1);
     if (e.key === 'ArrowLeft')  goTo(activeScreen - 1);
@@ -6870,6 +7156,11 @@ function initPager(){
   });
 
   window.addEventListener('resize', () => {
+    /* Re-seating the pager after a rotation is not a pan either. It
+       lands instantly, so the claim only has to survive the frame the
+       scroll event arrives on. */
+    pagerDriveTo = activeScreen;
+    pagerDriveUntil = Date.now() + PAGER_DRIVE_MS;
     pager.scrollTo({left: activeScreen * pager.clientWidth});
     railTo(activeScreen);
     measureDock();          /* rotation and safe-area changes move the bar */
@@ -6877,6 +7168,7 @@ function initPager(){
   window.addEventListener('orientationchange', () => setTimeout(measureDock, 260));
 
   railTo(0);
+  initRailHold();
   measureDock();
   initToTop();
   initClears();
@@ -7075,17 +7367,71 @@ function initToTop(){
   syncToTop();
 }
 
-/* pan the rail so the live mark is centred, without touching the pager */
+/* ============================================================
+   PANNING THE RAIL
+
+   Centring the live mark on every screen change moved the icons out
+   from under the thumb that was reaching for them. Going one screen
+   right scrolls the rail right, which slides every icon LEFT, which
+   puts the icon to the right of the one you were aiming at exactly
+   where you were aiming. In this dock the icon to the right of the
+   ledger is Receipts -- so a tap meant for the ledger opened Receipts
+   instead, and the ledger never appeared. Measured: 120ms after a tap
+   on Categories, the point the ledger occupied belongs to Receipts.
+
+   Two rules fix it, and both are about not moving what someone is
+   already pointing at.
+
+   Move only when the mark is genuinely out of reach. A mark already
+   comfortably on screen does not need centring; the scroll bought
+   nothing and cost the thumb its target. A margin, rather than bare
+   visibility, so a mark half under the edge still comes in.
+
+   Never move while a finger is down on the rail. A pan the reader is
+   driving themselves is the one case where the rail must hold still,
+   and a tap is a finger down followed by a finger up in the same
+   place -- if the rail shifts between the two, the tap lands somewhere
+   nobody chose.
+   ============================================================ */
+/* How much clear room a mark needs at the edge before it counts as
+   reachable. Roughly half an icon: enough that a mark peeping out from
+   under the edge still gets brought in. */
+const RAIL_MARGIN = 26;
+let railHeld = false;
+
 function railTo(i){
   const rail = $('#tabRail');
-  if (!rail) return;
+  if (!rail || railHeld) return;
   /* the ledger button sits in the rail without a screen index, so a
      mark has to be found by the screen it stands for, not by position */
   const b = rail.querySelector(`button[data-i="${i}"]`);
   if (!b) return;
+  const left = b.offsetLeft - rail.scrollLeft;
+  const right = left + b.offsetWidth;
+  /* already where it can be reached — leave the rail exactly as it is */
+  if (left >= RAIL_MARGIN && right <= rail.clientWidth - RAIL_MARGIN) return;
   const target = b.offsetLeft - (rail.clientWidth - b.offsetWidth) / 2;
   const max = Math.max(0, rail.scrollWidth - rail.clientWidth);
   rail.scrollTo({left: Math.max(0, Math.min(max, target)), behavior:'smooth'});
+}
+
+/* A finger on the rail owns it until it lifts. `pointercancel` matters
+   as much as `pointerup`: a tap that turns into a scroll ends that way,
+   and without it the rail would stay held for good. */
+function initRailHold(){
+  const rail = $('#tabRail');
+  if (!rail) return;
+  const hold = () => { railHeld = true; };
+  const free = () => {
+    railHeld = false;
+    /* Whatever the rail missed while it was held is applied once, now
+       that nothing is pointing at it. */
+    railTo(activeScreen);
+  };
+  rail.addEventListener('pointerdown', hold, {passive:true});
+  rail.addEventListener('touchstart', hold, {passive:true});
+  ['pointerup','pointercancel','touchend','touchcancel'].forEach(ev =>
+    rail.addEventListener(ev, free, {passive:true}));
 }
 
 function setActive(i){
@@ -7099,10 +7445,36 @@ function setActive(i){
   syncToTop();          /* the new screen may be short, or already at its top */
 }
 
+/* How long a programmatic pan is allowed to be in flight. Long enough
+   for a smooth scroll across the whole dock, short enough that a scroll
+   the browser abandoned cannot leave the pager deaf for a noticeable
+   moment. */
+const PAGER_DRIVE_MS = 700;
+let pagerDriveUntil = 0;
+let pagerDriveTo = -1;
+
+/** True while goTo is driving the pager rather than a finger. */
+function pagerDriven(){
+  if (!pagerDriveUntil) return false;
+  if (Date.now() > pagerDriveUntil){ pagerReleased(); return false; }
+  /* Arrived. Release immediately rather than waiting out the timer, so
+     a pan that begins the instant the scroll lands is still tracked. */
+  const pager = $('#pager');
+  const w = pager.clientWidth;
+  if (w && Math.abs(pager.scrollLeft - pagerDriveTo * w) < 2){ pagerReleased(); return false; }
+  return true;
+}
+function pagerReleased(){ pagerDriveUntil = 0; pagerDriveTo = -1; }
+
 function goTo(i){
   i = Math.max(0, Math.min(SCREENS.length - 1, i));
   setActive(i);
-  $('#pager').scrollTo({left: i * $('#pager').clientWidth, behavior:'smooth'});
+  const pager = $('#pager');
+  /* Claimed before the scroll starts, so not one frame of it is read
+     back as a pan. */
+  pagerDriveTo = i;
+  pagerDriveUntil = Date.now() + PAGER_DRIVE_MS;
+  pager.scrollTo({left: i * pager.clientWidth, behavior:'smooth'});
 }
 
 /* ============================================================
@@ -8307,7 +8679,14 @@ function scheduleStrip(plan){
 }
 
 let amortTarget = null, amortMode = 'year', amortPlan = null, amortReturnFocus = null;
-function amortOpen(){ return !$('#amortView').hidden; }
+/* Open means open, not merely still on screen. A panel keeps its box
+   for the length of its slide-out, so asking `hidden` called a closing
+   view open for a quarter of a second -- long enough for a reopen to
+   take the "already open" path, skip the reopen entirely, and then be
+   hidden by the close that was still in flight. The class is set the
+   instant a panel starts arriving and cleared the instant it starts
+   leaving, which is the question every caller is actually asking. */
+function amortOpen(){ return $('#amortView').classList.contains('is-open'); }
 
 function readAmortForm(){
   return { amount:$('#amAmount').value.trim(), rate:$('#amRate').value.trim(),
@@ -8354,30 +8733,101 @@ function runAmort(quiet){
     `Extra payments and rate changes are not modelled.`;
 }
 
+/* ============================================================
+   SLIDING A PANEL IN AND OUT
+
+   The ledger and the schedule appeared rather than arrived. The ARIA
+   drawer, which does slide, is the clue: it is never display:none. It
+   sits off-screen under a transform the whole time, so there is always
+   a previous position to move from.
+
+   The full-bleed views are hidden outright between visits, which is
+   right -- a display:none panel costs nothing and cannot be tabbed
+   into. But it means opening one changes two things at once: the
+   element starts existing, and it gains the class that moves it. Both
+   land in the same style resolution, the browser has no closed state
+   to interpolate away from, and a transition with only an end value is
+   not a transition. One requestAnimationFrame is not enough to
+   separate them; it can still be coalesced into the same pass.
+
+   Reading a layout property in between is what separates them. It
+   forces the browser to settle the panel in its closed position first,
+   so the class that follows is a change from something rather than a
+   change from nothing.
+
+   Closing had a second fault. It hid the panel on a timer 20ms shorter
+   than the transition it was waiting for, so the last frames of every
+   slide-out were cut. And nothing cancelled that timer, so closing and
+   immediately reopening hid the panel a fifth of a second after it had
+   come back -- rare, but the kind of thing that reads as the app
+   losing its place.
+   ============================================================ */
+/* Kept in step with the CSS by hand: .ledger transitions for .26s and
+   .scrim for .22s. */
+const PANEL_MS = 260;
+const SCRIM_MS = 220;
+
+function panelOpen(el){
+  if (!el) return;
+  clearTimeout(el._hideT);           /* a close still in flight must not land */
+  el._hideT = null;
+  el.hidden = false;
+  void el.offsetHeight;              /* settle the closed state — see above */
+  el.classList.add('is-open');
+}
+
+function panelShut(el, ms){
+  if (!el) return;
+  el.classList.remove('is-open');
+  clearTimeout(el._hideT);
+  el._hideT = setTimeout(() => { el.hidden = true; el._hideT = null; }, ms);
+}
+
+/* Focus inside a panel that is still off-screen asks the browser to
+   scroll it into view, which fights the transform it is mid-way
+   through. The focus is worth having -- Escape and the close button
+   should be reachable the moment the view opens -- so it is the
+   scrolling that goes. */
+/* What focus should return to when a panel closes.
+   Anything inside the panel is not an answer: it is about to be hidden,
+   and focus left in a hidden subtree strands a screen reader with no way
+   back. It happens more easily than it sounds -- open the ledger from
+   something unfocusable, close it, and focus is still sitting on the
+   close button, which the next open would then record as the place to
+   come back to. */
+function focusAnchor(panel){
+  const a = document.activeElement;
+  if (!a || a === document.body || (panel && panel.contains(a))) return null;
+  return a;
+}
+
+function focusQuiet(el){
+  if (!el) return;
+  try { el.focus({ preventScroll:true }); }
+  catch(_){ el.focus(); }
+}
+
 function openAmort(id, params){
   amortTarget = id || null;
   amortPlan = null;
-  amortReturnFocus = document.activeElement;
+  amortReturnFocus = focusAnchor($('#amortView'));
   const a = id ? ACCT[id] : null;
   $('#amortTitle').textContent = a ? `Amortization · ${a.id}` : 'Amortization';
   $('#amortChip').textContent = a ? a.kind : 'scratch';
   fillAmortForm(params || (id ? amortParamsFor(id) : {amount:'',rate:'',years:'',start:''}));
 
-  const v = $('#amortView');
-  v.hidden = false;
-  requestAnimationFrame(() => v.classList.add('is-open'));
+  panelOpen($('#amortView'));
   document.addEventListener('keydown', amortKeys);
   runAmort(true);                       /* draw it straight away when the inputs allow */
-  $('#amortClose').focus();
+  focusQuiet($('#amortClose'));
 }
 
 function closeAmort(){
   const v = $('#amortView');
-  v.classList.remove('is-open');
-  setTimeout(() => { v.hidden = true; }, 240);
+  panelShut(v, PANEL_MS);
   document.removeEventListener('keydown', amortKeys);
   amortTarget = null; amortPlan = null;
-  if (amortReturnFocus && amortReturnFocus.focus) amortReturnFocus.focus();
+  if (amortReturnFocus && amortReturnFocus.isConnected) focusQuiet(amortReturnFocus);
 }
 
 function amortKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeAmort(); } }
@@ -8904,14 +9354,14 @@ function initMoM(){
 }
 
 /* ============================================================
-   THE STATUS DECK
+   THE HEAD OF FLOW
 
-   Three slides above everything else on Flow. The folds below answer
-   questions the household went looking for; this answers the ones it
-   should be asked without going looking.
-
-   Slide one is where things stand. Slide two is what to do about it.
-   Slide three is what lands this month, and what falls on a day.
+   Two things sit above the rest of the screen. The month is a fixed
+   card, drawn first and never closed, because what lands in the next
+   four weeks is the question the household should be asked without
+   going looking for it. Where things stand is a fold directly under
+   it, because a net position is a figure to consult, not one to be
+   confronted with on arrival.
 
    Nothing here computes a figure of its own. Every number is pulled
    from the function that already owns it -- totals, budgetPlan,
@@ -8992,7 +9442,7 @@ function renderDeckStanding(){
     : `Set a balance on an account, or put a payday on the Calendar, and the weekly figure builds itself.`;
 }
 
-/* ---------- the month slide ----------
+/* ---------- the month card ----------
    Its own month, so paging here does not move the Calendar screen
    under the household's feet, and the Calendar's own selection is
    never disturbed by a glance at Flow. */
@@ -9114,62 +9564,21 @@ function closeDaySheet(){
 function renderDeck(){
   renderDeckStanding();
   renderDeckMonth();
-  deckFit();
 }
 
-/* The strip is as tall as whatever is on screen, not as tall as its
-   tallest slide. A flex row stretches every child to the tallest one,
-   which left four tiles floating at the top of a card built for a
-   calendar grid. `align-items:flex-start` stops the stretch; this sets
-   the strip itself, because a flex container still takes the height of
-   its tallest child and the empty space would simply move below the
-   card instead of inside it.
-
-   Measured rather than declared: the slides hold live figures whose
-   height depends on how many months a calendar needs and how long a
-   note runs, and a hard-coded height would be wrong the first time
-   either changed. */
-function deckFit(){
-  const strip = $('#deckStrip');
-  if (!strip) return;
-  const slides = $$('.deck__slide', strip);
-  if (!slides.length) return;
-  const w = strip.clientWidth || 1;
-  const i = Math.max(0, Math.min(slides.length - 1, Math.round(strip.scrollLeft / w)));
-  const h = slides[i].offsetHeight;
-  if (h) strip.style.height = h + 'px';
-}
-
+/* The strip that had to be measured is gone, and with it the height
+   bookkeeping, the snap listener and the dots. The card takes the
+   height of its own contents the way a block element always did, so a
+   rotation needs no handler: nothing is being held to a size a script
+   decided on. What is left here is the wiring that was never about the
+   carousel -- paging the month, and opening a day. */
 function initDeck(){
-  const strip = $('#deckStrip');
-  const dots = $('#deckDots');
-  if (!strip || !dots) return;
-  const slides = $$('.deck__slide', strip);
-
-  dots.innerHTML = slides.map((sl, i) =>
-    `<button type="button" role="tab" data-deck="${i}" aria-current="${i === 0}"
-      aria-label="${esc(sl.getAttribute('aria-label') || 'Slide ' + (i + 1))}"></button>`).join('');
-  dots.addEventListener('click', e => {
-    const b = e.target.closest('[data-deck]');
-    if (!b) return;
-    strip.scrollTo({ left: +b.dataset.deck * strip.clientWidth, behavior:'smooth' });
-  });
-
-  let raf = null;
-  strip.addEventListener('scroll', () => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => {
-      raf = null;
-      const i = Math.round(strip.scrollLeft / strip.clientWidth);
-      $$('#deckDots button').forEach(b =>
-        b.setAttribute('aria-current', String(+b.dataset.deck === i)));
-      deckFit();
-    });
-  }, { passive:true });
+  const grid = $('#deckGrid');
+  if (!grid) return;
 
   $('#deckPrev').addEventListener('click', () => deckStep(-1));
   $('#deckNext').addEventListener('click', () => deckStep(1));
-  $('#deckGrid').addEventListener('click', e => {
+  grid.addEventListener('click', e => {
     const b = e.target.closest('[data-deckday]');
     if (b) openDaySheet(b.dataset.deckday);
   });
@@ -9177,12 +9586,6 @@ function initDeck(){
   $('#dayModal').addEventListener('click', e => {
     if (e.target === $('#dayModal')) closeDaySheet();
   });
-
-  /* A rotation or a keyboard changes the width, which changes how a
-     slide wraps, which changes its height. */
-  window.addEventListener('resize', deckFit, { passive:true });
-  window.addEventListener('orientationchange', () => setTimeout(deckFit, 120));
-  deckFit();
 }
 
 /* ============================================================
@@ -9890,12 +10293,21 @@ function clearSel(){
   renderTable();
 }
 
+/* The bar above the dock has two faces and shows one at a time. Filing
+   is what the ledger does most of the time, so the selection bar is the
+   default; while a receipt is being checked the match bar takes the
+   plane instead, because the same tick on the same row means something
+   different then and offering both readings at once would invite
+   filing a batch by accident mid-check. */
 function renderSel(){
   const bar = $('#selbar'), n = state.sel.size;
-  const on = n > 0 && ledgerOpen();
+  const matching = Boolean(rxMatch) && ledgerOpen();
+  const on = !matching && n > 0 && ledgerOpen();
   bar.classList.toggle('on', on);
-  $('#ledgerView').classList.toggle('has-sel', on);
-  if (!n) return;
+  renderRxBar(matching);
+  $('#ledgerView').classList.toggle('has-sel', on || matching);
+  syncToTop();                 /* the caret steps up over whichever bar is up */
+  if (!on) return;
   const picked = state.rows.filter(r => state.sel.has(r.id));
   const sum = picked.reduce((s,r) => s + r.amount, 0);
   $('#selCount').textContent = `${n} line${n === 1 ? '' : 's'} picked`;
@@ -9957,7 +10369,7 @@ function initWorkbench(){
   fillBulkCats();
 }
 
-function ledgerOpen(){ return !$('#ledgerView').hidden; }
+function ledgerOpen(){ return $('#ledgerView').classList.contains('is-open'); }
 
 /* The ledger mark lights like any other tab while its view is up, and
    the live screen's mark stands down, so the dock always shows one
@@ -9974,29 +10386,31 @@ function openLedger(acctId){
   state.filter.acct = acctId || '';
   $('#acctFilter').value = state.filter.acct;
   shownCount = 40;
-  ledgerReturnFocus = document.activeElement;
-  const v = $('#ledgerView');
-  v.hidden = false;
-  requestAnimationFrame(() => v.classList.add('is-open'));
+  ledgerReturnFocus = focusAnchor($('#ledgerView'));
+  panelOpen($('#ledgerView'));
   document.addEventListener('keydown', ledgerKeys);
   markLedgerTab(true);
   renderTable();
   syncToTop();
-  $('#ledgerClose').focus();
+  focusQuiet($('#ledgerClose'));
 }
 
 function closeLedger(){
   const v = $('#ledgerView');
   state.sel.clear();
+  /* Leaving the ledger abandons the check. The receipt is untouched and
+     still waiting — better that than a half-made match surviving out of
+     sight and posting against whatever is ticked next time. */
+  rxMatch = '';
   $('#selbar').classList.remove('on');
+  $('#rxbar').classList.remove('on');
   v.classList.remove('has-sel');
-  v.classList.remove('is-open');
-  setTimeout(() => { v.hidden = true; }, 240);
+  panelShut(v, PANEL_MS);
   document.removeEventListener('keydown', ledgerKeys);
   markLedgerTab(false);
   syncToTop();
   if (landscapeMQ.matches) ledgerRotateLock = true;   /* do not spring back open */
-  if (ledgerReturnFocus && ledgerReturnFocus.focus) ledgerReturnFocus.focus();
+  if (ledgerReturnFocus && ledgerReturnFocus.isConnected) focusQuiet(ledgerReturnFocus);
 }
 
 function ledgerKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeLedger(); } }
@@ -10004,6 +10418,13 @@ function ledgerKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeLedger
 /* Open the ledger through the category lens: every line filed under
    one category (and optionally one subcategory), across accounts. */
 function openLedgerCat(cat, sub){
+  /* Three states, not two, and the shortcut belongs to exactly one of
+     them. Fully up: refilter and stay put. Closed: open it. Still
+     sliding OUT: it must be opened again, because the hide that its
+     close scheduled is still coming -- treating that as "already up"
+     refilters a panel that is about to be hidden underneath the answer.
+     The is-open class is the only one of the two readings that tells
+     those apart; `hidden` stays false for the whole slide-out. */
   const wasOpen = ledgerOpen();
   state.filter.cat = cat || '';
   state.filter.sub = sub || '';
@@ -10013,15 +10434,13 @@ function openLedgerCat(cat, sub){
   state.sel.clear(); fillBulkCats();
   shownCount = 40;
   if (wasOpen){ renderTable(); return; }
-  ledgerReturnFocus = document.activeElement;
-  const v = $('#ledgerView');
-  v.hidden = false;
-  requestAnimationFrame(() => v.classList.add('is-open'));
+  ledgerReturnFocus = focusAnchor($('#ledgerView'));
+  panelOpen($('#ledgerView'));
   document.addEventListener('keydown', ledgerKeys);
   markLedgerTab(true);
   renderTable();
   syncToTop();
-  $('#ledgerClose').focus();
+  focusQuiet($('#ledgerClose'));
 }
 
 /** Turning the phone sideways is the gesture for "let me read this properly". */
@@ -10030,7 +10449,7 @@ function initLedgerRotation(){
     if (e.matches){
       const idle = $('#splash').hidden && $('#modal').hidden && $('#balModal').hidden
         && $('#acctModal').hidden && $('#reportModal').hidden && $('#tripModal').hidden
-        && $('#backupModal').hidden
+        && $('#backupModal').hidden && $('#rxModal').hidden
         && !$('#ariaDrawer').classList.contains('is-open') && !ledgerOpen() && !amortOpen();
       if (idle && !ledgerRotateLock) openLedger(state.filter.acct);
     } else {
@@ -12427,7 +12846,808 @@ function initSchemaJump(){
   renderSchemaDetail();
 }
 
-function render(){ ledgerTouched(); renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTasks(); renderTrip(); renderFamily(); renderTable(); renderCategories(); renderFiles(); renderInstrument(); }
+/* ============================================================
+   RECEIPTS
+
+   The ledger already knows a charge happened. What it cannot know
+   is what the charge bought, because a statement line says
+   "TST* YIA YIAS BELTSVILLE MD" and nothing else. A receipt is the
+   missing half of that sentence.
+
+   Three things follow from that, and they shape everything here.
+
+   The receipt is not money. It never touches a balance, never adds
+   a row, never appears in a total. Double counting is the whole
+   danger in a household ledger fed from several statements, and the
+   cheapest way to be certain of avoiding it is to give receipts no
+   arithmetic reach at all.
+
+   The receipt is a claim, and a claim can be wrong. Optical reading
+   misplaces a decimal; a photograph clips the bottom of the slip; a
+   restaurant adds the tip after the paper prints. So a receipt is
+   not filed against a ledger line, it is CHECKED against one -- its
+   stated total against the sum of the lines picked -- and it is only
+   allowed to say what the charge bought if the two agree to the
+   cent. They disagree, it is rejected, and the disagreement is
+   written down in the receipt so it can be read later.
+
+   Rejection keeps the work. Re-photographing and re-itemizing a slip
+   because the tip was added afterwards would make the feature not
+   worth using. A rejected receipt keeps every line it had, says what
+   it was checked against and what happened, and can be corrected and
+   checked again.
+
+   The photograph itself is never stored. It is read to a canvas,
+   handed to the model once if there is a key, held in memory while
+   the sheet is open, and dropped. A ledger backup carries what the
+   receipt SAID, never the picture of it.
+   ============================================================ */
+
+/* A phone camera makes a four-thousand-pixel photograph. Fifteen
+   hundred on the long edge is more than enough to read printed
+   receipt type and a fraction of the payload. */
+const RX_MAX = 1500;
+const RX_QUALITY = 0.82;
+/* Cents of slack allowed between the receipt and the ledger. Zero on
+   purpose: "close enough" is exactly the judgement this feature exists
+   to refuse to make. A tip added after the slip printed is a real and
+   common cause of a mismatch, and the right answer to it is to correct
+   the receipt total, not to widen the gate. */
+const RX_TOL = 0;
+
+let rxShot = null;       /* {url, b64, mime, forId} — in memory only, never stored */
+let rxEditing = '';      /* which receipt the sheet is holding */
+let rxMatch = '';        /* which receipt the ledger is checking */
+let rxReturnFocus = null;
+let rxArmed = null;      /* the delete button's disarm timer */
+
+const rxCents  = n => Math.round((Number(n) || 0) * 100);
+const rxId     = () => `RX-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+const rxGet    = id => state.receipts.find(r => r.id === id) || null;
+const rxSum    = r => r.items.reduce((s,it) => s + rxCents(it.amount), 0);
+const rxName   = r => r.merchant || 'Untitled receipt';
+const rxLive   = () => state.mode === 'api' && Boolean(state.apiKey);
+
+/**
+ * Shape a restored receipt rather than trust it. A backup can be hand
+ * edited, and an older build never held this key at all, so every
+ * field is rebuilt from what is there: a status that is not one of the
+ * three is a draft, a total that is not a number is zero, and a line
+ * with neither text nor figure is not a line.
+ */
+function normReceipts(raw){
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(r => r && typeof r === 'object').map((r, ri) => {
+    const items = (Array.isArray(r.items) ? r.items : [])
+      .filter(it => it && typeof it === 'object')
+      .map((it, i) => ({
+        id: String(it.id || `RXI-${ri}-${i}-${Math.random().toString(36).slice(2,7)}`),
+        desc: String(it.desc || '').trim().slice(0, 90),
+        qty: Number(it.qty) > 0 ? Number(it.qty) : 1,
+        amount: Math.abs(Number(it.amount) || 0),
+        category: typeof it.category === 'string' ? it.category : '',
+        sub: cleanSub(it.sub),
+      }))
+      .filter(it => it.desc || it.amount);
+    const d = toDate(r.date);
+    return {
+      id: String(r.id || rxId()),
+      merchant: String(r.merchant || '').trim().slice(0, 60),
+      date: d ? isoOf(d) : '',
+      total: Math.abs(Number(r.total) || 0),
+      items,
+      status: ['draft','posted','rejected'].includes(r.status) ? r.status : 'draft',
+      rowIds: Array.isArray(r.rowIds) ? r.rowIds.map(String) : [],
+      acct: typeof r.acct === 'string' ? r.acct : '',
+      person: typeof r.person === 'string' ? r.person : '',
+      source: r.source === 'photo' ? 'photo' : 'hand',
+      at: Number(r.at) || Date.now(),
+      postedAt: Number(r.postedAt) || 0,
+      reject: (r.reject && typeof r.reject === 'object')
+        ? { at: Number(r.reject.at) || 0,
+            want: Number(r.reject.want) || 0,
+            got: Number(r.reject.got) || 0,
+            rows: Array.isArray(r.reject.rows) ? r.reject.rows.map(String) : [] }
+        : null,
+    };
+  });
+}
+
+/** A receipt posted against a row that no longer exists is not posted. */
+function rxReconcile(){
+  const live = new Set(state.rows.map(r => r.id));
+  state.receipts.forEach(r => {
+    if (r.status !== 'posted') return;
+    r.rowIds = r.rowIds.filter(id => live.has(id));
+    if (!r.rowIds.length){
+      r.status = 'draft'; r.postedAt = 0; r.acct = ''; r.person = '';
+    }
+  });
+  if (state.rxPick && !state.receipts.some(r => r.id === state.rxPick && r.status === 'posted'))
+    state.rxPick = '';
+}
+
+/** Whether some other posted receipt already speaks for this row. */
+function rxClaimant(rowId, exceptId){
+  return state.receipts.find(r =>
+    r.id !== exceptId && r.status === 'posted' && r.rowIds.includes(rowId)) || null;
+}
+
+function rxLog(text, kind = 'ok'){
+  const host = $('#rxLog');
+  if (!host) return;
+  const li = document.createElement('li');
+  li.className = kind;
+  li.innerHTML = `<time>${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</time>`
+    + `<span>${esc(text)}</span>`;
+  host.prepend(li);
+  while (host.children.length > 6) host.lastElementChild.remove();
+}
+
+/* ---------- the photograph ----------
+   Drawn to a canvas rather than sent as it came off the camera, so what
+   crosses the wire is bounded no matter what the phone produced. The
+   data URL is kept only so the sheet can show the slip beside the lines
+   while they are being corrected; it is dropped when the sheet closes. */
+function rxFromFile(file){
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type || '')) return reject(new Error('not an image'));
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('unreadable'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('undecodable'));
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, RX_MAX / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          const url = c.toDataURL('image/jpeg', RX_QUALITY);
+          resolve({ url, b64: url.slice(url.indexOf(',') + 1), mime:'image/jpeg', forId:'' });
+        } catch(_){ reject(new Error('undecodable')); }
+      };
+      img.src = String(fr.result);
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+const RX_PROMPT = `Read this receipt photograph and return ONLY a JSON object. No prose, no markdown fences.
+
+Shape:
+{"merchant":"","date":"YYYY-MM-DD","total":0,"items":[{"desc":"","qty":1,"amount":0}]}
+
+Rules:
+- Every figure is a positive dollar number exactly as printed.
+- An item's "amount" is its extended line total, not its unit price.
+- Give tax, tip, delivery and any surcharge their own items, using the words printed on the slip.
+- "total" is the grand total the receipt states.
+- If something is not printed, use "" for text and 0 for numbers.
+- Never invent a line that is not on the receipt.`;
+
+async function rxRead(shot){
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key': state.apiKey,
+      'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({
+      model: MODEL, max_tokens: 1000,
+      messages: [{ role:'user', content: [
+        { type:'image', source:{ type:'base64', media_type: shot.mime, data: shot.b64 } },
+        { type:'text', text: RX_PROMPT },
+      ]}],
+    }),
+  });
+  if (!res.ok) throw new Error(res.status === 401
+    ? 'the API key was rejected — reopen the splash screen to enter another'
+    : `Claude returned ${res.status}`);
+  const data = await res.json();
+  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  /* Take the object rather than trust the wrapper: a fence, a preamble
+     or a trailing note all survive this, and a reply with no object in
+     it at all fails loudly rather than parsing to something empty. */
+  const a = text.indexOf('{'), b = text.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error('that came back unreadable');
+  let parsed;
+  try { parsed = JSON.parse(text.slice(a, b + 1)); }
+  catch(_){ throw new Error('that came back unreadable'); }
+  if (!parsed || typeof parsed !== 'object') throw new Error('that came back empty');
+  return parsed;
+}
+
+/** Put a parsed or blank receipt on file. Returns the receipt. */
+function rxNew(parsed, source){
+  const p = parsed || {};
+  const items = (Array.isArray(p.items) ? p.items : []).map((it, i) => ({
+    id: `RXI-${Date.now().toString(36)}-${i}`,
+    desc: String((it && it.desc) || '').trim().slice(0, 90),
+    qty: Number(it && it.qty) > 0 ? Number(it.qty) : 1,
+    amount: Math.abs(Number(it && it.amount) || 0),
+    category:'', sub:'',
+  })).filter(it => it.desc || it.amount);
+  const d = toDate(p.date);
+  const stated = Math.abs(Number(p.total) || 0);
+  const r = {
+    id: rxId(),
+    merchant: String(p.merchant || '').trim().slice(0, 60),
+    date: d ? isoOf(d) : isoOf(new Date()),
+    /* A slip with no printed grand total still has one: its lines. */
+    total: stated || items.reduce((s, it) => s + it.amount, 0),
+    items, status:'draft', rowIds:[], acct:'', person:'',
+    source: source === 'photo' ? 'photo' : 'hand',
+    at: Date.now(), postedAt:0, reject:null,
+  };
+  state.receipts.unshift(r);
+  save(); render();
+  return r;
+}
+
+async function rxCapture(file){
+  if (!file) return;
+  let shot;
+  try {
+    rxLog('Reading the picture\u2026');
+    shot = await rxFromFile(file);
+  } catch(_){
+    rxLog('That file could not be read as a picture', 'err');
+    toast('That file could not be read as a picture');
+    return;
+  }
+
+  /* No key, no reading. The picture is still worth having on screen:
+     the lines get keyed in beside it rather than from memory. */
+  if (!rxLive()){
+    const r = rxNew({}, 'photo');
+    rxShot = shot; rxShot.forId = r.id;
+    rxLog('No API key — key the lines in beside the picture', 'warn');
+    openRx(r.id);
+    return;
+  }
+
+  rxLog('Itemizing\u2026');
+  toast('Reading the receipt\u2026');
+  let parsed = null, why = '';
+  try { parsed = await rxRead(shot); }
+  catch(e){ why = String((e && e.message) || e); }
+
+  const r = rxNew(parsed || {}, 'photo');
+  rxShot = shot; rxShot.forId = r.id;
+  if (parsed){
+    rxLog(`${rxName(r)} — ${r.items.length} line${r.items.length === 1 ? '' : 's'}, ${money(r.total)}`, 'ok');
+  } else {
+    rxLog(`Could not itemize: ${why}`, 'err');
+    toast('Could not itemize it — key the lines in');
+  }
+  openRx(r.id);
+}
+
+/* ---------- the sheet ---------- */
+function rxOpen(){ return !$('#rxModal').hidden; }
+
+function openRx(id){
+  const r = rxGet(id);
+  if (!r) return;
+  rxEditing = id;
+  rxReturnFocus = document.activeElement;
+  rxDisarmDelete();
+
+  $('#rxKind').textContent = r.status === 'posted' ? 'Posted'
+    : r.status === 'rejected' ? 'Rejected' : 'Waiting on a match';
+  $('#rxTitle').textContent = r.status === 'posted' ? 'What this charge bought' : 'Itemize';
+
+  /* The slip is shown only for the receipt it was actually taken of,
+     and only while it is still in memory — one photograph is held at a
+     time, and reopening an older receipt shows its lines alone. */
+  const img = $('#rxShotImg');
+  const shown = Boolean(rxShot && rxShot.forId === r.id);
+  img.hidden = !shown;
+  img.src = shown ? rxShot.url : '';
+
+  $('#rxMerchant').value = r.merchant;
+  $('#rxDate').value = r.date;
+  $('#rxTotal').value = r.total ? formatMoneyField(r.total.toFixed(2)) : '';
+  $('#rxMatchGo').textContent = r.status === 'posted' ? 'Unpost' : 'Match in ledger';
+  $('#rxMatchGo').setAttribute('aria-label', r.status === 'posted'
+    ? 'Detach this receipt from its ledger line and send it back to waiting'
+    : 'Open the ledger and check this receipt against the line that paid it');
+  renderRxLines();
+  $('#rxModal').hidden = false;
+  document.addEventListener('keydown', rxKeys);
+}
+
+function closeRx(){
+  $('#rxModal').hidden = true;
+  rxEditing = '';
+  rxDisarmDelete();
+  document.removeEventListener('keydown', rxKeys);
+  if (rxReturnFocus && rxReturnFocus.focus) rxReturnFocus.focus();
+}
+function rxKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeRx(); } }
+
+function renderRxLines(){
+  const r = rxGet(rxEditing);
+  if (!r) return;
+  const host = $('#rxLines');
+  host.innerHTML = r.items.length ? r.items.map((it, i) => `
+    <li data-i="${i}">
+      <input class="input" data-f="desc" type="text" value="${esc(it.desc)}"
+             placeholder="what it was" aria-label="Line ${i + 1} description"
+             autocomplete="off" spellcheck="false">
+      <input class="input num" data-f="amount" type="text" inputmode="decimal"
+             value="${it.amount ? esc(formatMoneyField(it.amount.toFixed(2))) : ''}"
+             placeholder="$0.00" aria-label="Line ${i + 1} amount" autocomplete="off">
+      <button class="icox bad" data-drop="${i}" type="button" aria-label="Delete line ${i + 1}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>
+      </button>
+    </li>`).join('')
+    : `<li class="none"><p class="rxempty">No lines yet. Add them by hand, or photograph the slip
+       again with the whole of it in frame.</p></li>`;
+  $$('#rxLines .input[data-f="amount"]').forEach(attachMoneyInput);
+  syncRxSums();
+}
+
+/** Read the sheet back into the receipt. Returns it, or null. */
+function readRxSheet(){
+  const r = rxGet(rxEditing);
+  if (!r) return null;
+  r.merchant = $('#rxMerchant').value.trim().slice(0, 60);
+  const d = toDate($('#rxDate').value);
+  r.date = d ? isoOf(d) : '';
+  r.total = Math.abs(toNumber($('#rxTotal').value) || 0);
+  $$('#rxLines li[data-i]').forEach(li => {
+    const it = r.items[+li.dataset.i];
+    if (!it) return;
+    it.desc = li.querySelector('[data-f="desc"]').value.trim().slice(0, 90);
+    it.amount = Math.abs(toNumber(li.querySelector('[data-f="amount"]').value) || 0);
+  });
+  return r;
+}
+
+function syncRxSums(){
+  const r = rxGet(rxEditing);
+  if (!r) return;
+  const lines = rxSum(r), stated = rxCents(r.total), gap = stated - lines;
+  $('#rxLineSum').textContent = money(lines / 100);
+  $('#rxStated').textContent  = money(stated / 100);
+  $('#rxGap').textContent = !r.items.length ? 'nothing itemized yet'
+    : gap === 0 ? 'nothing — it balances'
+    : money(gap / 100);
+  $('#rxGap').className = 'v' + (r.items.length && gap === 0 ? ' tone-asset' : '');
+  $('#rxNote').textContent = r.status === 'posted'
+    ? `Posted against ${r.rowIds.length} ledger line${r.rowIds.length === 1 ? '' : 's'}`
+      + `${r.acct ? ' in ' + r.acct : ''}. File its lines on Itemized.`
+    : r.status === 'rejected' && r.reject
+      ? `Rejected — the receipt states ${money(r.reject.want)} and the lines checked came to `
+        + `${money(r.reject.got)}. Correct the total or the lines, then check it again.`
+      : 'The receipt total is the figure a ledger line has to equal. The lines below only have to '
+        + 'add up to it if you want every dollar of the charge itemized.';
+}
+
+/* The two-tap arm, borrowed from Intake's wipe: one tap says what is
+   about to happen, the second does it, and it forgets within seconds. */
+function rxDisarmDelete(){
+  clearTimeout(rxArmed); rxArmed = null;
+  const b = $('#rxDelete');
+  if (!b) return;
+  b.classList.remove('is-armed');
+  b.textContent = 'Delete this receipt';
+}
+function rxDeleteTapped(){
+  const r = rxGet(rxEditing);
+  if (!r) return;
+  if (!rxArmed){
+    $('#rxDelete').classList.add('is-armed');
+    $('#rxDelete').textContent = 'Tap again to delete — the lines go too';
+    rxArmed = setTimeout(rxDisarmDelete, 4000);
+    return;
+  }
+  rxDisarmDelete();
+  const name = rxName(r);
+  state.receipts = state.receipts.filter(x => x.id !== r.id);
+  if (rxMatch === r.id) rxMatch = '';
+  if (rxShot && rxShot.forId === r.id) rxShot = null;
+  closeRx();
+  save(); render();
+  toast(`${name} deleted`);
+}
+
+function rxAddLine(){
+  const r = readRxSheet();
+  if (!r) return;
+  r.items.push({ id:`RXI-${Date.now().toString(36)}-${r.items.length}`,
+                 desc:'', qty:1, amount:0, category:'', sub:'' });
+  renderRxLines();
+  const last = $$('#rxLines li[data-i] [data-f="desc"]').pop();
+  if (last) last.focus();
+}
+
+function rxDropLine(i){
+  const r = readRxSheet();
+  if (!r || !r.items[i]) return;
+  const gone = r.items[i];
+  state.rxSel.delete(gone.id);
+  r.items.splice(i, 1);
+  renderRxLines();
+}
+
+function saveRx(){
+  const r = readRxSheet();
+  if (!r) return;
+  /* A line with neither words nor a figure is not a line. */
+  const before = r.items.length;
+  r.items = r.items.filter(it => it.desc || it.amount);
+  const dropped = before - r.items.length;
+  save(); render(); closeRx();
+  toast(`${rxName(r)} saved — ${r.items.length} line${r.items.length === 1 ? '' : 's'}`
+    + (dropped ? `, ${dropped} blank dropped` : ''));
+}
+
+/* ---------- checking it against the ledger ---------- */
+
+/**
+ * Hand the receipt to the ledger. The date narrows the view to the
+ * fortnight around the slip and the direction to money out, because a
+ * receipt is a purchase -- the line being looked for is nearly always
+ * within a few days and always an outflow. Every one of those is a
+ * filter the reader can widen, not a rule.
+ */
+function rxStartMatch(){
+  const r = readRxSheet();
+  if (!r) return;
+  if (r.status === 'posted'){ rxUnpost(r); return; }
+  if (!rxCents(r.total)){
+    toast('Give the receipt a total first — that is the figure the ledger has to equal');
+    return;
+  }
+  save();
+  rxMatch = r.id;
+  closeRx();
+  state.sel.clear();
+  openLedger('');
+  const d = toDate(r.date);
+  if (d){
+    const a = new Date(d), b = new Date(d);
+    a.setDate(a.getDate() - 10);
+    b.setDate(b.getDate() + 10);
+    state.filter.from = isoOf(a);
+    state.filter.to   = isoOf(b);
+  }
+  state.filter.dir = 'out';
+  shownCount = 40;
+  renderTable();
+  syncFiltSheet();
+  toast(`Check the line that paid ${rxName(r)} — ${money(r.total)}`);
+}
+
+function rxUnpost(r){
+  if (!r || r.status !== 'posted') return;
+  r.status = 'draft'; r.rowIds = []; r.postedAt = 0; r.acct = ''; r.person = '';
+  if (state.rxPick === r.id) state.rxPick = '';
+  save(); render(); closeRx();
+  toast(`${rxName(r)} unposted — its lines are kept, and it is waiting on a match again`);
+}
+
+function rxCancelMatch(){
+  if (!rxMatch) return;
+  rxMatch = '';
+  state.sel.clear();
+  renderTable();
+}
+
+/**
+ * The check itself, and the one piece of arithmetic in the feature.
+ *
+ * Cents on both sides rather than dollars: 19.99 + 0.01 in binary
+ * floating point is not 20, and a comparison that fails on that would
+ * reject a correct receipt roughly at random. Absolute value on both
+ * sides too -- the ledger signs a charge negative and a slip prints it
+ * positive, and neither is wrong.
+ */
+function rxCheckAndPost(){
+  const r = rxGet(rxMatch);
+  if (!r){ rxCancelMatch(); return; }
+  const picked = state.rows.filter(x => state.sel.has(x.id));
+  if (!picked.length){ toast('Check the ledger line this receipt paid for'); return; }
+
+  /* Two receipts speaking for one charge would itemize it twice. */
+  const taken = picked.map(x => ({ row:x, by: rxClaimant(x.id, r.id) })).filter(x => x.by);
+  if (taken.length){
+    toast(`${taken[0].row.desc} is already itemized by ${rxName(taken[0].by)}`);
+    return;
+  }
+
+  const want = rxCents(r.total);
+  const got  = picked.reduce((s, x) => s + Math.abs(rxCents(x.amount)), 0);
+  const off  = got - want;
+
+  if (Math.abs(off) > RX_TOL){
+    r.status = 'rejected';
+    r.rowIds = [];
+    r.postedAt = 0;
+    r.reject = { at: Date.now(), want: want / 100, got: got / 100, rows: picked.map(x => x.id) };
+    rxMatch = ''; state.sel.clear();
+    save(); render(); closeLedger();
+    toast(`Rejected — ${rxName(r)} states ${money(want / 100)}, the `
+      + `${picked.length === 1 ? 'line' : 'lines'} checked come to ${money(got / 100)}`);
+    return;
+  }
+
+  r.status = 'posted';
+  r.postedAt = Date.now();
+  r.rowIds = picked.map(x => x.id);
+  r.acct = picked[0].acct || '';
+  r.person = picked[0].person || '';
+  r.reject = null;
+  /* The ledger line has already been filed, by hand or by memory. Its
+     category is the best first guess for every item under it, so the
+     Itemized screen opens with the work mostly done and only the lines
+     that differ left to move. An item already filed is left alone. */
+  const cat = picked[0].category || '', sub = picked[0].sub || '';
+  if (cat) r.items.forEach(it => { if (!it.category){ it.category = cat; it.sub = sub; } });
+  state.rxPick = r.id;
+  rxMatch = ''; state.sel.clear();
+  save(); render(); closeLedger();
+  toast(`${rxName(r)} posted — ${r.items.length} line${r.items.length === 1 ? '' : 's'} itemized`);
+}
+
+/* ---------- the receipts screen ---------- */
+function rxCard(r){
+  const n = r.items.length;
+  const d = toDate(r.date);
+  const gap = rxCents(r.total) - rxSum(r);
+  const tone = r.status === 'posted' ? ' ok' : r.status === 'rejected' ? ' bad' : '';
+  const bits = [ d ? fmtDate(d) : 'no date', `${n} line${n === 1 ? '' : 's'}` ];
+  if (r.status === 'posted' && r.acct) bits.push(r.acct);
+  if (r.status !== 'posted' && n && gap !== 0) bits.push(`${money(Math.abs(gap) / 100)} unitemized`);
+  return `<li class="rxc${tone}" data-rx="${esc(r.id)}" role="button" tabindex="0"
+      aria-label="${esc(rxName(r))} — ${esc(money(r.total))}">
+    <span class="who">${esc(rxName(r))}</span>
+    <span class="meta">${esc(bits.join(' \u00b7 '))}</span>
+    <span class="tot">${money(r.total)}</span>`
+    + (r.status === 'rejected' && r.reject
+        ? `<span class="why">The ledger said ${money(r.reject.got)} — off by `
+          + `${money(Math.abs(r.reject.got - r.reject.want))}</span>`
+        : '')
+    + `</li>`;
+}
+
+function renderReceipts(){
+  const host = $('#rxDrafts');
+  if (!host) return;
+  $('#rxModeTag').textContent = rxLive() ? 'reads the picture' : 'key it in';
+
+  const D = state.receipts.filter(r => r.status === 'draft');
+  const J = state.receipts.filter(r => r.status === 'rejected');
+  const P = state.receipts.filter(r => r.status === 'posted');
+
+  $('#rxDraftTag').textContent = String(D.length);
+  $('#rxRejTag').textContent   = String(J.length);
+  $('#rxPostTag').textContent  = String(P.length);
+
+  host.innerHTML             = D.map(rxCard).join('');
+  $('#rxRejects').innerHTML  = J.map(rxCard).join('');
+  $('#rxPosted').innerHTML   = P.map(rxCard).join('');
+
+  const note = (el, on, text) => { const p = $(el); p.hidden = on; p.textContent = on ? '' : text; };
+  note('#rxDraftNote', D.length > 0,
+    'Nothing waiting. Photograph a receipt and it lands here until you check it against the ledger line that paid it.');
+  note('#rxRejNote', J.length > 0,
+    'Nothing rejected. A receipt is rejected when its stated total and the ledger lines you checked do not agree to the cent — the lines it holds are kept either way, so it can be corrected and checked again.');
+  note('#rxPostNote', P.length > 0,
+    'Nothing posted. A receipt reaches this list once its total has been checked against the ledger and agreed.');
+  syncFoldbar('scr-receipt');
+}
+
+/* ---------- the itemized screen ---------- */
+function fillItemCats(){
+  const sel = $('#itCat');
+  if (!sel) return;
+  const keep = sel.value;
+  const names = Object.keys(taxo()).sort((a,b) => a.localeCompare(b));
+  sel.innerHTML = names.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if (names.includes(keep)) sel.value = keep;
+  fillItemSubs();
+}
+function fillItemSubs(){
+  const sel = $('#itSub');
+  if (!sel) return;
+  const subs = (taxo()[$('#itCat').value] || []).slice().sort((a,b) => a.localeCompare(b));
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">— no subcategory —</option>'
+    + subs.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  if (subs.includes(keep)) sel.value = keep;
+}
+
+function fileItems(){
+  const r = rxGet(state.rxPick);
+  const cat = $('#itCat').value, sub = cleanSub($('#itSub').value);
+  if (!r || !cat) return;
+  let n = 0;
+  r.items.forEach(it => {
+    if (!state.rxSel.has(it.id)) return;
+    it.category = cat; it.sub = sub; n++;
+  });
+  if (!n) return;
+  state.rxSel.clear();
+  save(); render();
+  toast(`${n} line${n === 1 ? '' : 's'} filed under ${cat}${sub ? ' \u203a ' + sub : ''}`);
+}
+
+function renderItems(){
+  const host = $('#itLines');
+  if (!host) return;
+  const posted = state.receipts.filter(r => r.status === 'posted');
+  const all = posted.reduce((a, r) => a.concat(r.items), []);
+  const total = all.reduce((s, it) => s + rxCents(it.amount), 0);
+  const unfiled = all.filter(it => !it.category).length;
+
+  $('#itTag').textContent     = String(all.length);
+  $('#itTotal').textContent   = all.length ? moneyShort(total / 100) : '\u2014';
+  $('#itUnfiled').textContent = all.length ? String(unfiled) : '\u2014';
+  $('#itNote').textContent = posted.length
+    ? `${all.length} line${all.length === 1 ? '' : 's'} across ${posted.length} posted `
+      + `receipt${posted.length === 1 ? '' : 's'}, ${money(total / 100)} itemized. `
+      + (unfiled ? `${unfiled} still to file.` : 'Every line is filed.')
+    : 'Nothing posted. A receipt reaches this screen once its total has been checked against the '
+      + 'ledger line that paid it and the two agreed to the cent.';
+
+  if (state.rxPick && !posted.some(r => r.id === state.rxPick)) state.rxPick = '';
+  if (!state.rxPick && posted.length) state.rxPick = posted[0].id;
+
+  const pick = $('#itPick');
+  pick.innerHTML = posted.length
+    ? posted.map(r => `<option value="${esc(r.id)}">${esc(rxName(r))} — ${money(r.total)}`
+        + `${toDate(r.date) ? ' \u00b7 ' + esc(fmtDate(toDate(r.date))) : ''}</option>`).join('')
+    : '<option value="">— nothing posted —</option>';
+  pick.value = state.rxPick;
+  pick.disabled = !posted.length;
+
+  const r = rxGet(state.rxPick);
+  $('#itPickTag').textContent = r
+    ? `${r.items.length} line${r.items.length === 1 ? '' : 's'}` : 'nothing posted';
+  host.innerHTML = r ? r.items.map(it => `
+    <li data-it="${esc(it.id)}" class="${state.rxSel.has(it.id) ? 'sel' : ''}">
+      <span class="box" aria-hidden="true">\u2713</span>
+      <span class="n">${esc(it.desc || 'unnamed line')}</span>
+      <span class="c${it.category ? '' : ' none'}">${esc(it.category || 'unfiled')}`
+      + `${it.sub ? ' \u203a ' + esc(it.sub) : ''}</span>
+      <span class="a">${money(it.amount)}</span>
+    </li>`).join('') : '';
+
+  const n = r ? r.items.filter(it => state.rxSel.has(it.id)).length : 0;
+  $('#itGo').disabled = n === 0;
+  $('#itHint').textContent = !r ? ''
+    : n ? `${n} line${n === 1 ? '' : 's'} picked. Filing them here does not touch the ledger line `
+          + 'they came from — it keeps its own category.'
+    : r.items.length ? 'Check the lines that belong together, then file them.'
+    : 'This receipt has no lines. Open it from Receipts and add them.';
+
+  /* what the receipts, taken together, say the money went on */
+  const tally = new Map();
+  all.forEach(it => {
+    const k = it.category ? it.category + (it.sub ? ' \u203a ' + it.sub : '') : 'unfiled';
+    tally.set(k, (tally.get(k) || 0) + rxCents(it.amount));
+  });
+  const rows = Array.from(tally, ([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v).slice(0, 10);
+  const max = rows.length ? rows[0].v : 1;
+  $('#itCats').innerHTML = rows.length ? rows.map(x => `
+    <div class="row"><span>${esc(x.k)}</span><span class="amt">${moneyShort(x.v / 100)}</span>
+      <div class="track"><div class="fill" style="width:${Math.max(1, x.v / max * 100).toFixed(1)}%"></div></div>
+    </div>`).join('') : '<p class="rxempty">Nothing itemized yet.</p>';
+  syncFoldbar('scr-items');
+}
+
+/* ---------- the match bar ---------- */
+function renderRxBar(on){
+  const bar = $('#rxbar');
+  if (!bar) return;
+  bar.classList.toggle('on', on);
+  if (!on) return;
+  const r = rxGet(rxMatch);
+  if (!r){ rxMatch = ''; bar.classList.remove('on'); return; }
+  const picked = state.rows.filter(x => state.sel.has(x.id));
+  const want = rxCents(r.total);
+  const got  = picked.reduce((s, x) => s + Math.abs(rxCents(x.amount)), 0);
+  const off  = got - want;
+
+  $('#rxbWho').textContent  = rxName(r);
+  $('#rxbWant').textContent = money(want / 100);
+  $('#rxbGot').textContent  = picked.length
+    ? `${picked.length} line${picked.length === 1 ? '' : 's'} checked \u00b7 ${money(got / 100)}`
+    : 'no line checked';
+  $('#rxbDiff').textContent = !picked.length ? ''
+    : off === 0 ? 'exact — this will post'
+    : off > 0 ? `over by ${money(off / 100)} — this will be rejected`
+    : `short by ${money(-off / 100)} — this will be rejected`;
+  $('#rxbDiff').className = 'num'
+    + (!picked.length ? '' : off === 0 ? ' tone-asset' : ' tone-owe');
+  $('#rxbGo').disabled = picked.length === 0;
+}
+
+function initReceipts(){
+  const cam = $('#rxCam'), lib = $('#rxLib');
+  const shoot = $('#rxShoot');
+  shoot.addEventListener('click', () => cam.click());
+  shoot.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); cam.click(); }
+  });
+  const take = input => {
+    const f = input.files && input.files[0];
+    input.value = '';                 /* the same picture may be chosen twice */
+    if (f) rxCapture(f);
+  };
+  cam.addEventListener('change', () => take(cam));
+  lib.addEventListener('change', () => take(lib));
+  $('#rxFromLib').addEventListener('click', () => lib.click());
+  $('#rxByHand').addEventListener('click', () => {
+    rxShot = null;
+    openRx(rxNew({}, 'hand').id);
+  });
+
+  /* a card opens its receipt, whichever list it is sitting in */
+  ['#rxDrafts','#rxRejects','#rxPosted'].forEach(sel => {
+    const host = $(sel);
+    host.addEventListener('click', e => {
+      const li = e.target.closest('[data-rx]');
+      if (li) openRx(li.dataset.rx);
+    });
+    host.addEventListener('keydown', e => {
+      const li = e.target.closest && e.target.closest('[data-rx]');
+      if (li && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openRx(li.dataset.rx); }
+    });
+  });
+
+  $('#rxX').addEventListener('click', closeRx);
+  $('#rxModal').addEventListener('click', e => { if (e.target === $('#rxModal')) closeRx(); });
+  $('#rxSave').addEventListener('click', saveRx);
+  $('#rxMatchGo').addEventListener('click', rxStartMatch);
+  $('#rxDelete').addEventListener('click', rxDeleteTapped);
+  $('#rxAddLine').addEventListener('click', rxAddLine);
+  attachMoneyInput($('#rxTotal'));
+  $('#rxTotal').addEventListener('input', () => {
+    const r = rxGet(rxEditing);
+    if (!r) return;
+    r.total = Math.abs(toNumber($('#rxTotal').value) || 0);
+    syncRxSums();
+  });
+  $('#rxLines').addEventListener('click', e => {
+    const b = e.target.closest('[data-drop]');
+    if (b) rxDropLine(+b.dataset.drop);
+  });
+  /* the running sums answer as the figures are typed, so the gap
+     between the lines and the stated total is visible before saving */
+  $('#rxLines').addEventListener('input', e => {
+    if (!e.target.matches('[data-f]')) return;
+    readRxSheet();
+    syncRxSums();
+  });
+
+  $('#rxbCancel').addEventListener('click', rxCancelMatch);
+  $('#rxbGo').addEventListener('click', rxCheckAndPost);
+  $('#rxbOpen').addEventListener('click', () => { const id = rxMatch; if (id) openRx(id); });
+
+  $('#itPick').addEventListener('change', e => {
+    state.rxPick = e.target.value;
+    state.rxSel.clear();
+    renderItems();
+  });
+  $('#itLines').addEventListener('click', e => {
+    const li = e.target.closest('[data-it]');
+    if (!li) return;
+    const id = li.dataset.it;
+    if (state.rxSel.has(id)) state.rxSel.delete(id); else state.rxSel.add(id);
+    renderItems();
+  });
+  $('#itCat').addEventListener('change', fillItemSubs);
+  $('#itGo').addEventListener('click', fileItems);
+  fillItemCats();
+}
+
+function render(){ ledgerTouched(); renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTasks(); renderTrip(); renderFamily(); renderTable(); renderCategories(); renderFiles(); renderReceipts(); renderItems(); renderInstrument(); }
 
 /* ---------- log + toast ---------- */
 function logLine(text, kind='ok'){
@@ -12682,8 +13902,7 @@ function openDrawer(){
   const d = $('#ariaDrawer');
   d.classList.add('is-open'); d.setAttribute('aria-hidden','false'); d.removeAttribute('inert');
   $('#ariaTab').setAttribute('aria-expanded','true');
-  const scrim = $('#scrim');
-  scrim.hidden = false; requestAnimationFrame(() => scrim.classList.add('is-open'));
+  panelOpen($('#scrim'));           /* the same jump, in opacity rather than transform */
   document.addEventListener('keydown', trapFocus);
   $('#ask').focus();
 }
@@ -12691,9 +13910,7 @@ function closeDrawer(){
   const d = $('#ariaDrawer');
   d.classList.remove('is-open'); d.setAttribute('aria-hidden','true'); d.setAttribute('inert','');
   $('#ariaTab').setAttribute('aria-expanded','false');
-  const scrim = $('#scrim');
-  scrim.classList.remove('is-open');
-  setTimeout(() => { scrim.hidden = true; }, 220);
+  panelShut($('#scrim'), SCRIM_MS);
   document.removeEventListener('keydown', trapFocus);
   $('#ariaTab').focus();
 }
@@ -12714,7 +13931,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-13k';
+const BUILD = '2026-08-13s';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -12773,16 +13990,21 @@ async function checkForUpdate(){
 /** The lamp is green only when ARIA has a live line to Claude: an API
     key selected AND the device actually on the network. Anything else
     is red, with the word underneath saying which kind of red it is. */
+/* Every lamp in the app says the same thing, so they are painted
+   together rather than one by one -- the banner carries one, and each
+   full-bleed view carries its own, because a view that fills the screen
+   has to be able to answer the question on its own. */
 function setLamp(){
-  const el = $('#netDot');
-  if (!el) return;
   const api  = state.mode === 'api';
   const on   = navigator.onLine !== false;
   const mark = api ? (on ? 'live' : 'offline') : 'local';
-  el.dataset.state = mark;
-  el.setAttribute('aria-label', mark === 'live' ? 'ARIA is connected to Claude'
+  const say  = mark === 'live' ? 'ARIA is connected to Claude'
     : mark === 'offline' ? 'ARIA cannot reach Claude — this device is offline'
-    : 'ARIA is running locally on this device');
+    : 'ARIA is running locally on this device';
+  $$('.lamp').forEach(el => {
+    el.dataset.state = mark;
+    el.setAttribute('aria-label', say);
+  });
 }
 
 function setMode(mode){
@@ -12832,140 +14054,18 @@ function showChrome(on){
   $('#tabdock').hidden = !on;
 }
 
-/* ============================================================
-   THE BACKDROP
+/* The splash backdrop was removed. What is left of it is the storage
+   key, which is not nothing: a phone that ever had a photograph set is
+   holding a downscaled JPEG as a data URL, and localStorage is about
+   five megabytes with the ledger already living in it. An orphaned
+   wallpaper nobody can see or clear is quota the next save may need,
+   so it is swept once at boot.
 
-   A photograph behind the cover. It is a preference, not a figure, so
-   it lives in its own storage key rather than in the ledger payload:
-   a backup should carry the household's money, not its wallpaper, and
-   an image would double the size of every backup file for nothing.
-
-   The picture never leaves the phone. It is read with a FileReader,
-   drawn to a canvas here, and stored as a data URL in localStorage --
-   the same place the ledger lives and the same promise applies.
-
-   It is downscaled on the way in. A modern phone photograph is four
-   thousand pixels wide and several megabytes; localStorage holds
-   about five, and the ledger is already using one of them. Twelve
-   hundred pixels is more than a phone screen can show, and at that
-   size the file is small enough to sit beside the money rather than
-   in place of it.
-   ============================================================ */
-const BG_KEY = 'thompson:splash:bg:v1';
-const BG_MAX = 1200;              /* longest edge, pixels */
-const BG_QUALITY = 0.78;
-/* Three weights rather than a slider. A slider invites fiddling with
-   something that has exactly three useful answers: barely, properly,
-   and this photograph is too busy to read type over. */
-const BG_DIMS = [0.34, 0.55, 0.78];
-
-let splashBg = { src:'', dim:1 };
-
-function bgLoad(){
-  try {
-    const raw = localStorage.getItem(BG_KEY);
-    if (!raw) return;
-    const p = JSON.parse(raw);
-    splashBg = {
-      src: typeof p.src === 'string' && p.src.startsWith('data:image/') ? p.src : '',
-      dim: [0,1,2].includes(Number(p.dim)) ? Number(p.dim) : 1,
-    };
-  } catch(_){ splashBg = { src:'', dim:1 }; }
-}
-function bgSave(){
-  try { localStorage.setItem(BG_KEY, JSON.stringify(splashBg)); return true; }
-  catch(_){ return false; }
-}
-
-function bgPaint(){
-  const el = $('#splashBg'), sp = $('#splash');
-  if (!el || !sp) return;
-  const on = Boolean(splashBg.src);
-  el.hidden = !on;
-  el.style.backgroundImage = on ? `url("${splashBg.src}")` : '';
-  el.style.setProperty('--bg-dim', String(BG_DIMS[splashBg.dim] ?? BG_DIMS[1]));
-  sp.classList.toggle('splash--photo', on);
-  const clear = $('#bgClear'), dim = $('#bgDim'), lab = $('#bgPickLabel');
-  if (clear) clear.hidden = !on;
-  if (dim){
-    dim.hidden = !on;
-    dim.textContent = ['Dim 1','Dim 2','Dim 3'][splashBg.dim] || 'Dim';
-  }
-  if (lab) lab.textContent = on ? 'Change' : 'Backdrop';
-}
-
-/**
- * Read a chosen file down to something storable.
- *
- * Drawn to a canvas rather than stored as-is, so what lands in storage
- * is bounded no matter what came out of the camera. JPEG rather than
- * PNG because a photograph is not line art and PNG would be four times
- * the size for no visible gain.
- */
-function bgFromFile(file){
-  return new Promise((resolve, reject) => {
-    if (!file || !/^image\//.test(file.type || '')) return reject(new Error('not an image'));
-    const fr = new FileReader();
-    fr.onerror = () => reject(new Error('unreadable'));
-    fr.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('undecodable'));
-      img.onload = () => {
-        try {
-          const scale = Math.min(1, BG_MAX / Math.max(img.width, img.height));
-          const w = Math.max(1, Math.round(img.width * scale));
-          const h = Math.max(1, Math.round(img.height * scale));
-          const c = document.createElement('canvas');
-          c.width = w; c.height = h;
-          c.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(c.toDataURL('image/jpeg', BG_QUALITY));
-        } catch(_){ reject(new Error('undecodable')); }
-      };
-      img.src = String(fr.result);
-    };
-    fr.readAsDataURL(file);
-  });
-}
-
-function initSplashBg(){
-  bgLoad();
-  bgPaint();
-  const input = $('#bgInput');
-  if (!input) return;
-  $('#bgPick').addEventListener('click', () => input.click());
-  input.addEventListener('change', async () => {
-    const file = input.files && input.files[0];
-    input.value = '';                    /* the same file may be chosen twice */
-    if (!file) return;
-    const held = splashBg.src;
-    try {
-      toast('Reading the picture\u2026');
-      splashBg.src = await bgFromFile(file);
-    } catch(_){
-      toast('That file could not be read as a picture');
-      return;
-    }
-    if (!bgSave()){
-      /* Out of room. The ledger is the thing worth keeping, so the
-         picture is the thing that goes back. */
-      splashBg.src = held;
-      bgSave();
-      bgPaint();
-      toast('No room on the phone for that picture');
-      return;
-    }
-    bgPaint();
-    toast('Backdrop set');
-  });
-  $('#bgDim').addEventListener('click', () => {
-    splashBg.dim = (splashBg.dim + 1) % BG_DIMS.length;
-    bgSave(); bgPaint();
-  });
-  $('#bgClear').addEventListener('click', () => {
-    splashBg.src = '';
-    bgSave(); bgPaint();
-    toast('Backdrop cleared');
-  });
+   Deliberately not version-guarded or flagged as done. removeItem on a
+   key that is not there costs nothing and returns nothing, so running
+   it every boot is cheaper than remembering that it ran. */
+function sweepBackdropKey(){
+  try { localStorage.removeItem('thompson:splash:bg:v1'); } catch(_){}
 }
 
 let lastGreetMode = null;
@@ -13112,6 +14212,7 @@ function wire(){
   $('#tripModal').addEventListener('click', e => { if (e.target === $('#tripModal')) closeTripEditor(); });
   attachMoneyInput($('#tripBudget'));
   $('#ariaReport').addEventListener('click', runReport);
+  initReceipts();
   initBackupSheet();
   $('#restoreBtn').addEventListener('click', () => $('#restoreInput').click());
   $('#restoreInput').addEventListener('change', e => {
@@ -13143,6 +14244,10 @@ function wire(){
   $('#openAmount').addEventListener('input', previewRecon);
   $('#openDate').addEventListener('change', previewRecon);
   $('#crestHome').addEventListener('click', goSplash);
+  /* goSplash already puts away whichever full-bleed view is up, so the
+     mark means the same thing here as it does on a screen. */
+  $('#crestLedger').addEventListener('click', goSplash);
+  $('#crestAmort').addEventListener('click', goSplash);
   $('#ariaTab').addEventListener('click', openDrawer);
   window.addEventListener('online',  setLamp);
   window.addEventListener('offline', setLamp);
@@ -13176,7 +14281,7 @@ function wire(){
   initAmort();
   initFolds();
   initServiceWorker();
-  initSplashBg();
+  sweepBackdropKey();
   try { const lm = await storeGet(LOCK_KEY); if (lm) lock.meta = JSON.parse(lm); } catch(_){}
   renderLockRow();                      /* the splash tells the truth immediately */
   if (!lock.meta){
