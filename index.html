@@ -2429,6 +2429,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 
     <div class="bk-box">
       <div class="bk-line"><span class="k">On file</span><span class="v" id="bkRows">—</span></div>
+      <div class="bk-line" id="bkWaitRow" hidden><span class="k">Waiting to file</span><span class="v tone-owe" id="bkWait">—</span></div>
       <div class="bk-line"><span class="k">Last written</span><span class="v" id="bkLast">—</span></div>
       <div class="bk-line" id="bkNextRow" hidden><span class="k">Next due</span><span class="v" id="bkNext">—</span></div>
     </div>
@@ -3448,7 +3449,10 @@ function catKnown(cat){
   if (!cat || cat === CAT_NONE) return false;
   if (!MEM_VOCAB){
     MEM_VOCAB = new Set(Object.keys(CATALOG));
-    MASTER_ROWS.forEach(r => MEM_VOCAB.add(r[4]));
+    /* The master ledger used to be read here too, on the theory that it
+       might file under a name the catalog never had. It does not: every
+       one of its categories is already a CATALOG key, so the walk was
+       2,124 rows to learn nothing, paid on the first line filed. */
     MEM_VOCAB.delete(CAT_NONE);
   }
   return MEM_VOCAB.has(cat) || Object.prototype.hasOwnProperty.call(taxo(), cat);
@@ -4125,7 +4129,49 @@ function runAmazonItems(fileName, grid){
 /* ============================================================
    6. DERIVED FIGURES
    ============================================================ */
-function rowsFor(id){ return state.rows.filter(r => r.acct === id); }
+/* ============================================================
+   DERIVED FIGURES — one pass over the ledger, not one per caller
+
+   Every figure on every screen is computed from the same array. A
+   single render() asks for account rows, balances, totals, months
+   and category stats dozens of times, and each of those used to
+   walk all 2,482 lines again: 78 full scans a render, 193,596 rows
+   touched to draw a picture of 2,482. It was invisible at a hundred
+   rows and it will not stay invisible at ten thousand.
+
+   So the ledger is indexed once and the answers are kept until the
+   ledger changes. The cache holds the array it was built from: swap
+   `state.rows` for a new one — a restore, an import, a clear — and
+   the identity check fails and it rebuilds. Filing edits a row in
+   place without touching the array, so those go through
+   `ledgerTouched()`, which `save()` and `render()` both call. Every
+   mutation in this file is followed by one or both.
+
+   The arrays handed back are the index's own, not copies. Every
+   caller reads them — filter, reduce, length — and none sorts or
+   pushes, which is what makes that safe and what has to stay true.
+   ============================================================ */
+const NO_ROWS = [];
+let LEDGER_IDX = null;
+
+function ledgerIndex(){
+  const rows = state.rows;
+  if (LEDGER_IDX && LEDGER_IDX.rows === rows && LEDGER_IDX.n === rows.length) return LEDGER_IDX;
+  const byAcct = new Map();
+  for (let i = 0; i < rows.length; i++){
+    const r = rows[i];
+    const bin = byAcct.get(r.acct);
+    if (bin) bin.push(r); else byAcct.set(r.acct, [r]);
+  }
+  LEDGER_IDX = { rows, n: rows.length, byAcct,
+                 bal: new Map(), spend: new Map(), month: null, cats: null, sum: null };
+  return LEDGER_IDX;
+}
+/* Say the ledger moved. Cheap enough to call more often than needed,
+   and the only failure mode worth having is calling it too often. */
+function ledgerTouched(){ LEDGER_IDX = null; }
+
+function rowsFor(id){ return ledgerIndex().byAcct.get(id) || NO_ROWS; }
 
 /** End of the calendar day a timestamp falls in. */
 function endOfDay(t){
@@ -4142,6 +4188,12 @@ function endOfDay(t){
    liability subtracts them, because a charge (negative) raises what
    is owed and a payment (positive) lowers it. */
 function balanceOf(id){
+  const ix = ledgerIndex();
+  let hit = ix.bal.get(id);
+  if (hit === undefined){ hit = balanceCompute(id); ix.bal.set(id, hit); }
+  return hit;
+}
+function balanceCompute(id){
   const acct = ACCT[id];
   const b = state.balances[id];
   const rs = rowsFor(id);
@@ -4241,15 +4293,19 @@ function newestRow(id){
 function balanceAccounts(){ return ACCOUNTS.filter(a => !a.feed); }
 
 function totals(){
+  const ix = ledgerIndex();
+  if (ix.sum) return ix.sum;
   let assets = 0, owed = 0;
   balanceAccounts().forEach(a => {
     const v = balanceOf(a.id).value;
     if (a.side === 'asset') assets += v; else owed += Math.abs(v);
   });
-  return { assets, owed, net: assets - owed };
+  return (ix.sum = { assets, owed, net: assets - owed });
 }
 
 function byMonth(){
+  const ix = ledgerIndex();
+  if (ix.month) return ix.month;
   const m = new Map();
   state.rows.forEach(r => {
     const k = monthKey(r.date);
@@ -4257,16 +4313,24 @@ function byMonth(){
     const b = m.get(k);
     if (r.amount >= 0) b.in += r.amount; else b.out += -r.amount;
   });
-  return Array.from(m.values()).sort((a,b) => a.k.localeCompare(b.k)).slice(-12);
+  return (ix.month = Array.from(m.values()).sort((a,b) => a.k.localeCompare(b.k)).slice(-12));
 }
 
 function topSpend(limit = 6, acctId = ''){
+  const ix = ledgerIndex(), key0 = limit + '|' + acctId;
+  const had = ix.spend.get(key0);
+  if (had) return had;
   const m = new Map();
-  state.rows.filter(r => r.amount < 0 && (!acctId || r.acct === acctId)).forEach(r => {
+  const src = acctId ? rowsFor(acctId) : state.rows;
+  src.forEach(r => {
+    if (r.amount >= 0) return;
     const key = (r.category || r.desc.split(/[\s*#]/).slice(0,3).join(' ')).toUpperCase();
     m.set(key, (m.get(key) || 0) + -r.amount);
   });
-  return Array.from(m, ([label, total]) => ({label, total})).sort((a,b) => b.total - a.total).slice(0, limit);
+  const out = Array.from(m, ([label, total]) => ({label, total}))
+    .sort((a,b) => b.total - a.total).slice(0, limit);
+  ix.spend.set(key0, out);
+  return out;
 }
 
 
@@ -4566,6 +4630,9 @@ function applyPayload(data){
 }
 
 async function save(){
+  /* Anything worth writing to storage is something the derived figures
+     have to be recomputed from. */
+  ledgerTouched();
   try {
     await storeSet(STORE_KEY, await sealLedger(JSON.stringify(ledgerPayload())));
   } catch(_){ /* storage is a bonus, not a requirement */ }
@@ -5024,6 +5091,33 @@ function filedTally(){
   return { cats: cats.length, subs: cats.reduce((n,c) => n + full[c].length, 0),
            offCats: off.cats.length, offSubs: off.subs };
 }
+/* What the file cannot say for itself.
+
+   `filedTally` counts the catalog: how many categories and subcategories
+   the ledger's filing spans. That is breadth, not coverage, and on the
+   backup sheet it reads like reassurance -- "31 categories filed" while
+   252 line items sit unfiled underneath it. This counts the other thing:
+   the lines still waiting for a household category, by the same test the
+   memory engine uses, so a backup can say plainly what it is about to
+   preserve as unfinished. */
+function unfiledTally(){
+  const byAcct = {};
+  let n = 0;
+  state.rows.forEach(r => {
+    if (!memUnfiled(r)) return;
+    n++;
+    byAcct[r.acct] = (byAcct[r.acct] || 0) + 1;
+  });
+  return { n, byAcct };
+}
+/* "252 waiting (AMEX)" -- the accounts, biggest first, so the household
+   knows where to go rather than only that something is owed. */
+function unfiledNote(u){
+  if (!u.n) return '';
+  const who = Object.keys(u.byAcct).sort((a,b) => u.byAcct[b] - u.byAcct[a]);
+  return `${u.n.toLocaleString()} waiting (${who.slice(0,3).join(', ')}${who.length > 3 ? '\u2026' : ''})`;
+}
+
 function offNote(f){
   if (!f.offCats && !f.offSubs) return '';
   const bits = [];
@@ -5032,11 +5126,46 @@ function offNote(f){
   return ` (${bits.join(' and ')} off the catalog)`;
 }
 
+/* Read the file back before it leaves.
+
+   The backup is written by serialising the live ledger, so in principle
+   what lands on disk is what was in memory. In principle is not a
+   guarantee: a field that never made it into `ledgerPayload`, a value
+   JSON cannot carry, a row shape that changed under a later build --
+   any of those would go out silently and only surface on the restore,
+   months later, as work that seems to have evaporated.
+
+   So the written text is parsed back and compared against the rows it
+   came from, line by line, on the two fields that carry the household's
+   own work. It costs one pass over the ledger and it turns "the filing
+   should be in there" into "the filing is in there, checked". */
+function verifyPayload(text){
+  const bad = { rows:0, cat:0, sub:0, missing:0, first:null };
+  let back;
+  try { back = JSON.parse(text); } catch(_){ bad.rows = -1; return bad; }
+  const out = (back && back.payload && back.payload.rows) || [];
+  if (out.length !== state.rows.length){ bad.rows = Math.abs(out.length - state.rows.length); }
+  const seen = new Map();
+  out.forEach(r => seen.set(r.id, r));
+  state.rows.forEach(live => {
+    const filed = seen.get(live.id);
+    if (!filed){ bad.missing++; return; }
+    const c = (live.category || '') !== (filed.category || '');
+    const b = (live.sub || '') !== (filed.sub || '');
+    if (c) bad.cat++;
+    if (b) bad.sub++;
+    if ((c || b) && !bad.first) bad.first = live.desc;
+  });
+  return bad;
+}
+
 function runBackup(){
   const wrap = { app:'thompson-finances', version:1, build:BUILD,
                  savedAt:new Date().toISOString(), payload: ledgerPayload() };
   const name = bkFileName();
-  const blob = new Blob([JSON.stringify(wrap)], { type:'application/json' });
+  const text = JSON.stringify(wrap);
+  const check = verifyPayload(text);
+  const blob = new Blob([text], { type:'application/json' });
   const file = new File([blob], name, { type:'application/json' });
   const done = () => {
     /* The clock restarts from a file that actually got written, never
@@ -5047,9 +5176,26 @@ function runBackup(){
     if (!$('#backupModal').hidden) closeBackup();
     const n = state.rows.length;
     const f = filedTally();
+    const u = unfiledTally();
     logLine(`Backup written — ${n.toLocaleString()} row${n === 1 ? '' : 's'}, `
-      + `${f.cats} categor${f.cats === 1 ? 'y' : 'ies'} / ${f.subs} subcategories filed`
+      + `${(n - u.n).toLocaleString()} filed across ${f.cats} categor${f.cats === 1 ? 'y' : 'ies'} / ${f.subs} subcategories`
       + offNote(f) + `, ${(blob.size/1024).toFixed(0)} KB`, 'ok');
+    /* Whether the file matches the ledger, said out loud either way. A
+       backup that quietly disagrees with the app is the one failure this
+       file exists to prevent. */
+    if (check.rows === -1 || check.cat || check.sub || check.missing || check.rows){
+      logLine(`Backup check FAILED — ${check.cat} categor${check.cat === 1 ? 'y' : 'ies'} and `
+        + `${check.sub} subcategor${check.sub === 1 ? 'y' : 'ies'} did not survive the write`
+        + (check.missing ? `, ${check.missing} row${check.missing === 1 ? '' : 's'} absent` : '')
+        + (check.first ? ` — first was ${check.first}` : '')
+        + '. Do not trust this file.', 'err');
+    } else {
+      logLine(`Backup checked — every row read back with its filing intact`, 'ok');
+    }
+    /* And what the file is preserving as unfinished, so a restore that
+       comes back short reads as a stale file and not as lost work. */
+    if (u.n) logLine(`${unfiledNote(u)} — this backup carries ${u.n === 1 ? 'it' : 'them'} unfiled. `
+      + `File by memory first if you want the backup to hold the filing.`, 'warn');
   };
   if (navigator.canShare && navigator.canShare({ files:[file] })){
     navigator.share({ files:[file] }).then(done).catch(err => {
@@ -5281,7 +5427,11 @@ function bkPaint(){
 function bkRender(){
   const n = state.rows.length;
   const f = filedTally();
-  $('#bkRows').textContent = `${n.toLocaleString()} row${n === 1 ? '' : 's'} · ${f.cats}/${f.subs} filed`;
+  const u = unfiledTally();
+  $('#bkRows').textContent = `${n.toLocaleString()} row${n === 1 ? '' : 's'} · `
+    + `${(n - u.n).toLocaleString()} filed · ${f.cats}/${f.subs} catalogued`;
+  $('#bkWaitRow').hidden = !u.n;
+  if (u.n) $('#bkWait').textContent = unfiledNote(u);
   $('#bkLast').textContent = bkAgo(bkPref.lastAt);
   const nextRow = $('#bkNextRow');
   nextRow.hidden = !bkPref.on;
@@ -5363,6 +5513,16 @@ function runRestore(file){
     }
     applyPayload(payload);
     applyRules();
+    /* A backup is a photograph of a moment, and filing carries on after
+       the shutter. Restoring one that predates an afternoon's work brings
+       those lines back unfiled -- which is not the file losing anything,
+       but it looks identical from the outside. The memory engine already
+       exists for exactly this; run it here, and say what it did, so the
+       gap between the file and the ledger is closed and named rather
+       than left for the Categories screen to report as a shock. */
+    const arrived = unfiledTally();
+    let caught = null;
+    if (arrived.n) caught = fileByMemory(state.rows);
     fillBulkCats();          /* the bulk pickers read the restored taxonomy */
     save(); render(); refreshAcctSelects(); showFoldbar();
     const when = data && data.savedAt ? ` from ${fmtDate(new Date(data.savedAt))}` : '';
@@ -5373,6 +5533,14 @@ function runRestore(file){
     /* A file written before backups carried `inUse` still restores whole --
        the filing rides on the rows either way. Where the two disagree, say
        so, so a short count reads as a stale file and not as lost work. */
+    /* Said after the row count, in the household's terms: what the file
+       held unfiled, what memory recovered, what is genuinely new. */
+    if (arrived.n){
+      logLine(`${arrived.n.toLocaleString()} row${arrived.n === 1 ? '' : 's'} arrived unfiled — `
+        + Object.keys(arrived.byAcct).sort((a,b) => arrived.byAcct[b] - arrived.byAcct[a])
+            .map(a => `${a} ${arrived.byAcct[a]}`).join(', '), 'warn');
+      if (caught) logMemoryRun(caught, 'Restore');
+    }
     if (payload.inUse){
       const want = payload.inUse, have = taxoInUse();
       const lost = Object.keys(want).filter(c => !have[c]);
@@ -9035,6 +9203,8 @@ function initLedgerRotation(){
    The hard rule: nothing a line item points at can be deleted.
    ============================================================ */
 function catStats(){
+  const ix = ledgerIndex();
+  if (ix.cats) return ix.cats;
   const out = {};
   const seed = () => ({ rows:0, out:0, in:0, subs:{}, orphans:0 });
   const seedSub = () => ({ rows:0, out:0, in:0, listed:true });
@@ -9061,7 +9231,7 @@ function catStats(){
       if (r.amount < 0) c.subs[''].out -= r.amount; else c.subs[''].in += r.amount;
     }
   });
-  return out;
+  return (ix.cats = out);
 }
 let CAT_STATS = {};
 const statOf = c => CAT_STATS[c] || { rows:0, out:0, in:0, subs:{}, orphans:0 };
@@ -11208,7 +11378,7 @@ function initSchemaJump(){
   renderSchemaDetail();
 }
 
-function render(){ renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTasks(); renderTrip(); renderFamily(); renderTable(); renderCategories(); renderFiles(); renderInstrument(); }
+function render(){ ledgerTouched(); renderBeam(); renderCards(); renderBudget(); renderFlow(); renderProjections(); renderCalendar(); renderTasks(); renderTrip(); renderFamily(); renderTable(); renderCategories(); renderFiles(); renderInstrument(); }
 
 /* ---------- log + toast ---------- */
 function logLine(text, kind='ok'){
@@ -11495,7 +11665,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-12u';
+const BUILD = '2026-08-13b';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
