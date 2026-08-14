@@ -599,6 +599,16 @@ html[data-theme="dark"] .card__duelamp[data-tone="green"]{background:#6FBF8C}
 /* a third column for the share of income; the track still spans the lot */
 .bars .row--pct{grid-template-columns:minmax(0,1fr) auto auto}
 .bars .row--pct .track{grid-column:1/4}
+/* Month on month: this month's figure, last month's beside it, and the
+   change. The bar is this month; the tick on it is where last month
+   finished, so the two are read in one glance instead of two. */
+.bars .row--mom{grid-template-columns:minmax(0,1fr) auto auto auto}
+.bars .row--mom .track{grid-column:1/5;position:relative;overflow:visible}
+.bars .row--mom .track .fill{border-radius:4px 0 0 4px}
+.bars .row .was{font-family:var(--data);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.bars .row .mark{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;
+  background:var(--muted);opacity:.9;pointer-events:none}
+.bars .row .mark--none{display:none}
 .bars .row .pct{font-family:var(--data);font-size:11.5px;color:var(--muted);
   min-width:46px;text-align:right;font-variant-numeric:tabular-nums}
 .bars .row .pct.tone-owe{color:var(--owe)}
@@ -2252,6 +2262,13 @@ input[type=date]{-webkit-appearance:none;appearance:none}
               <div class="msel__list" id="outCatList"></div>
             </div>
           </div>
+          <div class="seg" id="outSpan" role="radiogroup"
+               aria-label="Which months the outflows cover" style="margin-top:12px">
+            <button class="seg__opt" type="button" role="radio" data-outspan="all"
+                    aria-checked="true">All months</button>
+            <button class="seg__opt" type="button" role="radio" data-outspan="mom"
+                    aria-checked="false">This vs last</button>
+          </div>
           <div class="bars" id="topSpend" style="margin-top:12px"></div>
           <div class="fixed-sum fixed-sum--net"><span class="eyebrow" id="outSumLabel">Share of income</span><b class="num" id="outPct">&mdash;</b></div>
           <p class="hint" id="outNote" style="margin:8px 0 0"></p>
@@ -3206,8 +3223,24 @@ function rebuildRegistry(){
                    flip: schemaFlips(c.schema), manual: base.manual,
                    feed: base.feed } : base);
   });
+  /* An id may be claimed once. ACCT is keyed by id and silently kept the
+     last writer, but ACCOUNTS is a list and every renderer walks it, so a
+     collision drew the account TWICE -- two cards, the same eight rows
+     under both, and a group total that added the same balance to itself.
+
+     It got there through the delete-then-re-add path: deleting a built-in
+     account parks its id in `removed`, which was enough to let the alias
+     guard pass, and the add then un-parked the base entry AND pushed a
+     twin into `added`. Both came out of here. The guard is fixed at the
+     source; this is the sweep that heals a sheet already carrying one,
+     and the standing rule that the base account wins -- it is the entry
+     holding the import schema, so the hand-made twin is the one that can
+     be spared. */
+  const claimed = new Set(out.map(a => a.id));
   ed.added.forEach(c => {
     if (ed.removed.includes(c.id)) return;
+    if (claimed.has(c.id)) return;
+    claimed.add(c.id);
     out.push({ id: c.id, name: c.name, inst: c.inst, kind: c.kind,
                side: c.side, schema: c.schema, flip: schemaFlips(c.schema),
                manual: true, via: 'manual entry',
@@ -3215,6 +3248,33 @@ function rebuildRegistry(){
   });
   ACCOUNTS = out;
   ACCT = Object.fromEntries(out.map(a => [a.id, a]));
+}
+
+/** Drop hand-added accounts whose id was never theirs to take.
+
+    rebuildRegistry already refuses to draw them, so this is about the
+    stored list rather than the screen: left in place they would ride
+    through every backup and come back on every restore, and the next
+    build that walks `added` for its own reasons would meet them again. */
+function pruneDupeAccounts(){
+  const ed = state.acctEdits;
+  if (!ed || !Array.isArray(ed.added) || !ed.added.length) return 0;
+  const base = new Set(BASE_ACCOUNTS.map(b => b.id));
+  const seen = new Set();
+  const keep = [];
+  let dropped = [];
+  ed.added.forEach(c => {
+    if (!c || !c.id) return;
+    if (base.has(c.id) || seen.has(c.id)){ dropped.push(c.id); return; }
+    seen.add(c.id);
+    keep.push(c);
+  });
+  if (!dropped.length) return 0;
+  ed.added = keep;
+  logLine(`Removed ${dropped.length} duplicate account card${dropped.length === 1 ? '' : 's'} `
+    + `(${dropped.join(', ')}) — that alias already belongs to a built-in account, `
+    + `and the sheet was counting its balance twice`, 'warn');
+  return dropped.length;
 }
 
 /* ============================================================
@@ -3375,6 +3435,7 @@ const state = {
   calProj:{ cats:['FixedExpense'], subs:[] },   // what the calendar rolls forward: whole
                          // categories, plus single subcategories written 'Cat\u241FSub'
   outSel:{ cats:[], subs:[] },   // which outflows the Flow screen charts; empty = the six biggest
+  outSpan:'all',         // 'all' = every row on file, 'mom' = this month against last
   thread:[],             // {role, content}
   covered:[],            // card lines an item import has replaced, as 'acct|yyyy-mm-dd|cents'.
                          // Durable: if the statement is imported again later, the line it
@@ -5188,6 +5249,7 @@ function ledgerPayload(){
     tripSel: state.tripSel,
     calProj: state.calProj,
     outSel: state.outSel,
+    outSpan: state.outSpan,
     asins: state.asins,
     covered: state.covered,
     /* The photographs are not here and never were — only what they said. */
@@ -5251,6 +5313,7 @@ function applyPayload(data){
   state.calProj = (data.calProj && Array.isArray(data.calProj.cats))
     ? { cats: data.calProj.cats.slice(), subs: (data.calProj.subs || []).slice() }
     : { cats:['FixedExpense'], subs:[] };
+  state.outSpan = data.outSpan === 'mom' ? 'mom' : 'all';
   state.outSel = (data.outSel && Array.isArray(data.outSel.cats))
     ? { cats: data.outSel.cats.slice(), subs: (data.outSel.subs || []).slice() }
     : { cats:[], subs:[] };
@@ -5280,6 +5343,7 @@ function applyPayload(data){
   state.acctEdits.added   = state.acctEdits.added   || [];
   state.acctEdits.changed = state.acctEdits.changed || {};
   state.acctEdits.removed = state.acctEdits.removed || [];
+  pruneDupeAccounts();
   rebuildRegistry();
   /* rows can reference an account deleted on another day — drop them
      rather than let every renderer trip over a missing entry */
@@ -8568,12 +8632,30 @@ function saveAcctEditor(){
   if (!/^[A-Za-z0-9_-]{2,20}$/.test(alias)){
     toast('Alias: 2–20 letters or numbers, no spaces'); $('#acctAlias').focus(); return;
   }
-  if (ACCT[alias] || BASE_ACCOUNTS.some(b => b.id === alias && !state.acctEdits.removed.includes(b.id))){
+  if (ACCT[alias]){
     toast(`${alias} is already on the sheet`); $('#acctAlias').focus(); return;
   }
   if (!name){ toast('The account needs a name'); $('#acctName').focus(); return; }
 
-  /* re-adding an alias that was deleted revives the slot cleanly */
+  const base = BASE_ACCOUNTS.find(b => b.id === alias);
+  if (base){
+    /* This alias belongs to a built-in account that was deleted. Reviving
+       it means un-parking the original and recording the household's
+       wording as an edit to it -- NOT pushing a second account under the
+       same id. Doing both is what put two cards on the sheet: the base
+       entry came back the moment its id left `removed`, and the twin came
+       back beside it. The built-in is the one worth reviving anyway; it
+       carries the import schema a hand-made entry has no way to know. */
+    state.acctEdits.removed = state.acctEdits.removed.filter(id => id !== alias);
+    state.acctEdits.changed[alias] = { name, inst, kind, side: acctSide, schema };
+    rebuildRegistry(); save(); render(); refreshAcctSelects();
+    logLine(`Account restored — ${alias} was a built-in account, so it came back `
+      + `with its import schema rather than as a new one`, 'ok');
+    toast(`${alias} restored`);
+    closeAcctEditor();
+    return;
+  }
+
   state.acctEdits.removed = state.acctEdits.removed.filter(id => id !== alias);
   state.acctEdits.added.push({ id: alias, name, inst, kind, side: acctSide, schema });
   rebuildRegistry(); save(); render(); refreshAcctSelects();
@@ -9653,6 +9735,68 @@ function outShares(who){
  * Returns {bars, income, custom, total, pct} -- total and pct describe
  * the bars actually shown, never some wider figure they don't add up to.
  */
+/** This calendar month's outflow per category, against last month's.
+
+    Whole months and not a rolling thirty days: the household reads a
+    statement cycle, and "am I spending more than last month" is a
+    question about August against July, not about the last thirty days
+    against the thirty before them.
+
+    A category appears if it has spend in EITHER month. Dropping the ones
+    that fell to nothing would hide the most useful line on the screen --
+    four hundred pounds last month and none this one is exactly what a
+    comparison is for. Ranking is by the larger of the two for the same
+    reason, so a category that stopped does not sink out of the top six. */
+function outflowMoM(){
+  /* The month pair comes from momMonths(), the same source the Month on
+     month fold reads, so the two panels on this screen can never disagree
+     about which months they mean. It is the newest month WITH ROWS and the
+     one before it -- not the calendar month, which would read as empty for
+     the first days of every month and for anyone importing in arrears. */
+  const mm = momMonths();
+  if (!mm) return { bars: [], custom: selCount(outSel()) > 0, total: 0, wasTotal: 0,
+                    delta: 0, pct: null, curKey: '', prevKey: '', empty: true };
+  const cur = mm.cur, prev = mm.prev;
+  const s = outSel();
+  const custom = selCount(s) > 0;
+  const A = new Map(), B = new Map();
+
+  state.rows.forEach(r => {
+    if (!(r.amount < 0)) return;
+    if (!(r.date instanceof Date) || isNaN(r.date)) return;
+    const k = monthKey(r.date);
+    if (k !== cur && k !== prev) return;
+    const cat = String(r.category || '');
+    let key;
+    if (custom){
+      if (s.cats.includes(cat)) key = cat;                   /* the category outranks its subs */
+      else if (s.subs.includes(catSubKey(cat, r.sub))) key = String(r.sub || cat);
+      else return;
+    } else {
+      /* the same key topSpend uses, so the labels match the other view */
+      key = (r.category || r.desc.split(/[\s*#]/).slice(0,3).join(' ')).toUpperCase();
+    }
+    const m = (k === cur) ? A : B;
+    m.set(key, (m.get(key) || 0) + -r.amount);
+  });
+
+  let bars = Array.from(new Set([...A.keys(), ...B.keys()]), label => {
+    const total = A.get(label) || 0;
+    const was = B.get(label) || 0;
+    return { label, total, was, delta: total - was,
+             /* null where there is no base to measure against: something
+                from nothing is not "up 100%", it is simply new */
+             pct: was > 0 ? ((total - was) / was) * 100 : null };
+  }).sort((a,b) => Math.max(b.total, b.was) - Math.max(a.total, a.was));
+
+  if (!custom) bars = bars.slice(0, 6);
+  const total = bars.reduce((t,b) => t + b.total, 0);
+  const wasTotal = bars.reduce((t,b) => t + b.was, 0);
+  return { bars, custom, total, wasTotal, delta: total - wasTotal,
+           pct: wasTotal > 0 ? ((total - wasTotal) / wasTotal) * 100 : null,
+           curKey: cur, prevKey: prev };
+}
+
 function outflowBars(){
   const s = outSel();
   const custom = selCount(s) > 0;
@@ -9693,9 +9837,76 @@ const OUT_MSEL = mselCreate({
 });
 const initOutflows = () => { OUT_MSEL.init(); initMoM(); initDeck(); };
 
+/** "+$412" / "-$88", coloured the way the household reads it: more spend
+    than the month before is the owe colour, less is the asset colour. */
+function deltaText(d){
+  if (Math.abs(d) < 0.005) return '<span class="pct">level</span>';
+  const tone = d > 0 ? 'tone-owe' : 'tone-asset';
+  return `<span class="pct ${tone}">${d > 0 ? '+' : '\u2212'}${moneyShort(Math.abs(d))}</span>`;
+}
+
+function renderOutflowsMoM(){
+  const host = $('#topSpend');
+  const o = outflowMoM();
+  /* One scale for both figures, or the bar and the tick would be drawn
+     against different rulers and the comparison would be a lie. */
+  const max = Math.max(1, ...o.bars.map(b => Math.max(b.total, b.was)));
+
+  host.innerHTML = o.bars.length ? o.bars.map(x => `
+    <div class="row row--mom"><span>${esc(x.label)}</span>
+      <span class="amt">${moneyShort(x.total)}</span>
+      <span class="was">was ${moneyShort(x.was)}</span>
+      ${deltaText(x.delta)}
+      <div class="track">
+        <div class="fill" style="width:${(x.total/max*100).toFixed(1)}%"></div>
+        <i class="mark${x.was > 0 ? '' : ' mark--none'}"
+           style="left:${(x.was/max*100).toFixed(1)}%" aria-hidden="true"></i>
+      </div>
+    </div>`).join('')
+    : `<p class="empty">${o.empty ? 'Two months of rows are needed before there is anything to compare.'
+        : o.custom ? 'Nothing on file under those categories in either month.'
+        : 'No outflows in either month.'}</p>`;
+
+  const pct = $('#outPct');
+  if (pct){
+    pct.textContent = o.bars.length
+      ? `${o.delta > 0 ? '+' : o.delta < 0 ? '\u2212' : ''}${moneyShort(Math.abs(o.delta))}`
+      : '\u2014';
+    pct.className = 'num' + (o.delta > 0.005 ? ' tone-owe' : o.delta < -0.005 ? ' tone-asset' : '');
+  }
+  const sumLabel = $('#outSumLabel');
+  if (sumLabel) sumLabel.textContent = o.empty ? 'Nothing to compare yet'
+    : `${monthLabel(o.curKey)} ${moneyShort(o.total)} \u00b7 ${monthLabel(o.prevKey)} ${moneyShort(o.wasTotal)}`;
+
+  const tag = $('#outTag');
+  if (tag) tag.textContent = o.empty ? 'month on month'
+    : (o.custom ? `${selCount(outSel())} picked` : 'top 6')
+      + ` \u00b7 ${monthLabel(o.curKey)} v ${monthLabel(o.prevKey)}`;
+
+  const note = $('#outNote');
+  if (note) note.textContent = o.empty
+    ? 'No rows on file yet, so there are no months to set against each other.'
+    : `${monthLabel(o.curKey)} against ${monthLabel(o.prevKey)} \u2014 the newest month on file `
+      + 'and the one before it. If the newest is still running it is a part month next to a '
+      + 'whole one, and some of that gap is the calendar rather than the spending. The bar is '
+      + 'the newer month; the tick on it is where the older one finished. A category shows if '
+      + 'it had spend in either month, so one that stopped is still on the list.';
+}
+
 function renderOutflows(){
   const host = $('#topSpend');
   if (!host) return;
+
+  /* The toggle decides which of two entirely different questions this
+     fold is answering, so the two renderers are kept apart rather than
+     threaded through one body with flags. Both end by handing the
+     picker back to OUT_MSEL, which is common to either. */
+  const span = state.outSpan === 'mom' ? 'mom' : 'all';
+  $$('#outSpan [data-outspan]').forEach(b =>
+    b.setAttribute('aria-checked', String(b.dataset.outspan === span)));
+
+  if (span === 'mom'){ renderOutflowsMoM(); OUT_MSEL.render(); return; }
+
   const o = outflowBars();
   const max = o.bars.length ? o.bars[0].total : 1;
 
@@ -9736,6 +9947,15 @@ function renderOutflows(){
     : 'No money in on file yet, so there is nothing to measure a share against.') + picker;
 
   OUT_MSEL.render();
+}
+
+function initOutSpan(){
+  $$('#outSpan [data-outspan]').forEach(b => b.addEventListener('click', () => {
+    const want = b.dataset.outspan === 'mom' ? 'mom' : 'all';
+    if (state.outSpan === want) return;
+    state.outSpan = want;
+    save(); renderOutflows();
+  }));
 }
 
 /* ============================================================
@@ -14672,7 +14892,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14p';
+const BUILD = '2026-08-14r';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -14959,6 +15179,7 @@ function wire(){
   attachMoneyInput($('#tripBudget'));
   $('#ariaReport').addEventListener('click', runReport);
   initCardFlush();
+  initOutSpan();
   initReceipts();
   initBackupSheet();
   $('#restoreBtn').addEventListener('click', () => $('#restoreInput').click());
