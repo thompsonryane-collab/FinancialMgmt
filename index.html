@@ -7398,10 +7398,21 @@ function initToTop(){
    under the edge still gets brought in. */
 const RAIL_MARGIN = 26;
 let railHeld = false;
+/* The screen change that arrived while a finger was down, if there was
+   one. Null means the rail was held through a gesture that changed
+   nothing -- a plain pan -- and there is therefore nothing to catch up
+   on when the finger lifts. Distinguishing those two cases is the whole
+   repair: without it every pan ended in a scroll back to the open
+   screen, which reads as the rail refusing to move. */
+let railPending = null;
 
 function railTo(i){
   const rail = $('#tabRail');
-  if (!rail || railHeld) return;
+  if (!rail) return;
+  /* Deferred rather than dropped. A screen can change under a finger --
+     a swipe on the pager that starts over the dock -- and that move is
+     still owed once the rail is free. */
+  if (railHeld){ railPending = i; return; }
   /* the ledger button sits in the rail without a screen index, so a
      mark has to be found by the screen it stands for, not by position */
   const b = rail.querySelector(`button[data-i="${i}"]`);
@@ -7424,9 +7435,16 @@ function initRailHold(){
   const hold = () => { railHeld = true; };
   const free = () => {
     railHeld = false;
-    /* Whatever the rail missed while it was held is applied once, now
-       that nothing is pointing at it. */
-    railTo(activeScreen);
+    /* Only what was actually missed. A pan that changed no screen leaves
+       railPending null and the rail stays where the reader left it.
+
+       Reading and clearing before the call matters: railTo re-enters
+       nothing here, but a pending value left in place would be applied
+       a second time by the next release, undoing a pan made after it. */
+    if (railPending === null) return;
+    const owed = railPending;
+    railPending = null;
+    railTo(owed);
   };
   rail.addEventListener('pointerdown', hold, {passive:true});
   rail.addEventListener('touchstart', hold, {passive:true});
@@ -9401,10 +9419,28 @@ function thisMonthFlow(){
            rate: inn > 0 ? ((inn - out) / inn) * 100 : null };
 }
 
+/* The caption under a thirty-day tile. It says what the figure is made
+   of rather than repeating it: a number that moves by five figures the
+   day a card due date is set has to be able to explain itself. */
+function aheadNote(a, side){
+  const bits = [];
+  if (side === 'out'){
+    if (a.cards) bits.push(`${a.cards} card${a.cards === 1 ? '' : 's'}`);
+    if (a.bills) bits.push(`${a.bills} due`);
+  } else {
+    if (a.bills) bits.push('scheduled');
+  }
+  if (a.projs) bits.push(`${a.projs} projected`);
+  const net = a.net >= 0 ? `net +${moneyShort(a.net)}` : `net \u2212${moneyShort(Math.abs(a.net))}`;
+  return bits.length ? `${bits.join(' \u00b7 ')} \u00b7 ${net}` : net;
+}
+
 function renderDeckStanding(){
   const host = $('#deckTiles');
   if (!host) return;
   const t = totals();
+  /* One pass of the rolling window, shared by both forward tiles. */
+  const ahead = calTotals(calAheadItems(30));
   const p = budgetPlan();
   const cash = liquidCash();
   const burn = burnPerDay();
@@ -9432,6 +9468,22 @@ function renderDeckStanding(){
     tile(flow && flow.rate != null ? pctText(flow.rate) : '\u2014', 'Saved this month',
       flow ? `${moneyShort(flow.in)} in \u00b7 ${moneyShort(flow.out)} out` : '',
       flow && flow.rate != null ? (flow.rate >= 0 ? 'tone-asset' : 'tone-owe') : ''),
+    /* The four tiles above look backwards or at a standing total. These
+       two look forward, over the same rolling thirty days the Calendar
+       screen's "Next 30 days" fold already totals -- same function, same
+       lines, so the two surfaces cannot report different futures.
+
+       A calendar month is the wrong window for this. On the 28th, "this
+       month" is three days of obligation and reads as a household with
+       nothing to pay; the rent landing on the 1st is in a month nobody
+       is looking at. Thirty days from today crosses that boundary and
+       keeps crossing it. */
+    tile(ahead.n ? moneyShort(ahead.in) : '\u2014', 'In, next 30 days',
+      ahead.n ? aheadNote(ahead, 'in') : 'nothing scheduled',
+      ahead.in ? 'tone-asset' : ''),
+    tile(ahead.n ? moneyShort(ahead.out) : '\u2014', 'Out, next 30 days',
+      ahead.n ? aheadNote(ahead, 'out') : 'nothing scheduled',
+      ahead.out ? 'tone-owe' : ''),
   ].join('');
 
   const tag = $('#deckStandTag');
@@ -9443,19 +9495,23 @@ function renderDeckStanding(){
 }
 
 /* ---------- the month card ----------
-   Its own month, so paging here does not move the Calendar screen
-   under the household's feet, and the Calendar's own selection is
-   never disturbed by a glance at Flow. */
-let deckCal = null;
-function deckMonth(){
-  if (!deckCal){ const t = startOfToday(); deckCal = { y:t.getFullYear(), m:t.getMonth() }; }
-  return deckCal;
-}
+   One cursor, shared with the Calendar screen.
+
+   This card used to keep a month of its own, on the reasoning that
+   paging here should not move the Calendar under the household's feet.
+   That reasoning was wrong in practice: the two screens are presented
+   as the same calendar, and a household that pages to next month on
+   Flow and then opens Calendar to see this month has been told two
+   different things by one app. Reflecting the Calendar is the point of
+   the card. So both read state.cal, and paging either moves both. */
 function deckStep(n){
-  const c = deckMonth();
-  const d = new Date(c.y, c.m + n, 1);
-  deckCal = { y:d.getFullYear(), m:d.getMonth() };
-  renderDeckMonth();
+  const d = new Date(state.cal.y, state.cal.m + n, 1);
+  state.cal.y = d.getFullYear();
+  state.cal.m = d.getMonth();
+  /* Through renderCalendar so the Calendar screen's month name, totals,
+     day list and rolling window all follow the same step. It draws this
+     grid on its way out. */
+  renderCalendar();
 }
 
 /** Everything landing on one day, from the same list the Calendar draws. */
@@ -9468,46 +9524,12 @@ function deckDayItems(iso){
 function renderDeckMonth(){
   const grid = $('#deckGrid');
   if (!grid) return;
-  const { y, m } = deckMonth();
-  const todayIso = isoOf(startOfToday());
+  const { y, m } = state.cal;
   const items = calItems(y, m);
-  const byDay = new Map();
-  items.forEach(it => {
-    const k = isoOf(it.date);
-    if (!byDay.has(k)) byDay.set(k, []);
-    byDay.get(k).push(it);
-  });
 
-  const dim = new Date(y, m + 1, 0).getDate();
-  const lead = new Date(y, m, 1).getDay();
-  const cells = Math.ceil((lead + dim) / 7) * 7;
-  let html = '';
-  for (let i = 0; i < cells; i++){
-    const d = new Date(y, m, i - lead + 1);
-    const iso = isoOf(d);
-    const inMonth = d.getMonth() === m;
-    const day = inMonth ? (byDay.get(iso) || []) : [];
-    const bills = day.filter(it => it.kind === 'bill');
-    const cards = day.filter(it => it.kind === 'card');
-    const proj  = day.filter(it => it.kind === 'proj');
-    const pips = [
-      ...bills.slice(0,3).map(it => `<i style="background:${it.amount > 0 ? 'var(--asset)' : 'var(--owe)'}"></i>`),
-      ...cards.map(() => '<i class="pip--card"></i>'),
-      ...proj.map(() => '<i class="pip--proj"></i>'),
-    ].slice(0,4).join('');
-    const cls = ['cal__day'];
-    if (!inMonth) cls.push('cal__day--out');
-    if (bills.length || cards.length) cls.push('cal__day--has');
-    else if (proj.length) cls.push('cal__day--proj');
-    if (iso === todayIso) cls.push('cal__day--today');
-    const dt = day.length ? calTotals(day) : null;
-    const val = dt ? `<span class="cal__val" style="color:${dt.net >= 0 ? 'var(--asset)' : 'var(--owe)'}">${calCompact(dt.net)}</span>` : '';
-    const said = dt ? `, ${dt.n} item${dt.n === 1 ? '' : 's'}, net ${money(dt.net)}` : ', nothing due';
-    html += `<button type="button" class="${cls.join(' ')}" data-deckday="${iso}"
-      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${said}">
-      <span>${d.getDate()}</span><span class="cal__pips">${pips}</span>${val}</button>`;
-  }
-  grid.innerHTML = html;
+  /* The same builder the Calendar screen prints, given the same month
+     and the same selection. Divergence is no longer possible. */
+  grid.innerHTML = calGridHtml(y, m, items, state.cal.sel);
 
   $('#deckMonthName').textContent = new Date(y, m, 1)
     .toLocaleDateString('en-US', { month:'long', year:'numeric' });
@@ -9579,8 +9601,21 @@ function initDeck(){
   $('#deckPrev').addEventListener('click', () => deckStep(-1));
   $('#deckNext').addEventListener('click', () => deckStep(1));
   grid.addEventListener('click', e => {
-    const b = e.target.closest('[data-deckday]');
-    if (b) openDaySheet(b.dataset.deckday);
+    const b = e.target.closest('[data-day]');
+    if (!b) return;
+    const iso = b.dataset.day;
+    /* A day tapped here is the day the Calendar screen has selected.
+       Anything less and the highlight would disappear on the walk
+       between the two views. An out-of-month cell carries its own real
+       month, so the cursor follows it exactly as the Calendar's does. */
+    const d = toDate(iso);
+    if (d && (d.getMonth() !== state.cal.m || d.getFullYear() !== state.cal.y)){
+      state.cal.y = d.getFullYear();
+      state.cal.m = d.getMonth();
+    }
+    state.cal.sel = iso;
+    renderCalendar();
+    openDaySheet(iso);
   });
   $('#dayX').addEventListener('click', closeDaySheet);
   $('#dayModal').addEventListener('click', e => {
@@ -11562,6 +11597,86 @@ function calTotals(items){
   return t;
 }
 
+/* ============================================================
+   ONE MONTH GRID, DRAWN ONCE
+
+   The Calendar screen and the card at the head of Flow are the same
+   calendar. They were two implementations of it -- forty-odd lines of
+   cell construction written twice, agreeing on pips and classes and the
+   net figure only because both had so far been edited in step. Nothing
+   made that true, and the first edit to one and not the other would
+   have made it quietly false: two screens showing the same day with
+   different marks on it, and no way to tell which was right.
+
+   So the grid is built here, once, and both screens print what comes
+   back. A change to how a day is drawn is now a change to one function.
+
+   `sel` is passed rather than read from state, because the only reason
+   this needs to know about a selection is to mark it -- and a function
+   that reaches into state to find that out is a function that cannot be
+   tested or reused for a month it was not given.
+   ============================================================ */
+function calGridHtml(y, m, items, sel){
+  const todayIso = isoOf(startOfToday());
+  const byDay = new Map();
+  items.forEach(it => {
+    const k = isoOf(it.date);
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(it);
+  });
+
+  const dim = new Date(y, m + 1, 0).getDate();
+  const lead = new Date(y, m, 1).getDay();
+  const cells = Math.ceil((lead + dim) / 7) * 7;
+
+  let html = '';
+  for (let i = 0; i < cells; i++){
+    const d = new Date(y, m, i - lead + 1);
+    const iso = isoOf(d);
+    const inMonth = d.getMonth() === m;
+    const day = inMonth ? (byDay.get(iso) || []) : [];
+    const bills = day.filter(it => it.kind === 'bill');
+    const cards = day.filter(it => it.kind === 'card');
+    const proj  = day.filter(it => it.kind === 'proj');
+    /* Four pips fit. Built in order of authority with the tail cut,
+       rather than arithmetic on how many slots each kind may take. */
+    const pips = [
+      ...bills.slice(0,3).map(it =>
+        `<i style="background:${it.amount > 0 ? 'var(--asset)' : 'var(--owe)'}"></i>`),
+      ...cards.map(() => `<i class="pip--card"></i>`),
+      ...proj.map(() => `<i class="pip--proj"></i>`),
+    ].slice(0,4).join('');
+
+    const cls = ['cal__day'];
+    if (!inMonth) cls.push('cal__day--out');
+    /* A card coming due is a dated obligation, so the cell reads as a
+       day with something on it, not as a projection. */
+    if (bills.length || cards.length) cls.push('cal__day--has');
+    else if (proj.length) cls.push('cal__day--proj');
+    if (iso === todayIso) cls.push('cal__day--today');
+    if (sel && iso === sel) cls.push('cal__day--sel');
+
+    /* Through calTotals, so the number on a cell is arrived at exactly
+       the way the month figure and the day list are -- same list, same
+       sum. A day holding both a paycheck and a bill shows the net; the
+       gross either way is spoken in the label. */
+    const dt = day.length ? calTotals(day) : null;
+    const val = dt
+      ? `<span class="cal__val" style="color:${dt.net >= 0 ? 'var(--asset)' : 'var(--owe)'}">${calCompact(dt.net)}</span>`
+      : '';
+    const said = dt
+      ? `, ${dt.out ? `${money(dt.out)} out` : ''}${dt.out && dt.in ? ' and ' : ''}${dt.in ? `${money(dt.in)} in` : ''}`
+        + `${dt.bills ? `, ${dt.bills} due` : ''}`
+        + `${dt.cards ? `, ${dt.cards} card payment${dt.cards === 1 ? '' : 's'}` : ''}`
+        + `${dt.projs ? `, ${dt.projs} projected` : ''}`
+      : '';
+    html += `<button type="button" class="${cls.join(' ')}" data-day="${iso}"
+      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${said}">
+      <span>${d.getDate()}</span><span class="cal__pips">${pips}</span>${val}</button>`;
+  }
+  return html;
+}
+
 function projRow(f, showDate){
   const when = showDate ? fmtDate(f.date) + ' \u00b7 ' : '';
   const tag = f.sub ? ' \u00b7 ' + esc(f.sub) : '';
@@ -11970,7 +12085,6 @@ function renderDaily(){
 function renderCalendar(){
   const { y, m } = state.cal;
   const today = startOfToday();
-  const todayIso = isoOf(today);
 
   const monthName = new Date(y, m, 1).toLocaleDateString('en-US',{month:'long', year:'numeric'});
   $('#calMonth').textContent = monthName;
@@ -11986,59 +12100,8 @@ function renderCalendar(){
   const cds = cardDueItems();
   const items = calItems(y, m, fx, cds);
 
-  /* the grid */
-  const dim = new Date(y, m+1, 0).getDate();
-  const lead = new Date(y, m, 1).getDay();
-  const cells = Math.ceil((lead + dim) / 7) * 7;
-  const byDay = new Map();
-  items.forEach(it => { const k = isoOf(it.date); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(it); });
-
-  let html = '';
-  for (let i = 0; i < cells; i++){
-    const d = new Date(y, m, i - lead + 1);
-    const iso = isoOf(d);
-    const inMonth = d.getMonth() === m;
-    const day = inMonth ? (byDay.get(iso) || []) : [];
-    const bills = day.filter(it => it.kind === 'bill');
-    const cards = day.filter(it => it.kind === 'card');
-    const proj  = day.filter(it => it.kind === 'proj');
-    /* Four pips fit. Build them in order of authority and cut the tail,
-       rather than arithmetic on how many slots each kind may take -- the
-       old expression already had to spell out one such budget and a
-       third kind would have needed two. */
-    const pips = [
-      ...bills.slice(0,3).map(it =>
-        `<i style="background:${it.amount > 0 ? 'var(--asset)' : 'var(--owe)'}"></i>`),
-      ...cards.map(() => `<i class="pip--card"></i>`),
-      ...proj.map(() => `<i class="pip--proj"></i>`),
-    ].slice(0,4).join('');
-    const cls = ['cal__day'];
-    if (!inMonth) cls.push('cal__day--out');
-    /* A card coming due is a dated obligation, so the cell reads as a
-       day with something on it, not as a projection. */
-    if (bills.length || cards.length) cls.push('cal__day--has');
-    else if (proj.length) cls.push('cal__day--proj');
-    if (iso === todayIso) cls.push('cal__day--today');
-    if (iso === state.cal.sel) cls.push('cal__day--sel');
-    /* Through calTotals, so the number on a cell is arrived at exactly the
-       way the month figure and the day list below are -- the same list, the
-       same sum. A day holding both a paycheck and a bill shows the net; the
-       gross either way is spoken in the label and printed in the day list. */
-    const dt = day.length ? calTotals(day) : null;
-    const val = dt
-      ? `<span class="cal__val" style="color:${dt.net >= 0 ? 'var(--asset)' : 'var(--owe)'}">${calCompact(dt.net)}</span>`
-      : '';
-    const said = dt
-      ? `, ${dt.out ? `${money(dt.out)} out` : ''}${dt.out && dt.in ? ' and ' : ''}${dt.in ? `${money(dt.in)} in` : ''}`
-        + `${dt.bills ? `, ${dt.bills} due` : ''}`
-        + `${dt.cards ? `, ${dt.cards} card payment${dt.cards === 1 ? '' : 's'}` : ''}`
-        + `${dt.projs ? `, ${dt.projs} projected` : ''}`
-      : '';
-    html += `<button type="button" class="${cls.join(' ')}" data-day="${iso}"
-      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${said}">
-      <span>${d.getDate()}</span><span class="cal__pips">${pips}</span>${val}</button>`;
-  }
-  $('#calGrid').innerHTML = html;
+  /* the grid -- drawn by the one builder both screens share */
+  $('#calGrid').innerHTML = calGridHtml(y, m, items, state.cal.sel);
   $$('#calGrid .cal__day').forEach(btn => btn.addEventListener('click', () => {
     const d = toDate(btn.dataset.day);
     if (d.getMonth() !== m || d.getFullYear() !== y){ state.cal.y = d.getFullYear(); state.cal.m = d.getMonth(); }
@@ -12095,6 +12158,14 @@ function renderCalendar(){
 
   renderCalCats(fx);
   wireBillDeletes();
+
+  /* The Flow card is the same calendar, so it is refreshed here rather
+     than at each of the call sites that change a bill. Three of those
+     did "renderCalendar(); renderBudget();" and left Flow showing the
+     previous month's state until an unrelated action forced a full
+     render. Driving it from here means a path that updates one
+     calendar cannot fail to update the other. */
+  renderDeckMonth();
 }
 
 /* ============================================================
@@ -13931,7 +14002,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-13s';
+const BUILD = '2026-08-13u';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
