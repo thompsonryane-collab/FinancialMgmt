@@ -482,23 +482,58 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
    The control is a select wearing our own text. iOS zooms any focused
    control under 16px, which is why this file pins form text at 16, and
    a due date set at 16px in the corner competes with the balance. So
-   the select keeps its 16px and its opacity goes to zero, laid over the
-   two lines that actually get read. It carries the label and the value;
-   the text under it is aria-hidden so nothing is announced twice. */
+   the select keeps its 16px and is made invisible, laid over the two
+   lines that actually get read. It carries the label and the value; the
+   text under it is aria-hidden so nothing is announced twice.
+
+   It is NOT hidden with opacity any more. Opacity is inherited by the
+   dropdown the browser draws for a select, so every "due the 5th" in
+   the list came out at zero alpha over a white popup -- a list of ghost
+   options that could still be picked but could barely be read. The
+   control is hidden by painting its text and box transparent instead,
+   which the popup does not inherit, and the options are then given
+   their own colours so the list renders in the app's own palette rather
+   than whatever the browser guesses. `color-scheme` is what tells the
+   browser to draw that popup dark at night. */
 .card__due{position:relative;margin-right:auto;min-width:0;min-height:38px;
   display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px}
-.card__duesel{position:absolute;inset:0;width:100%;height:100%;opacity:0;
-  border:0;background:none;padding:0;margin:0;cursor:pointer;
-  -webkit-appearance:none;appearance:none}
-.card__duetop{font-family:var(--data);font-size:11.5px;font-weight:600;letter-spacing:.04em;
+.card__duesel{position:absolute;inset:0;width:100%;height:100%;
+  color:transparent;-webkit-text-fill-color:transparent;background-color:transparent;
+  border:0;padding:0;margin:0;cursor:pointer;
+  -webkit-appearance:none;appearance:none;color-scheme:light}
+html[data-theme="dark"] .card__duesel{color-scheme:dark}
+/* The popup is chrome, not page: it gets real, opaque colour back. */
+.card__duesel option{color:var(--paper);-webkit-text-fill-color:var(--paper);
+  background-color:var(--ink);font-weight:500}
+.card__duetop{font-family:var(--data);font-size:12px;font-weight:700;letter-spacing:.04em;
+  color:var(--paper);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.card__duetop.is-unset{color:var(--muted);font-weight:500}
-.card__duewhen{font-family:var(--data);font-size:10.5px;color:var(--muted);
+.card__duetop.is-unset{color:var(--accent-deep);font-weight:600}
+.card__duewhen{font-family:var(--data);font-size:11px;color:var(--paper);opacity:.78;
+  display:flex;align-items:center;gap:6px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-/* Due inside three days, and due today, are the two states worth a
-   colour. Anything further out is just a date. */
-.card__duewhen.is-soon{color:var(--owe)}
-.card__duewhen.is-today{color:var(--danger);font-weight:600}
+/* The three states, on the text and on the lamp beside it, driven by
+   one `data-tone` so they cannot drift apart. Green is the card's own
+   text rather than a green word: a date five weeks out is not good
+   news, it is simply not news, and only the lamp needs to say so. */
+.card__duewhen[data-tone="red"]{color:var(--danger);font-weight:600;opacity:1}
+.card__duewhen[data-tone="yellow"]{color:var(--owe);opacity:1}
+.card__duewhen[data-tone="green"]{color:var(--paper);opacity:.82}
+/* Explicit hues, not palette tokens. Red, amber and green have to read
+   as a traffic light in both themes, and --owe is a brown in daylight
+   that nobody would call yellow. Lifted at night the way the other
+   lamps in this app are. */
+.card__duelamp{width:8px;height:8px;border-radius:50%;flex:none;
+  background:var(--rule);transition:background .25s,box-shadow .25s}
+.card__duelamp[data-tone="red"]{background:#C4483C;
+  box-shadow:0 0 0 2px rgba(196,72,60,.18),0 0 6px rgba(196,72,60,.55)}
+.card__duelamp[data-tone="yellow"]{background:#C9922E;
+  box-shadow:0 0 0 2px rgba(201,146,46,.18),0 0 6px rgba(201,146,46,.5)}
+.card__duelamp[data-tone="green"]{background:#2E8B45;
+  box-shadow:0 0 0 2px rgba(46,139,69,.16),0 0 6px rgba(46,139,69,.45)}
+html[data-theme="dark"] .card__duelamp[data-tone="red"]{background:#E0685A}
+html[data-theme="dark"] .card__duelamp[data-tone="yellow"]{background:#E0B45E}
+html[data-theme="dark"] .card__duelamp[data-tone="green"]{background:#6FBF8C}
 .card__duesel:focus ~ .card__duetop{text-decoration:underline;text-underline-offset:3px}
 
 /* Intake */
@@ -3368,6 +3403,12 @@ const money = n => usd2.format(n || 0);
 const moneyShort = n => Math.abs(n) >= 10000 ? usd0.format(n) : usd2.format(n || 0);
 const fmtDate = d => d instanceof Date && !isNaN(d)
   ? d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'2-digit'}) : '—';
+/* The long form, for the one place a date is read rather than scanned:
+   the payment due on a card. "Aug 18, 26" is a date in a table; "Aug 18,
+   2026" is a day money leaves the account. The short form stays
+   everywhere else, where the year is context and the column is narrow. */
+const fmtDateFull = d => d instanceof Date && !isNaN(d)
+  ? d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
 const monthKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 const monthLabel = k => {
   const [y,m] = k.split('-');
@@ -5830,21 +5871,48 @@ function runBackup(){
   const check = verifyPayload(text);
   const blob = new Blob([text], { type:'application/json' });
   const file = new File([blob], name, { type:'application/json' });
-  const done = () => {
+  /* `how` is the difference between the two endings, and it matters to
+     the one question asked after every backup: where did it go?
+
+       'share'    handed to the iOS share sheet. The app does not choose
+                  a destination and cannot read one back -- whatever was
+                  tapped in that sheet decided it, and Files remembers
+                  the last folder used rather than defaulting to Recents.
+       'download' written by the browser to its own downloads folder.
+
+     Neither ending can be confirmed. navigator.share() resolves when the
+     sheet finishes an action, not when a file lands on disk, so the most
+     honest thing the log can do is name the file and say who took it. */
+  const done = (how) => {
     /* The clock restarts from a file that actually got written, never
        from the attempt -- a cancelled share sheet leaves the copy owed.
        This is the ONLY place `fileAt` is ever set. */
     bkPref.fileAt = Date.now();
+    bkPref.fileName = name;
     bkPref.lastAt = bkPref.fileAt; bkSavePref();
     bkDue = false; bkPaint();
     bkSnapshot();                        /* fire and forget: the file is written either way */
+    /* And keep the bytes. iOS cannot tell the app where that file went,
+       or whether it landed at all, so the one useful thing left is to be
+       able to hand over the same file again. */
+    bkKeepCopy(name, text, state.rows.length).then(kept => { if (kept) renderFiles(); });
     if (!$('#backupModal').hidden) closeBackup();
     const n = state.rows.length;
     const f = filedTally();
     const u = unfiledTally();
-    logLine(`Backup written — ${n.toLocaleString()} row${n === 1 ? '' : 's'}, `
+    logLine(`${name} — ${n.toLocaleString()} row${n === 1 ? '' : 's'}, `
       + `${(n - u.n).toLocaleString()} filed across ${f.cats} categor${f.cats === 1 ? 'y' : 'ies'} / ${f.subs} subcategories`
       + offNote(f) + `, ${(blob.size/1024).toFixed(0)} KB`, 'ok');
+    /* Said plainly because "backed up" and "I cannot find the file" are
+       not a contradiction on iOS: the app hands the file over and the
+       share sheet decides the rest. Naming the file is what makes it
+       findable -- search Files for the name, not for "backup". */
+    logLine(how === 'share'
+      ? `Handed to the iOS share sheet. Wherever you sent it is where it is — `
+        + `if that was Save to Files it went to the folder Files used last, `
+        + `which is not always Recents. Search Files for ${name}.`
+      : `Written to this browser's downloads folder as ${name}.`, 'warn');
+    toast(`Saved as ${name}`);
     /* Whether the file matches the ledger, said out loud either way. A
        backup that quietly disagrees with the app is the one failure this
        file exists to prevent. */
@@ -5869,13 +5937,13 @@ function runBackup(){
           + `The backup preserves ${u.n === 1 ? 'it' : 'them'} either way.`), 'warn');
   };
   if (navigator.canShare && navigator.canShare({ files:[file] })){
-    navigator.share({ files:[file] }).then(done).catch(err => {
+    navigator.share({ files:[file] }).then(() => done('share')).catch(err => {
       if (err && err.name === 'AbortError') return;
-      downloadBlob(blob, name); done();
+      downloadBlob(blob, name); done('download');
     });
     return;
   }
-  downloadBlob(blob, name); done();
+  downloadBlob(blob, name); done('download');
 }
 
 /* ============================================================
@@ -5908,6 +5976,21 @@ function runBackup(){
    ============================================================ */
 const BK_PREF_KEY = 'thompson:backup:pref:v1';
 const BK_SNAP_KEY = 'thompson:snapshot:v1';
+/* The kept copy: the exact bytes of the last backup file, held on the
+   phone so a share that went nowhere can be written again without
+   rebuilding it from a ledger that has moved on since.
+
+   It lives in its own key rather than in state.files for one reason
+   worth stating plainly: state.files rides inside ledgerPayload(), so a
+   backup stored there would be copied into the NEXT backup, and that one
+   into the one after. Two backups in and the file is carrying a Russian
+   doll of its own history. Outside the payload, the copy is one deep and
+   the file stays the size of the ledger.
+
+   One copy, replaced every time. It is a second chance at the last
+   write, not an archive -- and it goes with the phone, so it is a
+   complement to the real file and never a substitute for it. */
+const BK_COPY_KEY = 'thompson:filecopy:v1';
 const BK_MINS = [5, 10, 15, 30, 60, 120, 360];
 
 /* Two clocks, deliberately separate.
@@ -5922,8 +6005,11 @@ const BK_MINS = [5, 10, 15, 30, 60, 120, 360];
    have, because nothing had written one. Every interval afterwards
    reinforced it. A field that says "a copy of your money exists" must
    never be set by anything except a copy actually being written. */
-let bkPref = { on:false, mins:15, lastAt:0, fileAt:0 };
+let bkPref = { on:false, mins:15, lastAt:0, fileAt:0, fileName:'' };
 let bkTimer = null, bkDue = false, bkSnapAt = 0, bkSnapRows = 0;
+/* Metadata for the kept copy, held outside its envelope so the Files
+   screen can list it without asking for a face. */
+let bkCopyAt = 0, bkCopyName = '', bkCopyRows = 0, bkCopySize = 0, bkCopyWarned = false;
 /* The clock is wired during wire(), which runs before the sealed ledger
    is opened. A tick in that window would photograph an empty room and
    file it over the real snapshot. Nothing ticks until boot says the
@@ -5948,12 +6034,28 @@ function bkLoadPref(){
            file time begins at "never" rather than inheriting a claim
            that may never have been true. */
         fileAt: Number(p.fileAt) || 0,
+        fileName: typeof p.fileName === 'string' ? p.fileName : '',
       };
     }
   } catch(_){}
+  /* Cleared before reading, not merely overwritten when something is
+     found. This runs once at boot from zeroed state today, so leaving
+     stale figures standing was harmless -- but it means a second call
+     after the keys are gone would go on reporting a snapshot and a copy
+     that no longer exist, which is the same class of lie the file clock
+     was telling. */
+  bkSnapAt = 0; bkSnapRows = 0;
+  bkCopyAt = 0; bkCopyName = ''; bkCopyRows = 0; bkCopySize = 0;
   try {
     const s = JSON.parse(localStorage.getItem(BK_SNAP_KEY) || 'null');
     if (s && s.at){ bkSnapAt = s.at; bkSnapRows = s.rows || 0; }
+  } catch(_){}
+  try {
+    const c = JSON.parse(localStorage.getItem(BK_COPY_KEY) || 'null');
+    if (c && c.at){
+      bkCopyAt = c.at; bkCopyName = String(c.name || '');
+      bkCopyRows = c.rows || 0; bkCopySize = c.size || 0;
+    }
   } catch(_){}
 }
 function bkSavePref(){
@@ -6034,6 +6136,48 @@ async function bkSnapshot(){
     }
     return false;
   }
+}
+
+/** Hold on to the bytes that were just handed to the share sheet.
+
+    Sealed with the same key as the ledger, for the same reason: a phone
+    protected by Face ID must not keep a plaintext copy of the household's
+    money beside the locked one. The name, the date and the row count stay
+    outside the envelope so the Files screen can list it while locked. */
+async function bkKeepCopy(name, text, rows){
+  try {
+    const sealed = await sealLedger(text);
+    localStorage.setItem(BK_COPY_KEY, JSON.stringify(
+      { at: Date.now(), name, rows, size: text.length, sealed }));
+    bkCopyAt = Date.now(); bkCopyName = name; bkCopyRows = rows; bkCopySize = text.length;
+    bkCopyWarned = false;
+    return true;
+  } catch(_){
+    /* Out of room. The real file has already gone to the share sheet, so
+       this costs the second chance and nothing else. Said once. */
+    if (!bkCopyWarned){
+      bkCopyWarned = true;
+      logLine('No room on the phone to keep a copy of that backup — the file you just '
+        + 'saved is the only one', 'warn');
+    }
+    return false;
+  }
+}
+
+/** The kept copy as a file again, or null if there is none to give. */
+async function bkCopyBlob(){
+  let c = null;
+  try { c = JSON.parse(localStorage.getItem(BK_COPY_KEY) || 'null'); } catch(_){}
+  if (!c || c.sealed == null) return null;
+  let text;
+  try { text = await unsealLedger(c.sealed); } catch(_){ return null; }
+  if (!text) return null;
+  return { blob: new Blob([text], { type:'application/json' }), name: c.name || bkFileName() };
+}
+
+function bkDropCopy(){
+  try { localStorage.removeItem(BK_COPY_KEY); } catch(_){}
+  bkCopyAt = 0; bkCopyName = ''; bkCopyRows = 0; bkCopySize = 0;
 }
 
 async function bkRestoreSnapshot(){
@@ -6153,7 +6297,10 @@ function bkRender(){
   /* "Last written" means a file and only a file, so it reads the file
      clock. With no file ever written it says "never", which is the
      honest answer and the one that sends the household to the button. */
-  $('#bkLast').textContent = bkAgo(bkPref.fileAt);
+  /* The name rides the time, because "just now" answers when and the
+     household's next question is always what to look for. */
+  $('#bkLast').textContent = bkAgo(bkPref.fileAt)
+    + (bkPref.fileAt && bkPref.fileName ? ` \u00b7 ${bkPref.fileName}` : '');
   const nextRow = $('#bkNextRow');
   nextRow.hidden = !bkPref.on;
   if (bkPref.on){
@@ -7770,10 +7917,24 @@ function instTint(name){
    the two can never fall out of step.
    ============================================================ */
 
-/* Which cards carry the pair. Listed as ids so USAAVISA joins by
-   being added here, and filtered against the registry so an id with
-   no account behind it yet is simply skipped. */
-const TOTAL_BAL_ACCTS = ['AMEX', 'USAAVISA'];
+/* THE CARDS. Three revolving accounts and nothing else.
+
+   A mortgage, a HELOC and a car loan are on autopay against the
+   checking account and already speak for themselves on the Calendar.
+   These three are the ones a payment has to be pushed at, so these are
+   the ones that carry a stated Total Balance, carry a due day, and get
+   a payment locked into the rolling window.
+
+   One list rather than two, because the two lists had drifted: PenFed
+   carried a due day and no Total Balance, so its calendar line was
+   drawn off the derived running balance while AMEX and USAAVISA were
+   drawn off the figure on the card. Same screen, same kind of account,
+   two different meanings of "what you owe". */
+const CARD_ACCTS = ['AMEX', 'USAAVISA', 'PenFed'];
+
+/* Which cards carry the pair. Filtered against the registry so an id
+   with no account behind it yet is simply skipped. */
+const TOTAL_BAL_ACCTS = CARD_ACCTS;
 const carriesTotal = id => TOTAL_BAL_ACCTS.includes(id) && Boolean(ACCT[id]);
 
 /** The stated Total Balance, or null when none has been typed. */
@@ -7794,7 +7955,7 @@ function totalBalOf(id){
    speak for themselves on the Calendar. These three are the cards a
    payment has to be pushed at.
    ============================================================ */
-const DUE_DATE_ACCTS = ['AMEX', 'USAAVISA', 'PenFed'];
+const DUE_DATE_ACCTS = CARD_ACCTS;
 const carriesDue = id => DUE_DATE_ACCTS.includes(id) && Boolean(ACCT[id]);
 
 /** The stated day of the month, or null when none has been picked. */
@@ -7826,10 +7987,22 @@ function nextDue(id, from){
   let d = on(today.getFullYear(), today.getMonth());
   if (d < today) d = on(today.getFullYear(), today.getMonth() + 1);
   const days = Math.round((d - today) / 86400000);
-  return { day, date: d, days,
+  /* One light, three states, and the thresholds live here rather than in
+     the markup so the text and the lamp can never disagree about how
+     urgent the same date is.
+
+       red     due tomorrow, today, or already on top of you
+       yellow  two to five days out — inside the window where a payment
+               has to be started rather than remembered
+       green   more than five days out
+
+     Written as `<= 1` and `<= 5` so the boundaries are readable: day 1
+     is red, day 5 is still yellow, day 6 is green. */
+  const tone = days <= 1 ? 'red' : days <= 5 ? 'yellow' : 'green';
+  return { day, date: d, days, tone,
            said: days === 0 ? 'due today'
-               : days === 1 ? `${fmtDate(d)} · tomorrow`
-               : `${fmtDate(d)} · in ${days} days` };
+               : days === 1 ? `${fmtDateFull(d)} · tomorrow`
+               : `${fmtDateFull(d)} · in ${days} days` };
 }
 
 /** The corner block: the day as a line of text, with the select over it. */
@@ -7843,12 +8016,13 @@ function dueCornerHtml(id){
       return `<option value="${n}"${day === n ? ' selected' : ''}>due the ${ordinalDay(n)}</option>`;
     })).join('');
   const when = nx
-    ? `<span class="card__duewhen ${nx.days === 0 ? 'is-today' : nx.days <= 3 ? 'is-soon' : ''}"
-             aria-hidden="true">${esc(nx.said)}</span>`
+    ? `<span class="card__duewhen" data-tone="${nx.tone}" aria-hidden="true"
+        >${esc(nx.said)}<i class="card__duelamp" data-tone="${nx.tone}"></i></span>`
     : `<span class="card__duewhen" aria-hidden="true">tap to set</span>`;
   return `<div class="card__due">
     <select class="card__duesel" data-due="${esc(id)}"
-            aria-label="Day of the month the ${esc(a.name)} payment is due">${opts}</select>
+            aria-label="Day of the month the ${esc(a.name)} payment is due${
+              nx ? ` — currently ${esc(nx.said)}` : ''}">${opts}</select>
     <span class="card__duetop${day == null ? ' is-unset' : ''}" aria-hidden="true">${
       day == null ? 'Due date' : `Due the ${esc(ordinalDay(day))}`}</span>
     ${when}
@@ -7881,6 +8055,61 @@ function statedDelta(id){
   const bal = balanceOf(id);
   return { total, current: bal.value, delta: total - bal.value,
            anchored: bal.source !== 'empty' && !bal.netOnly };
+}
+
+/* ============================================================
+   REBUILDING THE CARDS WITHOUT PULLING THEM OUT FROM UNDER A THUMB
+
+   renderCards() replaces the whole of #assetCards and #liabCards. Every
+   control inside them -- the Total Balance field, the due-day picker,
+   the amortize and edit buttons -- is a fresh element afterwards, and
+   the old one is detached.
+
+   That is fine when the render is asked for by something that has
+   already finished. It is not fine when a field's own handler asks for
+   it, because a text input fires `change` on BLUR, and on iOS that blur
+   is the first half of the tap that is opening the next control. The
+   order is: type a balance, tap the due-date picker, the input blurs,
+   change fires, the cards are rebuilt, and the <select> the tap was
+   landing on no longer exists. iOS still opens a picker -- against the
+   detached node -- so the wheel spins, a day is chosen, and its change
+   event reaches an element that is not in the document. Nothing is
+   stored. The card underneath still reads "tap to set".
+
+   So a rebuild asked for from inside the cards waits until the cards
+   are not being used. Focus is the test: while anything inside them
+   holds focus, the rebuild is owed rather than done, and the focusout
+   that ends the interaction pays it. Anything outside this region --
+   an import, a restore, a full render -- still rebuilds immediately,
+   because nothing is mid-gesture. */
+const CARD_HOSTS = '#assetCards, #liabCards';
+let cardsOwed = false;
+
+function cardsBusy(){
+  const a = document.activeElement;
+  return Boolean(a && a.closest && a.closest(CARD_HOSTS));
+}
+
+/** Rebuild the cards, or promise to the moment the thumb is off them. */
+function renderCardsSoon(){
+  if (cardsBusy()){ cardsOwed = true; return false; }
+  cardsOwed = false;
+  renderCards();
+  return true;
+}
+
+/** Pay the debt once focus has left the cards for good. */
+function flushCards(){
+  if (!cardsOwed || cardsBusy()) return;
+  cardsOwed = false;
+  renderCards();
+}
+
+function initCardFlush(){
+  /* focusout fires before focus lands on the next element, so the check
+     is deferred a turn -- otherwise moving from the balance field to the
+     due picker would read as "nothing focused" and rebuild anyway. */
+  document.addEventListener('focusout', () => setTimeout(flushCards, 0), true);
 }
 
 function renderCards(){
@@ -8055,7 +8284,9 @@ function renderCards(){
       if (raw && v == null){ toast('That is not an amount'); el.focus(); return; }
       if (v == null) delete state.totalBal[id];
       else state.totalBal[id] = Math.abs(v);
-      save(); renderCards(); renderCalendar();
+      /* The calendar is a different region and safe to redraw now; the
+         cards are the ground this handler is standing on. */
+      save(); renderCalendar(); renderCardsSoon();
     });
     el.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); el.blur(); } });
   });
@@ -8067,7 +8298,9 @@ function renderCards(){
       const v = Math.trunc(Number(el.value));
       if (el.value === '' || !(v >= 1 && v <= 31)) delete state.dueDay[id];
       else state.dueDay[id] = v;
-      save(); renderCards();
+      /* The picker that fired this is still dismissing itself. Same rule
+         as the balance field: rebuild once the thumb is off. */
+      save(); renderCalendar(); renderCardsSoon();
       const nx = nextDue(id);
       toast(nx ? `${ACCT[id].name} due the ${ordinalDay(nx.day)} — next ${fmtDate(nx.date)}`
                : `${ACCT[id].name} due date cleared`);
@@ -9184,15 +9417,72 @@ function saveScheduleFile(){
   toast('Saved to Files');
 }
 
+/* The kept backup, drawn at the head of the list. It is not one of
+   state.files -- it lives outside the ledger payload so it cannot nest
+   inside the next backup -- so it is built here on its own terms. */
+function bkCopyHtml(){
+  if (!bkCopyAt) return '';
+  const when = new Date(bkCopyAt);
+  return `<details class="fold" data-fold data-file="bkcopy">
+    <summary><span class="fold__dot" style="background:#3F7288"></span>${esc(bkCopyName || 'Backup')}
+      <span class="fold__tag num">${(bkCopySize/1024).toFixed(0)} KB</span>
+      <span class="fold__chev" aria-hidden="true">&#9656;</span></summary>
+    <div class="fold__body">
+      <p class="file__meta">backup \u00b7 kept on this phone \u00b7
+        ${bkCopyRows.toLocaleString()} row${bkCopyRows === 1 ? '' : 's'} \u00b7
+        written ${when.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+        at ${when.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</p>
+      <p class="file__meta">This is the same file that went to the share sheet, kept so it can
+        be sent again if that one never landed. It goes with the phone — only the file in
+        Files or iCloud outlives it.</p>
+      <div class="file__acts">
+        <button class="btn" type="button" data-bkshare="1">Share&hellip;</button>
+        <button class="btn" type="button" data-bkdl="1">Download</button>
+        <button class="btn btn--ghost" type="button" data-bkdel="1" style="color:var(--danger)">Delete</button>
+      </div>
+    </div>
+  </details>`;
+}
+
+function wireBkCopy(){
+  const give = async (send) => {
+    const got = await bkCopyBlob();
+    if (!got){ toast('That copy could not be read — unlock the ledger first'); return; }
+    send(got);
+  };
+  $$('#fileList [data-bkshare]').forEach(b => b.addEventListener('click', () =>
+    give(g => shareJson(g.blob, g.name))));
+  $$('#fileList [data-bkdl]').forEach(b => b.addEventListener('click', () =>
+    give(g => { downloadBlob(g.blob, g.name); toast(`Saved as ${g.name}`); })));
+  $$('#fileList [data-bkdel]').forEach(b => b.addEventListener('click', () => {
+    bkDropCopy(); renderFiles(); toast('Kept copy deleted');
+  }));
+}
+
+/** The same share-then-fall-back dance runBackup does, for a file the
+    household is sending a second time. */
+async function shareJson(blob, name){
+  const file = new File([blob], name, { type:'application/json' });
+  if (navigator.canShare && navigator.canShare({ files:[file] })){
+    try { await navigator.share({ files:[file] }); toast(`Sent as ${name}`); return; }
+    catch(err){ if (err && err.name === 'AbortError') return; }
+  }
+  downloadBlob(blob, name);
+  toast(`Saved as ${name}`);
+}
+
 function renderFiles(){
   const host = $('#fileList');
   if (!host) return;
+  const copy = bkCopyHtml();
   if (!state.files.length){
-    host.innerHTML = '<div class="empty">No saved schedules yet. Tap Amortize on any account card, run a schedule, then save it here.</div>';
+    host.innerHTML = copy
+      + '<div class="empty">No saved schedules yet. Tap Amortize on any account card, run a schedule, then save it here.</div>';
+    wireBkCopy();
     syncFoldbar('scr-files');
     return;
   }
-  host.innerHTML = state.files.map(f => {
+  host.innerHTML = copy + state.files.map(f => {
     const when = new Date(f.savedAt);
     if (f.kind === 'report'){
       return `<details class="fold" data-fold data-file="${esc(f.id)}">
@@ -9226,6 +9516,7 @@ function renderFiles(){
     </details>`;
   }).join('');
 
+  wireBkCopy();
   $$('#fileList [data-rshare]').forEach(b => b.addEventListener('click', () => {
     const f = state.files.find(x => x.id === b.dataset.rshare);
     if (f) shareDocx(reportBlobFrom(f), f.name);
@@ -11816,6 +12107,34 @@ function calForecasts(){
    what it intends to pay; the app must not add its own line beside
    it and charge the month twice.
    ============================================================ */
+/** What a liability card states, locked in.
+
+    Two figures, both taken from the card itself and neither inferred:
+    the Total Balance the household typed on it, and the day of the
+    month it comes due. Null for anything that is not one of the three
+    cards, and null for a card with no due day picked -- a payment with
+    no date is not a line the calendar can draw.
+
+    The balance is the STATED Total where there is one. That is the
+    figure printed on the card, the figure on the statement, and the
+    figure the payment will actually be. The derived running balance is
+    what the imported rows add up to, which mid-cycle is a different and
+    usually smaller number -- true about the ledger, wrong about the
+    cheque. The derived figure is carried alongside so the line can say
+    which of the two it used and by how much they disagree. */
+function cardLock(id, from){
+  if (!CARD_ACCTS.includes(id) || !ACCT[id]) return null;
+  const nx = nextDue(id, from);
+  if (!nx) return null;
+  const stated = totalBalOf(id);
+  const bal = balanceOf(id);
+  const locked = stated != null;
+  return { id, name: ACCT[id].name, nx,
+           stated, derived: bal.value,
+           owed: Math.abs(locked ? stated : bal.value),
+           locked, source: locked ? 'stated' : bal.source };
+}
+
 function cardDueItems(){
   const today = startOfToday();
   /* One window wide enough to cover any next-due date. Income lines are
@@ -11824,18 +12143,19 @@ function cardDueItems(){
   const declared = new Set(
     billsAhead(31).filter(o => o.bill.kind !== 'income').map(o => o.bill.acct));
   const out = [];
-  DUE_DATE_ACCTS.forEach(id => {
-    if (!carriesDue(id) || declared.has(id)) return;
-    const nx = nextDue(id, today);
-    if (!nx) return;
-    const bal = balanceOf(id);
-    const owed = Math.abs(bal.value);
-    if (!(owed >= 0.01)) return;
+  CARD_ACCTS.forEach(id => {
+    if (declared.has(id)) return;
+    const lock = cardLock(id, today);
+    if (!lock) return;
+    /* A card owing nothing draws no line. A due date against a zero
+       balance is a promise to pay nothing. */
+    if (!(lock.owed >= 0.01)) return;
     out.push({ kind:'card', id:'CD-' + id, acct:id,
-               name: `${ACCT[id].name} payment`,
-               amount: -owed,                 /* signed as the ledger signs */
-               date: nx.date, days: nx.days, day: nx.day,
-               balance: bal.value, source: bal.source, total: totalBalOf(id) });
+               name: `${lock.name} payment`,
+               amount: -lock.owed,            /* signed as the ledger signs */
+               date: lock.nx.date, days: lock.nx.days, day: lock.nx.day,
+               balance: lock.derived, source: lock.source,
+               locked: lock.locked, total: lock.stated });
   });
   return out.sort((a,b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
 }
@@ -12007,15 +12327,19 @@ function cardDueRow(it, showDate){
   const soon = it.days === 0 ? 'due today'
     : it.days === 1 ? 'due tomorrow'
     : `in ${it.days} days`;
-  /* Only worth printing when the household stated a Total and it does
-     not agree with the balance on file -- otherwise it is the same
-     figure said twice. */
-  const stated = it.total != null && Math.abs(it.total - Math.abs(it.balance)) >= 0.01
-    ? ` \u00b7 total stated ${moneyShort(it.total)}` : '';
+  /* Which of the two figures this line is, said plainly. The ledger
+     figure is only printed when it disagrees -- otherwise it is the
+     same number said twice -- but when it does disagree the household
+     needs to see both, because that gap is either a statement mid-cycle
+     or rows that never landed. */
+  const gap = it.balance != null && Math.abs(Math.abs(it.balance) - Math.abs(it.amount)) >= 0.01;
+  const basis = it.locked
+    ? `stated balance${gap ? ` \u00b7 ledger has ${moneyShort(Math.abs(it.balance))}` : ''}`
+    : 'balance owed \u00b7 no total stated';
   return `<li class="bill bill--card">
     <span class="bill__name">${esc(it.name)}</span>
     <span class="bill__amt" style="color:var(--owe)">\u2212${money(Math.abs(it.amount))}</span>
-    <span class="bill__meta">${when}${esc(it.acct)} \u00b7 balance owed \u00b7 ${soon}${stated}</span>
+    <span class="bill__meta">${when}${esc(it.acct)} \u00b7 ${basis} \u00b7 ${soon}</span>
   </li>`;
 }
 
@@ -14334,7 +14658,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14i';
+const BUILD = '2026-08-14o';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -14620,6 +14944,7 @@ function wire(){
   $('#tripModal').addEventListener('click', e => { if (e.target === $('#tripModal')) closeTripEditor(); });
   attachMoneyInput($('#tripBudget'));
   $('#ariaReport').addEventListener('click', runReport);
+  initCardFlush();
   initReceipts();
   initBackupSheet();
   $('#restoreBtn').addEventListener('click', () => $('#restoreInput').click());
