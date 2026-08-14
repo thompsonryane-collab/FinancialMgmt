@@ -5733,22 +5733,52 @@ function filedTally(){
    the lines still waiting for a household category, by the same test the
    memory engine uses, so a backup can say plainly what it is about to
    preserve as unfinished. */
+/* Counting them is not enough, because the two kinds of unfiled line
+   want opposite things from the household.
+
+   Some are waiting on a button: the ledger already knows that merchant
+   and one pass of the memory engine files them. The rest are waiting on
+   a person: nothing anywhere -- not the master ledger, not a year of
+   this household's own filing -- has ever said what "8533 PINEY BRANCH
+   RD" or "PYB" is, so no amount of pressing File by memory will move
+   them. Measured against the baked-in ledger, that second group is the
+   overwhelming majority: 44 of 45.
+
+   Reported as one number they read as a chore not yet done, and the
+   advice attached to it -- "File by memory first" -- was wrong for
+   almost every line it was offered about. A warning that cannot be
+   acted on is one the household learns to scroll past, which is the
+   worst thing a backup sheet can teach.
+
+   Amazon lines are counted as hand work by rule: fileByMemory skips
+   that account outright, so memory could not file them even where it
+   recognised the name. */
 function unfiledTally(){
   const byAcct = {};
-  let n = 0;
+  let n = 0, known = 0;
+  /* Building the memory is a walk over the master ledger and every row
+     on file, so it is only paid for when there is something to ask it
+     about. */
+  const any = state.rows.some(memUnfiled);
+  const memory = any ? buildCatMemory() : null;
   state.rows.forEach(r => {
     if (!memUnfiled(r)) return;
     n++;
     byAcct[r.acct] = (byAcct[r.acct] || 0) + 1;
+    if (memory && r.acct !== 'AMAZON' && memory.look(r.acct, r.desc)) known++;
   });
-  return { n, byAcct };
+  return { n, byAcct, known, hand: n - known };
 }
-/* "252 waiting (AMEX)" -- the accounts, biggest first, so the household
-   knows where to go rather than only that something is owed. */
+/* "15 waiting (AMEX) · new merchants, file by hand" -- the accounts,
+   biggest first, so the household knows where to go, and then which of
+   the two jobs it actually is. */
 function unfiledNote(u){
   if (!u.n) return '';
   const who = Object.keys(u.byAcct).sort((a,b) => u.byAcct[b] - u.byAcct[a]);
-  return `${u.n.toLocaleString()} waiting (${who.slice(0,3).join(', ')}${who.length > 3 ? '\u2026' : ''})`;
+  const where = `${u.n.toLocaleString()} waiting (${who.slice(0,3).join(', ')}${who.length > 3 ? '\u2026' : ''})`;
+  if (!u.known) return `${where} \u00b7 new merchants, file by hand`;
+  if (!u.hand) return `${where} \u00b7 memory can file ${u.known === 1 ? 'it' : 'them all'}`;
+  return `${where} \u00b7 memory can file ${u.known.toLocaleString()}`;
 }
 
 function offNote(f){
@@ -5830,7 +5860,13 @@ function runBackup(){
     /* And what the file is preserving as unfinished, so a restore that
        comes back short reads as a stale file and not as lost work. */
     if (u.n) logLine(`${unfiledNote(u)} — this backup carries ${u.n === 1 ? 'it' : 'them'} unfiled. `
-      + `File by memory first if you want the backup to hold the filing.`, 'warn');
+      + (u.known
+        ? `File by memory first and ${u.known === u.n ? 'the file will hold the filing'
+            : `${u.known.toLocaleString()} of ${u.n === 1 ? 'it' : 'them'} will land`}.`
+        : `Memory has no match for ${u.n === 1 ? 'it' : 'them'} — `
+          + `${u.n === 1 ? 'that merchant has' : 'those merchants have'} never been filed anywhere, `
+          + `so ${u.n === 1 ? 'it needs' : 'they need'} a hand on the Ledger screen. `
+          + `The backup preserves ${u.n === 1 ? 'it' : 'them'} either way.`), 'warn');
   };
   if (navigator.canShare && navigator.canShare({ files:[file] })){
     navigator.share({ files:[file] }).then(done).catch(err => {
@@ -14298,7 +14334,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14h';
+const BUILD = '2026-08-14i';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
