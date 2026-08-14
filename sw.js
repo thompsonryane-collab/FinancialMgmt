@@ -1,7 +1,7 @@
 /* ============================================================
    Thompson Finances — service worker
 
-   Build 2026-08-13k
+   Build 2026-08-13s
 
    ONE RULE: bump BUILD on every ship. The cache name is derived
    from it, so a new stamp means a new cache, and the old one is
@@ -11,7 +11,7 @@
    The app is one HTML file. There is no bundle, no chunk graph,
    nothing to invalidate piecemeal — so the strategy is simple:
 
-     the shell   cache-first, refreshed in the background
+     the shell   network-first, cache is the offline fallback
      the CDN     cache-first, kept forever (versioned URLs)
      fonts       cache-first
      everything  network, never cached
@@ -21,7 +21,7 @@
    the app, never the data.
    ============================================================ */
 
-const BUILD  = '2026-08-13k';
+const BUILD  = '2026-08-13s';
 const SHELL  = `thompson-shell-${BUILD}`;
 const VENDOR = 'thompson-vendor-v1';   /* versioned URLs; survives ships */
 
@@ -95,26 +95,34 @@ self.addEventListener('fetch', event => {
   if (url.startsWith('https://api.anthropic.com/')) return;
 
   /* --- navigation: the app shell --- */
-  /* Cache-first so the icon opens instantly and works offline, with a
-     background refresh so the next launch is current. The page's own
-     update check (and the 30-minute poll) is what actually notices a
-     new build; this just keeps the copy warm. */
+  /* Network-first. This was cache-first with a background refresh, and
+     the arithmetic of that is worse than it looks: the launch after a
+     deploy serves the OLD app and writes the new one into the cache
+     behind it, so the household sees a change only on the launch after
+     that. Every ship arrived a launch late, which is indistinguishable
+     from a ship that did not arrive -- and the natural response is to
+     commit again, which does not help either.
+
+     The cost is a network round trip before first paint on a cold open.
+     That is the honest price of an app that is current when it opens,
+     and it is paid only while there is a signal: the moment fetch fails
+     the cached copy answers, which is the same copy cache-first would
+     have served anyway. Nothing is lost offline. */
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       const cache = await caches.open(SHELL);
+
+      try {
+        const preload = await event.preloadResponse;
+        const res = preload || await fetch(req);
+        if (res && res.ok) cache.put('./index.html', res.clone());
+        return res;
+      } catch (_) { /* no signal -- fall through to the cached copy */ }
+
       const hit = await cache.match('./index.html');
+      if (hit) return hit;
 
-      const fresh = (async () => {
-        try {
-          const preload = await event.preloadResponse;
-          const res = preload || await fetch(req);
-          if (res && res.ok) cache.put('./index.html', res.clone());
-          return res;
-        } catch (_) { return null; }
-      })();
-
-      if (hit) { event.waitUntil(fresh); return hit; }
-      return (await fresh) || new Response(
+      return new Response(
         '<!doctype html><meta charset="utf-8"><title>Offline</title>'
         + '<body style="font:16px system-ui;padding:2rem">'
         + 'Thompson Finances is not cached on this device yet, and there is no network. '
