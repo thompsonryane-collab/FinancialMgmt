@@ -12084,7 +12084,6 @@ function renderDaily(){
 
 function renderCalendar(){
   const { y, m } = state.cal;
-  const today = startOfToday();
 
   const monthName = new Date(y, m, 1).toLocaleDateString('en-US',{month:'long', year:'numeric'});
   $('#calMonth').textContent = monthName;
@@ -12126,9 +12125,23 @@ function renderCalendar(){
       + `, ${mtot.projs} projected`
     : 'Nothing scheduled or projected in this month.';
 
-  /* the selected day */
+  /* the selected day.
+
+     This read `byDay`, a map the old inline grid loop happened to build
+     on its way past. The loop moved into calGridHtml and the map went
+     with it, leaving this line pointing at nothing -- a ReferenceError
+     that took the categories list, the rolling window and the Flow grid
+     down with it, because all three are rendered further down.
+
+     Rebuilding the map here would restore the fault's shape: a lookup
+     structure for the whole month, built to read one key, coupled to
+     whatever the grid happens to do internally. `items` is already the
+     month's lines and is right here, so the day's share of it is a
+     filter, and nothing above has to keep a promise about its locals. */
   const sel = state.cal.sel ? toDate(state.cal.sel) : null;
-  const day = state.cal.sel ? (byDay.get(state.cal.sel) || []) : [];
+  const day = state.cal.sel
+    ? items.filter(it => isoOf(it.date) === state.cal.sel)
+    : [];
   const dtot = calTotals(day);
   $('#calDayTitle').textContent = sel
     ? sel.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'})
@@ -14002,7 +14015,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-13u';
+const BUILD = '2026-08-13v';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
