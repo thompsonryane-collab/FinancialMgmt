@@ -126,17 +126,33 @@ input,select,textarea{font-size:16px}
    SPLASH
    ============================================================ */
 .splash{
-  position:fixed;inset:0;z-index:60;display:flex;align-items:flex-start;justify-content:center;
-  padding:calc(var(--sat) + 16px) 16px calc(var(--sab) + 16px);
+  position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  padding:calc(var(--sat) + 20px) 18px calc(var(--sab) + 20px);
   background:radial-gradient(130% 80% at 50% -8%, #D8DECF 0%, var(--ink) 62%);
   overflow:auto;
 }
 .splash[hidden]{display:none}
+/* The ruled paper and the photograph are the same layer of the same
+   idea: something behind the card. They never both show, because two
+   textures under one sheet of glass reads as a mistake. */
 .splash__ledger{position:absolute;inset:0;pointer-events:none;opacity:.45;
   background-image:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(122,136,114,.5) 31px 32px);
   mask-image:linear-gradient(to bottom,transparent,#000 20%,#000 68%,transparent);}
+.splash--photo .splash__ledger{display:none}
+
+/* ---------- the household's own photograph ----------
+   Cover, centred, and always under a scrim. A photograph chosen for
+   being nice to look at is rarely one that leaves type legible on top
+   of it, so the scrim is not optional -- only its weight is. */
+.splash__bg{position:absolute;inset:0;pointer-events:none;
+  background-size:cover;background-position:center;background-repeat:no-repeat}
+.splash__bg::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(120% 90% at 50% 0%, rgba(12,17,10,.30), rgba(12,17,10,.68));
+  opacity:var(--bg-dim, .55)}
+.splash__bg[hidden]{display:none}
+
 .theme-flip{
-  position:absolute;top:14px;right:14px;z-index:2;
+  position:fixed;top:calc(var(--sat) + 12px);right:14px;z-index:3;
   width:38px;height:38px;display:grid;place-items:center;padding:0;
   border:1px solid var(--rule);border-radius:50%;
   background:var(--rise);color:var(--muted);cursor:pointer;
@@ -145,11 +161,33 @@ input,select,textarea{font-size:16px}
 .theme-flip__moon{opacity:0;transform:rotate(-40deg) scale(.7)}
 html[data-theme="dark"] .theme-flip__moon{opacity:1;transform:none}
 html[data-theme="dark"] .theme-flip__sun{opacity:0;transform:rotate(40deg) scale(.7)}
+/* The card sits in the middle of the screen and stops growing at a
+   readable measure. `margin:auto` in a flex centre keeps it centred
+   while there is room and lets it scroll from the top when there is
+   not -- which is what a landscape phone and a raised keyboard both
+   need, and what `align-items:flex-start` alone could not give. */
 .cover{
-  position:relative;width:100%;max-width:430px;margin:0 0 auto;
-  background:rgba(225,230,219,.86);backdrop-filter:blur(8px);
-  border:1px solid var(--rule);border-radius:20px;padding:26px 22px 20px;box-shadow:var(--shadow);
+  position:relative;width:100%;max-width:392px;margin:auto;
+  background:rgba(225,230,219,.90);backdrop-filter:blur(10px) saturate(1.05);
+  border:1px solid var(--rule);border-radius:22px;padding:30px 24px 18px;
+  box-shadow:0 26px 60px -30px rgba(12,17,10,.62), var(--shadow);
 }
+.splash--photo .cover{background:rgba(225,230,219,.93)}
+
+/* ---------- the head of the card ----------
+   One kicker, one name, one line of prose. The old card put an
+   all-caps eyebrow directly above an all-caps legend, and the two ran
+   together into a single unreadable band -- the wordmark it needed was
+   there all along, hidden from everything but a screen reader. */
+.cover__head{text-align:center;margin:0 0 22px}
+.cover__head .eyebrow{margin:0 0 7px}
+.cover__name{margin:0;font-family:var(--display);font-size:27px;font-weight:800;
+  letter-spacing:-.025em;line-height:1.08}
+.cover__name span{display:block;font-size:.62em;font-weight:600;letter-spacing:.01em;
+  color:var(--muted);margin-top:5px}
+.cover__rule{height:1px;margin:16px 0 0;border:0;
+  background:linear-gradient(90deg,transparent,var(--rule) 18%,var(--rule) 82%,transparent)}
+
 .lede{color:var(--muted);margin:4px 0 20px;font-size:15px;text-align:center}
 fieldset{border:0;padding:0;margin:0 0 16px}
 legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
@@ -164,9 +202,23 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 .hint{margin:7px 0 0;font-size:12.5px;color:var(--muted)}
 .hint--warn{color:var(--owe)}
 .cover .btn{width:100%;min-height:50px}
-#lockRow{display:grid;gap:8px}
+#lockRow{display:grid;gap:8px;margin-top:8px}
 #lockRow[hidden]{display:none}
-.cover__foot{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;border-top:1px solid var(--rule);padding-top:12px;align-items:center}
+
+/* ---------- the background controls ----------
+   Small, quiet, and at the foot: setting a photograph is something a
+   household does once. They sit on the same rule as the build stamp
+   because both are about the app rather than about the money. */
+.cover__bg{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.bgbtn{background:none;border:1px solid var(--rule);border-radius:8px;cursor:pointer;
+  min-height:28px;padding:4px 9px;color:#5F6C5B;
+  font-family:var(--data);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+  transition:color .16s ease,border-color .16s ease}
+.bgbtn:hover{color:var(--paper)}
+.bgbtn svg{width:13px;height:13px;display:block}
+.bgbtn[hidden]{display:none}
+.cover__foot{display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:16px;border-top:1px solid var(--rule);padding-top:12px;align-items:center}
 .cover__foot span{font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#5F6C5B}
 .stamp{margin-left:auto;background:none;border:0;padding:4px 0;cursor:pointer;
   font-family:var(--data);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
@@ -1621,10 +1673,14 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 <!-- ============ SPLASH ============ -->
 <div class="splash" id="splash">
   <div class="splash__ledger" aria-hidden="true"></div>
+  <div class="splash__bg" id="splashBg" aria-hidden="true" hidden></div>
   <section class="cover" aria-labelledby="coverTitle">
-    <svg class="crest crest--hero" role="img" aria-labelledby="coverTitle"><use href="#tf-crest"/></svg>
-    <h1 class="sr-only" id="coverTitle">Thompson Finances</h1>
-    <p class="eyebrow" style="text-align:center">Household balance sheet</p>
+    <div class="cover__head">
+      <svg class="crest crest--hero" role="img" aria-hidden="true"><use href="#tf-crest"/></svg>
+      <p class="eyebrow">Household balance sheet</p>
+      <h1 class="cover__name" id="coverTitle">Thompson<span>Finances</span></h1>
+      <hr class="cover__rule">
+    </div>
     <button class="theme-flip" id="themeFlip" type="button" role="switch" aria-checked="false"
             aria-label="Switch between the daylight and moonlight themes">
       <svg class="theme-flip__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1641,7 +1697,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
     </button>
 
     <fieldset>
-      <legend id="modeLegend">Choose how to work</legend>
+      <legend id="modeLegend" class="sr-only">Choose how to work</legend>
       <div class="seg" role="radiogroup" aria-labelledby="modeLegend" id="modeGroup">
         <button type="button" class="seg__opt" role="radio" aria-checked="true" tabindex="0" data-mode="guest">Guest</button>
         <button type="button" class="seg__opt" role="radio" aria-checked="false" tabindex="-1" data-mode="api">API key</button>
@@ -1664,6 +1720,15 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <button class="btn btn--ghost" id="lockDisable" type="button" hidden>Turn off Face ID lock</button>
     </div>
     <div class="cover__foot">
+      <input type="file" id="bgInput" accept="image/*" class="sr-only" aria-label="Choose a background photograph">
+      <div class="cover__bg">
+        <button class="bgbtn" id="bgPick" type="button" aria-label="Choose a background photograph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="5.2" width="17.2" height="13.6" rx="2.4"/><circle cx="8.6" cy="10" r="1.6"/><path d="m4.4 17 4.8-4.6 3.4 3.2 3-2.6 4 4"/></svg>
+          <span id="bgPickLabel">Backdrop</span>
+        </button>
+        <button class="bgbtn" id="bgDim" type="button" hidden aria-label="Change how much the photograph is dimmed">Dim</button>
+        <button class="bgbtn" id="bgClear" type="button" hidden aria-label="Remove the background photograph">Clear</button>
+      </div>
       <button class="stamp" id="buildStamp" type="button" title="Check for a newer build">build —</button>
     </div>
   </section>
@@ -2261,7 +2326,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 </div>
 
 <!-- ============ TAB DOCK — outside .app so it can rise above the ledger ============ -->
-<nav class="tabdock" id="tabdock" aria-label="Screens">
+<nav class="tabdock" id="tabdock" aria-label="Screens" hidden>
     <div class="tabdock__veil" id="tabVeil"></div>
     <div class="tabdock__sheet" id="tabSheet" role="group" aria-label="All screens">
       <p class="eyebrow tabdock__sheetHead">Jump to a screen</p>
@@ -12649,7 +12714,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-13i';
+const BUILD = '2026-08-13k';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
@@ -12749,13 +12814,166 @@ function renderLockRow(){
     : 'Open the ledger');
 }
 
+/* The app and its dock are one thing wearing two elements.
+
+   The dock had to be lifted out of `.app` and fixed to the viewport --
+   on iOS a position:fixed ancestor opens its own stacking context, and
+   while the dock lived inside `.app` no z-index could lift it over the
+   full-bleed ledger. The cost of that move is that hiding `.app` no
+   longer hides the dock: they are siblings now, and the splash sits at
+   z-index 60 while the dock sits at 66, so a dock left showing paints
+   straight over the cover.
+
+   Two places toggled them, in two statements each, and the markup
+   declared the starting state a third time. This is the one place, so
+   the two cannot drift apart again. */
+function showChrome(on){
+  $('#app').hidden = !on;
+  $('#tabdock').hidden = !on;
+}
+
+/* ============================================================
+   THE BACKDROP
+
+   A photograph behind the cover. It is a preference, not a figure, so
+   it lives in its own storage key rather than in the ledger payload:
+   a backup should carry the household's money, not its wallpaper, and
+   an image would double the size of every backup file for nothing.
+
+   The picture never leaves the phone. It is read with a FileReader,
+   drawn to a canvas here, and stored as a data URL in localStorage --
+   the same place the ledger lives and the same promise applies.
+
+   It is downscaled on the way in. A modern phone photograph is four
+   thousand pixels wide and several megabytes; localStorage holds
+   about five, and the ledger is already using one of them. Twelve
+   hundred pixels is more than a phone screen can show, and at that
+   size the file is small enough to sit beside the money rather than
+   in place of it.
+   ============================================================ */
+const BG_KEY = 'thompson:splash:bg:v1';
+const BG_MAX = 1200;              /* longest edge, pixels */
+const BG_QUALITY = 0.78;
+/* Three weights rather than a slider. A slider invites fiddling with
+   something that has exactly three useful answers: barely, properly,
+   and this photograph is too busy to read type over. */
+const BG_DIMS = [0.34, 0.55, 0.78];
+
+let splashBg = { src:'', dim:1 };
+
+function bgLoad(){
+  try {
+    const raw = localStorage.getItem(BG_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    splashBg = {
+      src: typeof p.src === 'string' && p.src.startsWith('data:image/') ? p.src : '',
+      dim: [0,1,2].includes(Number(p.dim)) ? Number(p.dim) : 1,
+    };
+  } catch(_){ splashBg = { src:'', dim:1 }; }
+}
+function bgSave(){
+  try { localStorage.setItem(BG_KEY, JSON.stringify(splashBg)); return true; }
+  catch(_){ return false; }
+}
+
+function bgPaint(){
+  const el = $('#splashBg'), sp = $('#splash');
+  if (!el || !sp) return;
+  const on = Boolean(splashBg.src);
+  el.hidden = !on;
+  el.style.backgroundImage = on ? `url("${splashBg.src}")` : '';
+  el.style.setProperty('--bg-dim', String(BG_DIMS[splashBg.dim] ?? BG_DIMS[1]));
+  sp.classList.toggle('splash--photo', on);
+  const clear = $('#bgClear'), dim = $('#bgDim'), lab = $('#bgPickLabel');
+  if (clear) clear.hidden = !on;
+  if (dim){
+    dim.hidden = !on;
+    dim.textContent = ['Dim 1','Dim 2','Dim 3'][splashBg.dim] || 'Dim';
+  }
+  if (lab) lab.textContent = on ? 'Change' : 'Backdrop';
+}
+
+/**
+ * Read a chosen file down to something storable.
+ *
+ * Drawn to a canvas rather than stored as-is, so what lands in storage
+ * is bounded no matter what came out of the camera. JPEG rather than
+ * PNG because a photograph is not line art and PNG would be four times
+ * the size for no visible gain.
+ */
+function bgFromFile(file){
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type || '')) return reject(new Error('not an image'));
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('unreadable'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('undecodable'));
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, BG_MAX / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL('image/jpeg', BG_QUALITY));
+        } catch(_){ reject(new Error('undecodable')); }
+      };
+      img.src = String(fr.result);
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+function initSplashBg(){
+  bgLoad();
+  bgPaint();
+  const input = $('#bgInput');
+  if (!input) return;
+  $('#bgPick').addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    input.value = '';                    /* the same file may be chosen twice */
+    if (!file) return;
+    const held = splashBg.src;
+    try {
+      toast('Reading the picture\u2026');
+      splashBg.src = await bgFromFile(file);
+    } catch(_){
+      toast('That file could not be read as a picture');
+      return;
+    }
+    if (!bgSave()){
+      /* Out of room. The ledger is the thing worth keeping, so the
+         picture is the thing that goes back. */
+      splashBg.src = held;
+      bgSave();
+      bgPaint();
+      toast('No room on the phone for that picture');
+      return;
+    }
+    bgPaint();
+    toast('Backdrop set');
+  });
+  $('#bgDim').addEventListener('click', () => {
+    splashBg.dim = (splashBg.dim + 1) % BG_DIMS.length;
+    bgSave(); bgPaint();
+  });
+  $('#bgClear').addEventListener('click', () => {
+    splashBg.src = '';
+    bgSave(); bgPaint();
+    toast('Backdrop cleared');
+  });
+}
+
 let lastGreetMode = null;
 function goSplash(){
   if ($('#ariaDrawer').classList.contains('is-open')) closeDrawer();
   if (ledgerOpen()) closeLedger();
   if (amortOpen()) closeAmort();
-  $('#app').hidden = true;
-  $('#tabdock').hidden = true;      /* the dock no longer lives inside .app */
+  showChrome(false);
   $('#splash').hidden = false;
   setMode(state.mode);              /* splash reflects the current mode */
   renderLockRow();
@@ -12787,8 +13005,7 @@ async function enterApp(){
     $('#apiKey').value = '';
   }
   $('#splash').hidden = true;
-  $('#app').hidden = false;
-  $('#tabdock').hidden = false;
+  showChrome(true);
   measureDock();
   collapseAllFolds();          /* every screen opens as a closed menu */
   const live = state.mode === 'api';
@@ -12959,6 +13176,7 @@ function wire(){
   initAmort();
   initFolds();
   initServiceWorker();
+  initSplashBg();
   try { const lm = await storeGet(LOCK_KEY); if (lm) lock.meta = JSON.parse(lm); } catch(_){}
   renderLockRow();                      /* the splash tells the truth immediately */
   if (!lock.meta){
