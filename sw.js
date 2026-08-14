@@ -1,7 +1,7 @@
 /* ============================================================
    Thompson Finances — service worker
 
-   Build 2026-08-13v
+   Build 2026-08-14a
 
    ONE RULE: bump BUILD on every ship. The cache name is derived
    from it, so a new stamp means a new cache, and the old one is
@@ -21,7 +21,7 @@
    the app, never the data.
    ============================================================ */
 
-const BUILD  = '2026-08-13v';
+const BUILD  = '2026-08-14a';
 const SHELL  = `thompson-shell-${BUILD}`;
 const VENDOR = 'thompson-vendor-v1';   /* versioned URLs; survives ships */
 

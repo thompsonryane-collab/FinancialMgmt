@@ -72,10 +72,13 @@ html[data-theme="dark"]{
   --edge-hi:.07; --edge-lo:.35;
 }
 html[data-theme="dark"] body{background:var(--ink)}
-/* tab hues were cut for a light dock — lift them toward white at night */
+/* Tab hues were cut for a light dock, so they are lifted toward white at
+   night. Lifted a little further now that the marks carry more opacity:
+   at .82 the old 55% mix read heavier against a dark bar than it did
+   against a pale one, which is the opposite of what a night dock wants. */
 html[data-theme="dark"] .tabdock button[data-i],
 html[data-theme="dark"] .tabdock button[data-act]{
-  color:color-mix(in srgb, var(--tabc,var(--accent)) 55%, #E8EFE4);
+  color:color-mix(in srgb, var(--tabc,var(--accent)) 48%, #E8EFE4);
 }
 html[data-theme="dark"] .tripcard__pick[aria-checked="true"]{color:#F6E9EE}
 html[data-theme="dark"] .tb-ico,
@@ -286,8 +289,8 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 }
 .tabdock__rail button{flex:1 0 52px;max-width:70px;height:44px}
 .tabdock svg.mark{
-  width:21px;height:21px;display:block;opacity:.6;
-  filter:drop-shadow(0 0 4px color-mix(in srgb, currentColor 60%, transparent));
+  width:23px;height:23px;display:block;opacity:.82;
+  filter:drop-shadow(0 0 4.5px color-mix(in srgb, currentColor 72%, transparent));
   transition:opacity .2s,transform .22s cubic-bezier(.22,1,.36,1),filter .22s;
 }
 .tabdock i{width:4px;height:4px;border-radius:50%;background:transparent;display:block;transition:background .2s}
@@ -296,7 +299,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   background-color:rgba(23,30,20,.06);
   background-color:color-mix(in srgb, var(--tabc,var(--accent)) 13%, transparent);
 }
-.tabdock button[aria-current="true"] svg.mark{opacity:1;transform:translateY(-1px) scale(1.08)}
+.tabdock button[aria-current="true"] svg.mark{opacity:1;transform:translateY(-1px) scale(1.06)}
 .tabdock button[aria-current="true"] i{background:var(--tabc,var(--accent))}
 .tabdock button[data-i]:active svg.mark,
 .tabdock button[data-act]:active svg.mark,
@@ -309,7 +312,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
 }
 .tabdock__caret{width:42px;border-left:1px solid rgba(142,155,133,.55)}
 .tabdock__side{width:52px;border-right:1px solid rgba(142,155,133,.55);color:var(--accent-deep)}
-.tabdock__side svg{width:21px;height:21px;transition:transform .2s}
+.tabdock__side svg{width:22px;height:22px;transition:transform .2s}
 .tabdock__side .wordmark{
   font-family:var(--data);font-size:8px;font-weight:600;letter-spacing:.14em;line-height:1;
 }
@@ -318,7 +321,7 @@ legend{padding:0;margin-bottom:8px;font-family:var(--data);font-size:11px;letter
   background-color:color-mix(in srgb, var(--accent-deep) 13%, transparent);
   border-radius:0 12px 12px 0;
 }
-.tabdock__caret svg{width:19px;height:19px;transition:transform .26s cubic-bezier(.22,1,.36,1)}
+.tabdock__caret svg{width:20px;height:20px;transition:transform .26s cubic-bezier(.22,1,.36,1)}
 .tabdock.is-open .tabdock__caret{color:var(--accent-deep)}
 .tabdock.is-open .tabdock__caret svg{transform:rotate(180deg)}
 
@@ -456,6 +459,12 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .card__xval{justify-self:end;font-family:var(--data);font-size:16px;font-weight:600;
   white-space:nowrap;padding-right:9px}
 .card__xval.fig--none{color:var(--muted);font-weight:500;letter-spacing:.06em}
+/* Whatever the pair needs to say in words: pending charges folded into
+   the figure, or a stated total that disagrees with the ledger. Full
+   width under both columns, and quiet -- it explains a number, it is
+   not one. */
+.card__xnote{grid-column:1/3;font-size:11.5px;line-height:1.35;color:var(--muted)}
+.card__xnote--off{color:var(--warn,#e0a355)}
 .card__spark{grid-column:1/3;margin-top:7px;height:24px}
 .card__spark svg{display:block;width:100%;height:24px;overflow:visible}
 
@@ -6047,10 +6056,28 @@ function runRestore(file){
     /* The household can shape its categories before a single statement
        lands, and that work is worth as much as the rows. Any durable
        section is enough to call this a backup -- checking only rows,
-       balances and bills threw away a taxonomy-only file as junk. */
+       balances and bills once threw away a taxonomy-only file as junk.
+
+       That was fixed by widening a hand-written list, and the list then
+       drifted six sections behind the payload: imports, tripSel,
+       calProj, outSel, receipts and catWho were all being written to
+       backups and none of them counted as evidence a file was one. A
+       household with photographed receipts and no statement yet had a
+       file full of work that would not load.
+
+       So the list is gone. ledgerPayload() IS the definition of what a
+       backup holds; asked for its keys, it cannot fall behind itself.
+       The cost is one pass over the rows, once, next to a JSON.parse of
+       the entire file that has already happened.
+
+       `inUse` is excluded on purpose. It is a reconciliation report
+       about the taxonomy rather than a section of household data, and a
+       file carrying nothing else is not a backup of anything. */
+    const SECTIONS = Object.keys(ledgerPayload()).filter(k => k !== 'inUse');
+    const has = v => v != null
+      && (Array.isArray(v) ? v.length : typeof v === 'object' ? Object.keys(v).length : String(v).length);
     const carries = payload && typeof payload === 'object' &&
-      ['rows','balances','opens','bills','tasks','pend','totalBal','dueDay','taxonomy','inUse','trips','files','rules','loans','acctEdits','asins','covered']
-        .some(k => payload[k] && Object.keys(payload[k]).length);
+      SECTIONS.some(k => has(payload[k]));
     if (!carries){
       toast('That is not a Thompson Finances backup'); return;
     }
@@ -7626,12 +7653,31 @@ function dueCornerHtml(id){
 }
 
 /** Total minus the balance on file. Null until a Total is stated. */
-function cardRunning(id){
+/** Running Balance as the card means it: the stated Total minus the
+    balance the card is showing.
+
+    Signed on purpose. A bare 1,000 does not say which of the two is
+    larger, and that is the entire content of the figure -- positive
+    means the issuer says more is owed than the ledger has accounted
+    for, negative means the ledger is carrying more than the statement
+    claims. Both are worth knowing and they are not the same problem.
+
+    Null only when there is nothing to subtract from: no Total typed.
+
+    `anchored` says whether the ledger side is a real balance.
+    balanceCompute returns netOnly when an account has no opening
+    balance, no statement figure and no running-balance column in its
+    export -- the net of its rows, which is the period's movement rather
+    than a balance. The delta is still shown, because a household that
+    typed a Total is owed an answer, but the card says plainly that one
+    side of the subtraction is not what it looks like. */
+function statedDelta(id){
   if (!carriesTotal(id)) return null;
   const total = totalBalOf(id);
   if (total == null) return null;
-  const current = balanceOf(id).value;
-  return { total, current, running: total - current };
+  const bal = balanceOf(id);
+  return { total, current: bal.value, delta: total - bal.value,
+           anchored: bal.source !== 'empty' && !bal.netOnly };
 }
 
 function renderCards(){
@@ -7685,18 +7731,47 @@ function renderCards(){
           <span class="fig${bal.source === 'empty' ? ' fig--none' : ''}">${bal.source === 'empty' ? '—' : moneyShort(bal.value)}</span>
         </button>
         <div class="card__meta">${esc(base)}${src ? ' · ' + esc(src) : ''}</div>
-        <div class="card__spark">${sparkline(rs)}</div>
+        ${(() => {
+          /* sparkline() draws nothing for an account with fewer than two
+             rows. The band it lives in is a fixed 24px with a margin
+             above it, so emitting the container regardless left a hand-
+             set account -- no rows, nothing to plot -- holding open a
+             strip of empty card. No line, no band. */
+          const spark = sparkline(rs);
+          return spark ? `<div class="card__spark">${spark}</div>` : '';
+        })()}
         ${carriesTotal(a.id) ? (() => {
-          const cr = cardRunning(a.id);
           const t = totalBalOf(a.id);
+          const sd = statedDelta(a.id);
+          /* Half a cent, so a rounding tail is not dressed up as a
+             difference the household could act on. Inside that, the two
+             figures agree and the card says so with a plain zero rather
+             than a signed hair. */
+          const even = sd && Math.abs(sd.delta) < 0.005;
+          const fig = !sd ? '\u2014'
+            : even ? money(0)
+            : (sd.delta > 0 ? '+' : '\u2212') + moneyShort(Math.abs(sd.delta));
+          /* Zero is the good state here, so it is not coloured as though
+             something were owed. A live difference is, and its direction
+             is already in the sign. */
+          const tone = !sd || even ? 'fig--none'
+            : sd.delta > 0 ? 'tone-owe' : 'tone-asset';
+          const said = !sd ? 'no total stated yet'
+            : even ? 'the stated total and the ledger agree'
+            : `the stated total is ${money(Math.abs(sd.delta))} `
+              + `${sd.delta > 0 ? 'above' : 'below'} the ledger balance`;
           return `<div class="card__extra">
             <span class="card__xlab" id="tbl-${esc(a.id)}">Total Balance</span>
             <input class="card__xfield" type="text" inputmode="decimal" data-total="${esc(a.id)}"
                    value="${t == null ? '' : esc(formatMoneyField(Math.abs(t).toFixed(2)))}"
                    placeholder="$0.00" aria-labelledby="tbl-${esc(a.id)}">
-            <span class="card__xlab">Running Balance</span>
-            <span class="card__xval ${cr ? (a.side === 'asset' ? 'tone-asset' : 'tone-owe') : 'fig--none'}"
-                  data-running="${esc(a.id)}">${cr ? moneyShort(cr.running) : '—'}</span>
+            <span class="card__xlab" id="rbl-${esc(a.id)}">Running Balance</span>
+            <span class="card__xval ${tone}" data-running="${esc(a.id)}"
+                  aria-label="Running balance for ${esc(a.name)} \u2014 ${esc(said)}"
+                  >${fig}</span>
+            ${sd && !sd.anchored ? `<span class="card__xnote card__xnote--off">${esc(a.id)}
+              has no anchored balance yet, so the ledger side of this is the movement
+              across its rows rather than a balance</span>` : ''}
           </div>`;
         })() : ''}
         ${a.side === 'liability' ? `
@@ -7738,24 +7813,38 @@ function renderCards(){
     d.addEventListener('toggle', () => { instOpen[d.dataset.inst] = d.open; });
   });
 
-  /* the card opens the ledger; the figure opens the balance sheet */
+  /* The card opens the ledger; the figure opens the balance sheet.
+
+     Regions that own their own presses are named here rather than each
+     stopping propagation on the way up. Build w silenced .card__extra to
+     stop a stray tap navigating, which also silenced the document-level
+     listener that makes the field's x work -- and would have silenced
+     the outside-tap handlers that close the popovers. An event that has
+     to reach document to do its job cannot be stopped halfway just to
+     keep one ancestor quiet. So the ancestor declines instead. */
+  const OWNS_ITS_PRESS = '.card__extra, .card__acts, .card__bal, .card__edit, .clr, .clrx';
   $$('#assetCards .card, #liabCards .card').forEach(c => {
-    const go = () => openLedger(c.dataset.acct);
-    c.addEventListener('click', go);
+    const mine = e => !(e.target.closest && e.target.closest(OWNS_ITS_PRESS));
+    c.addEventListener('click', e => { if (mine(e)) openLedger(c.dataset.acct); });
     c.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); }
+      if ((e.key === 'Enter' || e.key === ' ') && mine(e)){
+        e.preventDefault();
+        openLedger(c.dataset.acct);
+      }
     });
   });
   $$('.card__bal').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
     openBalance(b.dataset.acct);
   }));
-  /* The card itself opens the ledger, so every event the field raises
-     has to stop where it is or typing a balance would navigate away. */
+  /* No stopPropagation here. The statement row is listed in
+     OWNS_ITS_PRESS above, so the card already declines to navigate on a
+     press that lands anywhere in it -- the labels and the gaps included,
+     which is what made this row a hazard to aim at. Letting the event
+     continue upward is what keeps the field's x alive and the
+     outside-tap handlers honest. */
   $$('input[data-total]').forEach(el => {
     attachMoneyInput(el);
-    ['click','keydown','keyup','focus'].forEach(ev =>
-      el.addEventListener(ev, e => e.stopPropagation()));
     el.addEventListener('change', () => {
       const id = el.dataset.total;
       const raw = el.value.trim();
@@ -7768,8 +7857,8 @@ function renderCards(){
     el.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); el.blur(); } });
   });
   $$('select[data-due]').forEach(el => {
-    ['click','keydown','keyup','focus'].forEach(ev =>
-      el.addEventListener(ev, e => e.stopPropagation()));
+    /* .card__acts owns its presses, so the select no longer has to go
+       quiet to keep the card from navigating out from under it. */
     el.addEventListener('change', () => {
       const id = el.dataset.due;
       const v = Math.trunc(Number(el.value));
@@ -11956,14 +12045,13 @@ function runningBalance(id){
   const acct = ACCT[id];
   if (!acct || acct.feed) return null;   /* a feed has no balance to run */
   const posted = balanceOf(id);
-  const cr = cardRunning(id);
   const base = posted.value;
   const held = pendFor(id);
   const move = held.reduce((s,p) => s + p.amount, 0);
   const running = acct.side === 'liability' ? base - move : base + move;
   return { id, name: acct.name, side: acct.side, posted: posted.value,
            source: posted.source, base,
-           total: cr ? cr.total : null,
+           total: carriesTotal(id) ? totalBalOf(id) : null,
            move, running, n: held.length };
 }
 
@@ -14015,7 +14103,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-13v';
+const BUILD = '2026-08-14a';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
