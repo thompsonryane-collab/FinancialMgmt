@@ -532,6 +532,95 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .bars .row .pct{font-family:var(--data);font-size:11.5px;color:var(--muted);
   min-width:46px;text-align:right;font-variant-numeric:tabular-nums}
 .bars .row .pct.tone-owe{color:var(--owe)}
+/* ---------- month on month ----------
+   Four columns on a phone: a name that can run long, two figures, and
+   the change. The figures are tabular so a column of them lines up on
+   the decimal, and the name is the only thing allowed to shrink. */
+.mom{display:grid;gap:2px}
+.mom__seg{display:inline-flex;gap:0;margin:0 0 10px;border:1px solid var(--rule);
+  border-radius:9px;overflow:hidden}
+.mom__seg button{background:none;border:0;color:var(--muted);cursor:pointer;
+  font-family:var(--data);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+  padding:7px 14px;min-height:32px}
+.mom__seg button[aria-pressed="true"]{background:var(--rise);color:var(--paper)}
+.mom__hd,.mom__row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;
+  gap:10px;align-items:center;padding:7px 0}
+.mom__hd{font-family:var(--data);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--rule);padding-bottom:6px}
+.mom__row{border-bottom:1px solid var(--rule)}
+.mom__row:last-child{border-bottom:0}
+.mom__nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
+.mom__v{font-family:var(--data);font-size:12.5px;font-variant-numeric:tabular-nums;
+  text-align:right;min-width:58px;color:var(--muted)}
+.mom__v--now{color:var(--paper)}
+/* The change is the column the eye goes to, so it carries the only
+   colour in the row. Which direction is good depends on what is being
+   measured -- more money out is not the same news as more money in --
+   so the tone is decided where the figure is, not by its sign. */
+.mom__d{font-family:var(--data);font-size:12.5px;font-variant-numeric:tabular-nums;
+  text-align:right;min-width:66px}
+.mom__d.up{color:var(--owe)}
+.mom__d.down{color:var(--asset)}
+.mom__d.flat{color:var(--muted);opacity:.6}
+.mom__cat{border-bottom:1px solid var(--rule)}
+.mom__cat:last-child{border-bottom:0}
+.mom__cat>.mom__row{border-bottom:0}
+.mom__caret{background:none;border:0;color:var(--muted);cursor:pointer;padding:0 2px;
+  display:grid;place-items:center;width:20px}
+.mom__caret svg{width:12px;height:12px;display:block;transition:transform .18s cubic-bezier(.22,1,.36,1)}
+.mom__cat.is-open .mom__caret svg{transform:rotate(90deg)}
+.mom__subs{padding:0 0 6px 14px;border-left:1px solid var(--rule);margin-left:3px}
+.mom__subs .mom__row{padding:5px 0;border-bottom:0}
+.mom__subs .mom__nm{font-size:12.5px;color:var(--muted)}
+.mom__foot{display:flex;align-items:baseline;gap:10px;margin-top:10px;padding-top:9px;
+  border-top:1px solid var(--rule);font-family:var(--data);font-size:12.5px}
+.mom__foot b{margin-left:auto;font-weight:600}
+
+/* ---------- the status carousel ----------
+   Three slides across one strip, snapped, with dots under it. Scroll
+   snap rather than a transform so the gesture is the phone's own and
+   never fights the pager underneath: the strip claims a horizontal
+   drag that starts inside it, and the pager keeps the ones that do not.
+   Each slide is exactly the strip's width, so half a slide never sits
+   showing at the edge pretending to be a column. */
+.deck{position:relative;margin:0 0 14px}
+.deck__strip{display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  overscroll-behavior-x:contain;border-radius:14px;
+  transition:height .22s cubic-bezier(.22,1,.36,1)}
+.deck__strip::-webkit-scrollbar{display:none}
+.deck__slide{flex:0 0 100%;width:100%;scroll-snap-align:start;scroll-snap-stop:always;
+  background:var(--slab);border:1px solid var(--rule);border-radius:14px;padding:14px}
+.deck__slide + .deck__slide{margin-left:8px}
+.deck__hd{display:flex;align-items:baseline;gap:8px;margin:0 0 12px}
+.deck__hd h3{margin:0;font-size:14px;font-weight:600}
+.deck__hd .fold__tag{margin-left:auto}
+.deck__dots{display:flex;gap:6px;justify-content:center;margin-top:9px}
+.deck__dots button{width:7px;height:7px;padding:0;border-radius:50%;border:0;cursor:pointer;
+  background:var(--rule);transition:background .18s ease,transform .18s ease}
+.deck__dots button[aria-current="true"]{background:var(--accent);transform:scale(1.35)}
+
+/* Four figures, two by two. The number leads and the caption explains
+   it underneath, because a caption above a number reads as a heading
+   and gets skipped. */
+.deck__tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.deck__tile{background:var(--ink);border:1px solid var(--rule);border-radius:11px;padding:10px 11px}
+.deck__tile .v{font-family:var(--data);font-weight:600;font-size:19px;letter-spacing:-.02em;
+  display:block;line-height:1.15}
+.deck__tile .k{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  display:block;margin-top:5px}
+.deck__tile .w{font-size:11px;color:var(--muted);display:block;margin-top:3px;line-height:1.4}
+
+/* A signal is a sentence with a figure in it. The bar on the left is
+   the only ranking cue -- a number beside every line would invite the
+   reading that they add up, and they do not. */
+/* The month slide borrows the calendar's own cells so the two screens
+   can never drift into drawing a day two different ways. */
+.deck__cal .cal__day{aspect-ratio:1/1.06;font-size:11px}
+.deck__cal .cal__val{font-size:8.5px}
+.deck__calhd{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.deck__calhd .m{flex:1;text-align:center;font-family:var(--data);font-size:12.5px}
+
 .bignum{font-family:var(--data);font-weight:600;font-size:22px;letter-spacing:-.02em}
 .kv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .kv .panel{margin:0}
@@ -559,6 +648,35 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
 .catx.zero > summary{color:var(--muted)}
 .catx__stat{font-family:var(--data);font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.75}
 .catx__stat b{color:var(--paper);font-weight:600}
+/* ---------- whose category this is ----------
+   A row of names under the figures, one per person, each carrying that
+   person's own colour so the card can be read at a glance rather than
+   decoded. Off is an outline; on is filled. They wrap rather than
+   scroll, because four names on a phone is two lines at worst and a
+   sideways scroller hides the fourth person from anyone who does not
+   think to swipe. */
+.catwho{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 11px}
+.catwho__b{font-family:var(--data);font-size:11px;letter-spacing:.02em;
+  padding:5px 11px;border-radius:999px;cursor:pointer;
+  background:none;border:1px solid var(--rule);color:var(--muted);
+  min-height:30px;display:inline-flex;align-items:center;gap:6px;
+  transition:color .16s ease,border-color .16s ease,background .16s ease}
+.catwho__b .dot{width:7px;height:7px;border-radius:50%;flex:none;
+  background:currentColor;opacity:.55}
+.catwho__b:hover{color:var(--paper)}
+.catwho__b[aria-pressed="true"]{color:var(--whoc);border-color:var(--whoc);
+  background:color-mix(in srgb, var(--whoc) 15%, transparent)}
+.catwho__b[aria-pressed="true"] .dot{opacity:1}
+/* The label sits on the same line as the names when there is room, and
+   above them when there is not. It is muted because it is a caption,
+   not a control. */
+.catwho__k{font-family:var(--data);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);align-self:center;margin-right:2px}
+/* Whose category it is, said on the closed card too -- otherwise the
+   only way to see a tag is to open every card in turn. */
+.acc__who{display:inline-flex;gap:3px;flex:none;align-items:center;margin-right:2px}
+.acc__who i{width:6px;height:6px;border-radius:50%;display:block}
+
 .catx__acts{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:11px}
 .icox{background:var(--rise);border:1px solid var(--rule);border-radius:9px;width:34px;height:34px;min-height:34px;
   color:var(--muted);cursor:pointer;flex:none;font-size:12px;display:grid;place-items:center;padding:0}
@@ -856,6 +974,46 @@ input[data-total]:focus{border-color:var(--accent-deep);outline:none}
   .msel__tools--pair{grid-template-columns:auto auto;justify-content:end}
   .msel__tools--pair .search{grid-column:1/3;justify-self:stretch}
 }
+
+/* ---------- the icon toolbar ----------
+   Four words became four marks. "All" and "Clear" were the widest
+   things in the row and they pushed the search box down to a stub on
+   anything narrow; as icons the whole row fits one line on a phone and
+   the search keeps the space it needs to be typed into.
+   The field itself comes down to 36px and loses the 16px type -- it is
+   a filter for a list, not a form field, and it sits above a list whose
+   rows are 13.5px. iOS zooms a focused input under 16px, so the type
+   stays at 16 and only the box shrinks. */
+.msel__tools--icons{grid-template-columns:1fr repeat(4, auto);gap:6px;padding:8px}
+.msel__tools--icons .search{min-height:36px;padding:6px 10px;border-radius:9px}
+@media (max-width:380px){
+  .msel__tools--icons{grid-template-columns:repeat(4, auto);justify-content:space-between}
+  .msel__tools--icons .search{grid-column:1/5;justify-self:stretch;margin-bottom:2px}
+}
+.mselico{background:none;border:1px solid var(--rule);border-radius:9px;
+  width:36px;height:36px;flex:none;color:var(--muted);cursor:pointer;
+  display:grid;place-items:center;padding:0;position:relative;
+  transition:color .16s ease,border-color .16s ease,background .16s ease}
+.mselico svg{width:17px;height:17px;display:block}
+.mselico:hover{color:var(--paper)}
+/* On means the lens is narrowing the list. It has to read as a state
+   rather than a press, because a filter left on and forgotten is the
+   one way this row can lie about what the catalog holds. */
+.mselico[aria-pressed="true"]{color:var(--accent);border-color:var(--accent-deep);
+  background:color-mix(in srgb, var(--accent) 12%, transparent)}
+/* The person lens carries that person's own colour, the same one the
+   Family screen uses, so who is being looked at is legible without
+   opening anything. */
+.mselico--who[data-who]{color:var(--whoc);border-color:var(--whoc);
+  background:color-mix(in srgb, var(--whoc) 14%, transparent)}
+.mselico--who .who__pip{position:absolute;right:-1px;bottom:-1px;width:8px;height:8px;
+  border-radius:50%;background:var(--whoc);border:1.5px solid var(--ink)}
+/* A line of plain words under the row, only when a lens is on. The
+   counts in this list are the lens's counts, and the chart underneath
+   is not -- saying so is the whole reason this is allowed to exist. */
+.msel__lens{margin:0;padding:8px 12px;border-bottom:1px solid var(--rule);
+  font-size:11.5px;color:var(--muted);line-height:1.45}
+.msel__lens b{color:var(--paper);font-weight:600}
 .msel__list{max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0}
 .msel__row{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer}
 .msel__row input{width:18px;height:18px;flex:none;accent-color:var(--accent-deep)}
@@ -1860,6 +2018,32 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 
     <!-- 6 · FLOW -->
     <section class="screen" id="scr-flow" aria-label="Flow" data-title="Flow" tabindex="-1">
+
+      <div class="deck" id="flowDeck">
+        <div class="deck__strip" id="deckStrip">
+
+          <div class="deck__slide" id="deckStanding" role="group" aria-label="Where the household stands">
+            <div class="deck__hd"><h3>Where you stand</h3>
+              <span class="fold__tag" id="deckStandTag">&mdash;</span></div>
+            <div class="deck__tiles" id="deckTiles"></div>
+            <p class="hint" id="deckStandNote" style="margin:10px 0 0"></p>
+          </div>
+
+          <div class="deck__slide deck__cal" id="deckMonth" role="group" aria-label="What is due this month">
+            <div class="deck__calhd">
+              <button class="cal__nav" id="deckPrev" type="button" aria-label="Previous month">&lsaquo;</button>
+              <span class="m" id="deckMonthName">&mdash;</span>
+              <button class="cal__nav" id="deckNext" type="button" aria-label="Next month">&rsaquo;</button>
+            </div>
+            <div class="cal__dow" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+            <div class="cal__grid" id="deckGrid"></div>
+            <p class="hint" id="deckMonthNote" style="margin:9px 0 0"></p>
+          </div>
+
+        </div>
+        <div class="deck__dots" id="deckDots" role="tablist" aria-label="Dashboard slides"></div>
+      </div>
+
       <details class="fold" data-fold>
         <summary><span class="fold__dot" style="background:var(--accent)"></span>By month
           <span class="fold__tag" id="flowNote"></span>
@@ -1896,18 +2080,39 @@ input[type=date]{-webkit-appearance:none;appearance:none}
               <span class="msel__chev" aria-hidden="true">&#9662;</span>
             </button>
             <div class="msel__menu" id="outCatMenu" hidden role="group" aria-label="Categories to show as outflows">
-              <div class="msel__tools msel__tools--pair">
-                <input class="search" id="outCatQ" type="search" placeholder="Find a category or subcategory" autocomplete="off">
-                <button class="btn btn--sm btn--ghost" id="outCatAll" type="button"
-                        aria-label="Select every category shown">All</button>
-                <button class="btn btn--sm btn--ghost" id="outCatNone" type="button">Clear</button>
+              <div class="msel__tools msel__tools--icons">
+                <input class="search" id="outCatQ" type="search" placeholder="Find a category" autocomplete="off"
+                       aria-label="Find a category or subcategory">
+                <button class="mselico mselico--who" id="outCatWho" type="button"
+                        aria-label="Whose lines to count — everyone"></button>
+                <button class="mselico" id="outCatBusy" type="button" aria-pressed="false"
+                        aria-label="Show only categories with lines on file"></button>
+                <button class="mselico" id="outCatAll" type="button"
+                        aria-label="Select every category shown"></button>
+                <button class="mselico" id="outCatNone" type="button"
+                        aria-label="Clear the selection"></button>
               </div>
+              <p class="msel__lens" id="outCatLens" hidden></p>
               <div class="msel__list" id="outCatList"></div>
             </div>
           </div>
           <div class="bars" id="topSpend" style="margin-top:12px"></div>
           <div class="fixed-sum fixed-sum--net"><span class="eyebrow" id="outSumLabel">Share of income</span><b class="num" id="outPct">&mdash;</b></div>
           <p class="hint" id="outNote" style="margin:8px 0 0"></p>
+        </div>
+      </details>
+
+      <details class="fold" data-fold>
+        <summary><span class="fold__dot" style="background:#8C2645"></span>Month on month
+          <span class="fold__tag" id="momTag">&mdash;</span>
+          <span class="fold__chev" aria-hidden="true">▸</span></summary>
+        <div class="fold__body">
+          <div class="mom__seg" id="momSeg" role="group" aria-label="Which side of the ledger to compare">
+            <button type="button" data-mom="out" aria-pressed="true">Out</button>
+            <button type="button" data-mom="in" aria-pressed="false">In</button>
+          </div>
+          <div id="momBody"></div>
+          <p class="hint" id="momNote" style="margin:10px 0 0"></p>
         </div>
       </details>
     </section>
@@ -2460,6 +2665,18 @@ input[type=date]{-webkit-appearance:none;appearance:none}
   </div>
 </div>
 
+<!-- ============ WHAT LANDS ON A DAY ============ -->
+<div class="modal" id="dayModal" hidden role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+  <div class="sheet">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <button class="sheet__x" id="dayX" type="button" aria-label="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></button>
+    <p class="eyebrow" id="dayEyebrow">Due</p>
+    <h2 id="dayTitle">&mdash;</h2>
+    <p class="hint" id="dayNote" style="margin:4px 0 14px"></p>
+    <ul class="bills" id="dayList"></ul>
+  </div>
+</div>
+
 <!-- ============ ADD / EDIT AN ACCOUNT ============ -->
 <div class="modal" id="acctModal" hidden role="dialog" aria-modal="true" aria-labelledby="acctTitle">
   <div class="sheet">
@@ -2785,6 +3002,8 @@ const state = {
   sort:{key:'date', dir:-1},         // key: 'date' | 'desc' — dir: 1 up, -1 down
   sel:new Set(),         // ledger lines picked for bulk filing
   taxonomy:null,         // {Category:[subs]} — seeded from CATALOG, then owned by the household
+  catWho:{},                     // category name -> [family member], who a
+                                 // category is for; metadata, not a filing rule
   catUI:{ q:'', sort:'rows', open:new Set(), editing:null,
           pick:{ cats:[], subs:[] },   // which categories and subcategories the
                                        // catalog is narrowed to; empty = all
@@ -4552,6 +4771,7 @@ function ledgerPayload(){
     outSel: state.outSel,
     asins: state.asins,
     covered: state.covered,
+    catWho: catWho(),
     taxonomy: taxo(),
     /* The catalog as the household curates it is `taxonomy`. This is
        what the line items actually point at, which is not the same
@@ -4614,6 +4834,17 @@ function applyPayload(data){
     ? { cats: data.outSel.cats.slice(), subs: (data.outSel.subs || []).slice() }
     : { cats:[], subs:[] };
   state.asins = (data.asins && typeof data.asins === 'object') ? data.asins : {};
+  /* Shaped on the way in rather than trusted: a name that is not a
+     household member, or a value that is not a list, would otherwise
+     draw a chip for a person who does not exist. */
+  state.catWho = {};
+  if (data.catWho && typeof data.catWho === 'object')
+    Object.keys(data.catWho).forEach(c => {
+      const v = data.catWho[c];
+      if (!Array.isArray(v)) return;
+      const who = FAMILY.map(f => f.id).filter(id => v.includes(id));
+      if (who.length) state.catWho[c] = who;
+    });
   state.covered = Array.isArray(data.covered) ? data.covered : [];
   state.taxonomy = data.taxonomy || JSON.parse(JSON.stringify(CATALOG));
   state.acctEdits = data.acctEdits || { added:[], changed:{}, removed:[] };
@@ -6436,20 +6667,85 @@ const tabMark = id => TABS[id] || TABS._fallback;
 const tabSvg = t => `<svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" `
   + `stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${t.icon}</svg>`;
 
+/* ============================================================
+   THE ORDER OF THINGS
+
+   One list decides three things that used to be decided in three
+   places: which icon sits where in the dock rail, which tile sits
+   where in the caret sheet, and which way the pager swipes. They
+   were the DOM's order of `<section>` tags plus a hard-coded slot
+   number for the ledger, so changing the dock meant moving eight
+   hundred lines of markup and hoping nothing else counted on it.
+
+   `LEDGER_ID` is not a screen. The ledger is a full-bleed view with
+   no slot in the pager, so it takes a place in the dock and none in
+   the swipe. Everything else here is a section id.
+
+   A screen left off this list is not lost -- it falls in after the
+   named ones, in the order the markup declares it. Add a screen and
+   it appears at the end until it is placed here on purpose.
+   ============================================================ */
+const LEDGER_ID = '\u0000ledger';
+const DOCK_ORDER = [
+  'scr-flow',
+  'scr-tasks',
+  'scr-categories',
+  LEDGER_ID,
+  'scr-calendar',
+  'scr-position',
+  'scr-intake',
+  'scr-project',
+  'scr-trip',
+  'scr-family',
+  'scr-files',
+];
+
 const SCREENS = [];
 let activeScreen = 0;
 
+/* Where a screen sits now, by name rather than by number, so a
+   reorder never silently sends anything to the wrong place. */
+function screenIndex(id){
+  const i = SCREENS.findIndex(s => s.id === id);
+  return i < 0 ? 0 : i;
+}
+/* Position is the screen the app returns to when it has something to
+   show: net worth first, then the lines behind it. It is a place, not
+   an index, and it stays that way wherever it lands in the dock. */
+function goHome(){ goTo(screenIndex('scr-position')); }
+
 function initPager(){
   const pager = $('#pager');
-  $$('.screen', pager).forEach((el, i) => SCREENS.push({el, id:el.id, title:el.dataset.title}));
+
+  /* Sort the markup into the declared order, then read it back. Moving
+     the sections rather than only the buttons is what keeps the swipe
+     and the dock agreeing: a node appended to its own parent moves
+     rather than duplicates, so this is a reorder, not a rebuild, and
+     nothing inside a screen is touched or re-created. */
+  const found = $$('.screen', pager);
+  const byId = new Map(found.map(el => [el.id, el]));
+  const placed = new Set();
+  DOCK_ORDER.forEach(id => {
+    const el = byId.get(id);
+    if (!el) return;                    /* LEDGER_ID, or a screen not built yet */
+    pager.appendChild(el);
+    placed.add(id);
+  });
+  /* Anything the list forgot keeps its markup order, at the end. */
+  found.forEach(el => { if (!placed.has(el.id)) pager.appendChild(el); });
+
+  $$('.screen', pager).forEach(el => SCREENS.push({el, id:el.id, title:el.dataset.title}));
 
   /* The ledger is a full-bleed view rather than a screen: it cannot be
-     swiped to and holds no slot in the pager. It still earns second
-     place in both rows of the dock, right beside Position, because the
-     two are read together -- what the household is worth, then every
-     line that got it there. Rail and sheet are built from one list so
-     the order can never drift apart again. */
-  const LEDGER_SLOT = 1;
+     swiped to and holds no slot in the pager. Its place in the dock is
+     wherever DOCK_ORDER puts it -- counted against the screens that
+     actually made it in, so a screen missing from the markup shifts the
+     ledger left rather than leaving a hole. Rail and sheet are built
+     from one list so the order can never drift apart again. */
+  const LEDGER_SLOT = Math.min(
+    SCREENS.length,
+    DOCK_ORDER.slice(0, Math.max(0, DOCK_ORDER.indexOf(LEDGER_ID)))
+      .filter(id => byId.has(id)).length);
   const ledgerMark = TABS._fallback;
 
   const railBtns = SCREENS.map((s,i) => {
@@ -8175,8 +8471,11 @@ function outSel(){
 /** Money in across every row on file -- the denominator for every share. */
 const incomeOnFile = () => state.rows.reduce((t, r) => r.amount > 0 ? t + r.amount : t, 0);
 
-/** Line counts over outflow rows only, so the picker counts what it charts. */
-const outCounts = () => catCounts(state.rows.filter(r => r.amount < 0));
+/** Line counts over outflow rows only, so the picker counts what it charts.
+    Given a name, it counts that person's outflow instead — the picker's
+    person lens, which narrows the list without touching the chart. */
+const outCounts = (who) => catCounts(state.rows.filter(r =>
+  r.amount < 0 && (!who || r.person === who)));
 
 /**
  * Share of total outflow, per category and per subcategory.
@@ -8193,11 +8492,12 @@ const outCounts = () => catCounts(state.rows.filter(r => r.amount < 0));
  * zero, so the row can print an em dash instead of a 0.0% that looks
  * like a measurement.
  */
-function outShares(){
+function outShares(who){
   const cats = new Map(), subs = new Map();
   let total = 0;
   state.rows.forEach(r => {
     if (!(r.amount < 0)) return;
+    if (who && r.person !== who) return;
     const v = -r.amount;
     total += v;
     const c = String(r.category || '');
@@ -8248,6 +8548,7 @@ function outflowBars(){
 const OUT_MSEL = mselCreate({
   root:'outCatSel', btn:'outCatBtn', label:'outCatLabel', menu:'outCatMenu',
   q:'outCatQ', all:'outCatAll', none:'outCatNone', list:'outCatList',
+  busy:'outCatBusy', who:'outCatWho', lens:'outCatLens',
   sel: outSel,
   counts: outCounts,
   share: outShares,
@@ -8255,7 +8556,7 @@ const OUT_MSEL = mselCreate({
   clearToast: 'Back to the six biggest outflows',
   emptyLabel: 'The six biggest',
 });
-const initOutflows = () => OUT_MSEL.init();
+const initOutflows = () => { OUT_MSEL.init(); initMoM(); initDeck(); };
 
 function renderOutflows(){
   const host = $('#topSpend');
@@ -8312,6 +8613,8 @@ function renderFlow(){
     host.innerHTML = '<p class="empty">Monthly totals appear once a statement lands.</p>';
     $('#flowNote').textContent = ''; $('#avgIn').textContent = '—'; $('#avgOut').textContent = '—';
     renderOutflows();
+    renderMoM();
+    renderDeck();
     return;
   }
   const W = 360, H = 180, padB = 20, padT = 8, padL = 4;
@@ -8334,6 +8637,487 @@ function renderFlow(){
   $('#avgOut').textContent = moneyShort(avgOut);
 
   renderOutflows();
+  renderMoM();
+  renderDeck();
+}
+
+/* ============================================================
+   MONTH ON MONTH
+
+   Every other figure on this screen is an average or a share. This one
+   is the plainest question the household actually asks: is this month
+   worse than last, and where.
+
+   "Current" is the newest month with a line in it, not the calendar
+   month. A statement that has not been imported yet would otherwise
+   make August look like a collapse in spending, which is the most
+   flattering possible lie for a ledger to tell.
+
+   Out and in are counted separately and never netted. A category with
+   a refund in it has two facts, not one smaller fact, and rolling them
+   together would hide a return that cancelled a purchase.
+
+   Both months come off one pass over the ledger, so a category that
+   existed last month and not this one still gets a row -- showing a
+   spend that stopped is the whole point.
+   ============================================================ */
+const MOM_CARET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" '
+  + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
+
+let momSide = 'out';                 /* which side is being compared */
+const momOpen = new Set();           /* which categories are unfolded */
+
+/** The month before a key, as a key. Handles the January step back. */
+function momPrevKey(k){
+  const [y, m] = k.split('-').map(Number);
+  const d = new Date(y, m - 1, 1);
+  d.setMonth(d.getMonth() - 1);
+  return monthKey(d);
+}
+
+/** The newest month with a line in it, and the one before it. */
+function momMonths(){
+  let cur = '';
+  state.rows.forEach(r => { const k = monthKey(r.date); if (k > cur) cur = k; });
+  if (!cur) return null;
+  return { cur, prev: momPrevKey(cur) };
+}
+
+/**
+ * Two months, by category and subcategory, both sides of the ledger.
+ *
+ * Returns null when there is nothing on file at all. A single month on
+ * file is NOT null -- the previous column simply reads zero everywhere,
+ * which is honest and is what a first import looks like.
+ */
+function momTable(){
+  const mm = momMonths();
+  if (!mm) return null;
+  const cats = new Map();
+  const bin = c => {
+    let v = cats.get(c);
+    if (!v){
+      v = { cat:c, out:{prev:0, cur:0}, in:{prev:0, cur:0}, subs:new Map() };
+      cats.set(c, v);
+    }
+    return v;
+  };
+  const sub = (v, x) => {
+    let t = v.subs.get(x);
+    if (!t){ t = { sub:x, out:{prev:0, cur:0}, in:{prev:0, cur:0} }; v.subs.set(x, t); }
+    return t;
+  };
+
+  state.rows.forEach(r => {
+    const k = monthKey(r.date);
+    const when = k === mm.cur ? 'cur' : k === mm.prev ? 'prev' : null;
+    if (!when) return;
+    const side = r.amount < 0 ? 'out' : 'in';
+    const v = Math.abs(r.amount);
+    if (!v) return;
+    const c = bin(String(r.category || CAT_NONE));
+    c[side][when] += v;
+    sub(c, String(r.sub || ''))[side][when] += v;
+  });
+
+  return { ...mm, cats };
+}
+
+/** One side of the table, sorted by the size of the change. */
+function momRows(side){
+  const t = momTable();
+  if (!t) return null;
+  const shape = o => ({ prev:o.prev, cur:o.cur, delta:o.cur - o.prev });
+  const rows = [];
+  t.cats.forEach(v => {
+    const fig = shape(v[side]);
+    if (!fig.prev && !fig.cur) return;          /* nothing either month */
+    const subs = [];
+    v.subs.forEach(x => {
+      const f = shape(x[side]);
+      if (!f.prev && !f.cur) return;
+      subs.push({ name: x.sub, ...f });
+    });
+    subs.sort((a,b) => Math.abs(b.delta) - Math.abs(a.delta) || b.cur - a.cur);
+    rows.push({ name: v.cat, ...fig, subs });
+  });
+  rows.sort((a,b) => Math.abs(b.delta) - Math.abs(a.delta) || b.cur - a.cur);
+  const sum = rows.reduce((o,r) => ({ prev:o.prev + r.prev, cur:o.cur + r.cur }), {prev:0, cur:0});
+  return { cur:t.cur, prev:t.prev, side, rows, total:{ ...sum, delta: sum.cur - sum.prev } };
+}
+
+/* A change of nothing is not a change. Rounding to the cent first stops
+   a figure that differs in the eighth decimal from printing as +$0.00
+   in the colour of bad news. */
+function momDelta(d){
+  const v = Math.round(d * 100) / 100;
+  if (!v) return { cls:'flat', text:'—' };
+  return { cls: v > 0 ? 'up' : 'down', text: (v > 0 ? '+' : '\u2212') + moneyShort(Math.abs(v)) };
+}
+
+function momFigures(r, side){
+  const d = momDelta(r.delta);
+  /* More money out is bad news; more money in is good. Same arithmetic,
+     opposite colour, decided here rather than by the sign. */
+  const cls = side === 'in' && d.cls !== 'flat' ? (d.cls === 'up' ? 'down' : 'up') : d.cls;
+  return `<span class="mom__v">${r.prev ? moneyShort(r.prev) : '—'}</span>
+    <span class="mom__v mom__v--now">${r.cur ? moneyShort(r.cur) : '—'}</span>
+    <span class="mom__d ${cls}">${d.text}</span>`;
+}
+
+function renderMoM(){
+  const host = $('#momBody');
+  if (!host) return;
+  $$('#momSeg button').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.mom === momSide)));
+
+  const t = momRows(momSide);
+  const tag = $('#momTag'), note = $('#momNote');
+  if (!t || !t.rows.length){
+    host.innerHTML = `<p class="empty">${t
+      ? `Nothing ${momSide === 'out' ? 'went out' : 'came in'} in either month.`
+      : 'Two months of statements and this fills in.'}</p>`;
+    if (tag) tag.textContent = '—';
+    if (note) note.textContent = '';
+    return;
+  }
+
+  const head = `<div class="mom__hd"><span>Category</span>
+    <span class="mom__v">${esc(monthLabel(t.prev))}</span>
+    <span class="mom__v">${esc(monthLabel(t.cur))}</span>
+    <span class="mom__d">Change</span></div>`;
+
+  const body = t.rows.map(r => {
+    const open = momOpen.has(r.name);
+    const subs = r.subs.filter(x => x.name);
+    return `<div class="mom__cat${open ? ' is-open' : ''}">
+      <div class="mom__row">
+        <span class="mom__nm">${subs.length
+          ? `<button class="mom__caret" type="button" data-momcat="${esc(r.name)}"
+               aria-expanded="${open}"
+               aria-label="${open ? 'Hide' : 'Show'} subcategories of ${esc(r.name)}">${MOM_CARET}</button>`
+          : ''}${esc(r.name)}</span>
+        ${momFigures(r, momSide)}
+      </div>
+      ${open && subs.length ? `<div class="mom__subs">${subs.map(x =>
+        `<div class="mom__row"><span class="mom__nm">${esc(x.name)}</span>
+          ${momFigures(x, momSide)}</div>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const d = momDelta(t.total.delta);
+  const cls = momSide === 'in' && d.cls !== 'flat' ? (d.cls === 'up' ? 'down' : 'up') : d.cls;
+  host.innerHTML = head + `<div class="mom">${body}</div>`
+    + `<div class="mom__foot"><span>${momSide === 'out' ? 'Total out' : 'Total in'}</span>
+        <span class="mom__v">${moneyShort(t.total.prev)}</span>
+        <span class="mom__v mom__v--now">${moneyShort(t.total.cur)}</span>
+        <b class="mom__d ${cls}">${d.text}</b></div>`;
+
+  if (tag) tag.textContent = `${monthLabel(t.prev)} \u2192 ${monthLabel(t.cur)}`;
+  if (note) note.textContent = `${t.rows.length} categor${t.rows.length === 1 ? 'y' : 'ies'} with money `
+    + `${momSide === 'out' ? 'out' : 'in'} in either month, biggest change first. `
+    + `${monthLabel(t.cur)} is the newest month on file, not necessarily a complete one \u2014 `
+    + `a statement still to be imported reads here as a fall.`;
+}
+
+function initMoM(){
+  const seg = $('#momSeg');
+  if (seg) seg.addEventListener('click', e => {
+    const b = e.target.closest('[data-mom]');
+    if (!b || b.dataset.mom === momSide) return;
+    momSide = b.dataset.mom;
+    renderMoM();
+  });
+  const host = $('#momBody');
+  if (host) host.addEventListener('click', e => {
+    const c = e.target.closest('[data-momcat]');
+    if (!c) return;
+    const k = c.dataset.momcat;
+    momOpen.has(k) ? momOpen.delete(k) : momOpen.add(k);
+    renderMoM();
+  });
+}
+
+/* ============================================================
+   THE STATUS DECK
+
+   Three slides above everything else on Flow. The folds below answer
+   questions the household went looking for; this answers the ones it
+   should be asked without going looking.
+
+   Slide one is where things stand. Slide two is what to do about it.
+   Slide three is what lands this month, and what falls on a day.
+
+   Nothing here computes a figure of its own. Every number is pulled
+   from the function that already owns it -- totals, budgetPlan,
+   momRows, calItems -- so a figure on the deck can never disagree
+   with the same figure further down the screen. That is the whole
+   discipline of this block: it is a window, not a second opinion.
+   ============================================================ */
+
+/* Cash the household could actually spend this week. Retirement and
+   advisory accounts are assets, but they are not money in a runway
+   sense -- counting them would report eighteen months of cushion to a
+   household that cannot make Friday. */
+const LIQUID_KINDS = ['Checking', 'Savings', 'Cash management'];
+function liquidCash(){
+  return balanceAccounts()
+    .filter(a => a.side === 'asset' && LIQUID_KINDS.includes(a.kind))
+    .reduce((n, a) => n + balanceOf(a.id).value, 0);
+}
+
+/** Average money out per day, over the months on file. */
+function burnPerDay(){
+  const m = byMonth();
+  if (!m.length) return 0;
+  return m.reduce((n, x) => n + x.out, 0) / m.length / 30.44;
+}
+
+/** In and out for the newest month on file, and what it saved. */
+function thisMonthFlow(){
+  const mm = momMonths();
+  if (!mm) return null;
+  let inn = 0, out = 0;
+  state.rows.forEach(r => {
+    if (monthKey(r.date) !== mm.cur) return;
+    if (r.amount < 0) out += -r.amount; else inn += r.amount;
+  });
+  return { key: mm.cur, in: inn, out, net: inn - out,
+           rate: inn > 0 ? ((inn - out) / inn) * 100 : null };
+}
+
+function renderDeckStanding(){
+  const host = $('#deckTiles');
+  if (!host) return;
+  const t = totals();
+  const p = budgetPlan();
+  const cash = liquidCash();
+  const burn = burnPerDay();
+  const flow = thisMonthFlow();
+  const days = burn > 0 ? Math.floor(Math.max(0, cash) / burn) : null;
+
+  const ws = weekStart();
+  const spent = state.rows.filter(r => r.amount < 0 && r.date >= ws).reduce((n, r) => n - r.amount, 0);
+  const left = p ? p.weekly - spent : null;
+
+  const tile = (v, k, w, tone) =>
+    `<div class="deck__tile"><span class="v${tone ? ' ' + tone : ''}">${v}</span>
+      <span class="k">${esc(k)}</span>${w ? `<span class="w">${esc(w)}</span>` : ''}</div>`;
+
+  host.innerHTML = [
+    tile(moneyShort(t.net), 'Net position',
+      `${moneyShort(t.assets)} held \u00b7 ${moneyShort(t.owed)} owed`,
+      t.net >= 0 ? 'tone-asset' : 'tone-owe'),
+    tile(left == null ? '\u2014' : moneyShort(left), 'Left this week',
+      p ? `of ${moneyShort(p.weekly)} \u00b7 ${moneyShort(spent)} spent` : 'no plan yet',
+      left == null ? '' : left >= 0 ? 'tone-asset' : 'tone-owe'),
+    tile(days == null ? '\u2014' : `${days}d`, 'Cash runway',
+      burn > 0 ? `${moneyShort(cash)} at ${moneyShort(burn)}/day` : 'nothing to measure',
+      days == null ? '' : days >= 60 ? 'tone-asset' : days >= 21 ? '' : 'tone-owe'),
+    tile(flow && flow.rate != null ? pctText(flow.rate) : '\u2014', 'Saved this month',
+      flow ? `${moneyShort(flow.in)} in \u00b7 ${moneyShort(flow.out)} out` : '',
+      flow && flow.rate != null ? (flow.rate >= 0 ? 'tone-asset' : 'tone-owe') : ''),
+  ].join('');
+
+  const tag = $('#deckStandTag');
+  if (tag) tag.textContent = flow ? monthLabel(flow.key) : '\u2014';
+  const note = $('#deckStandNote');
+  if (note) note.textContent = p
+    ? `Runway counts checking, savings and cash management only \u2014 not retirement or advisory.`
+    : `Set a balance on an account, or put a payday on the Calendar, and the weekly figure builds itself.`;
+}
+
+/* ---------- the month slide ----------
+   Its own month, so paging here does not move the Calendar screen
+   under the household's feet, and the Calendar's own selection is
+   never disturbed by a glance at Flow. */
+let deckCal = null;
+function deckMonth(){
+  if (!deckCal){ const t = startOfToday(); deckCal = { y:t.getFullYear(), m:t.getMonth() }; }
+  return deckCal;
+}
+function deckStep(n){
+  const c = deckMonth();
+  const d = new Date(c.y, c.m + n, 1);
+  deckCal = { y:d.getFullYear(), m:d.getMonth() };
+  renderDeckMonth();
+}
+
+/** Everything landing on one day, from the same list the Calendar draws. */
+function deckDayItems(iso){
+  const d = toDate(iso);
+  if (!d) return [];
+  return calItems(d.getFullYear(), d.getMonth()).filter(it => isoOf(it.date) === iso);
+}
+
+function renderDeckMonth(){
+  const grid = $('#deckGrid');
+  if (!grid) return;
+  const { y, m } = deckMonth();
+  const todayIso = isoOf(startOfToday());
+  const items = calItems(y, m);
+  const byDay = new Map();
+  items.forEach(it => {
+    const k = isoOf(it.date);
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(it);
+  });
+
+  const dim = new Date(y, m + 1, 0).getDate();
+  const lead = new Date(y, m, 1).getDay();
+  const cells = Math.ceil((lead + dim) / 7) * 7;
+  let html = '';
+  for (let i = 0; i < cells; i++){
+    const d = new Date(y, m, i - lead + 1);
+    const iso = isoOf(d);
+    const inMonth = d.getMonth() === m;
+    const day = inMonth ? (byDay.get(iso) || []) : [];
+    const bills = day.filter(it => it.kind === 'bill');
+    const cards = day.filter(it => it.kind === 'card');
+    const proj  = day.filter(it => it.kind === 'proj');
+    const pips = [
+      ...bills.slice(0,3).map(it => `<i style="background:${it.amount > 0 ? 'var(--asset)' : 'var(--owe)'}"></i>`),
+      ...cards.map(() => '<i class="pip--card"></i>'),
+      ...proj.map(() => '<i class="pip--proj"></i>'),
+    ].slice(0,4).join('');
+    const cls = ['cal__day'];
+    if (!inMonth) cls.push('cal__day--out');
+    if (bills.length || cards.length) cls.push('cal__day--has');
+    else if (proj.length) cls.push('cal__day--proj');
+    if (iso === todayIso) cls.push('cal__day--today');
+    const dt = day.length ? calTotals(day) : null;
+    const val = dt ? `<span class="cal__val" style="color:${dt.net >= 0 ? 'var(--asset)' : 'var(--owe)'}">${calCompact(dt.net)}</span>` : '';
+    const said = dt ? `, ${dt.n} item${dt.n === 1 ? '' : 's'}, net ${money(dt.net)}` : ', nothing due';
+    html += `<button type="button" class="${cls.join(' ')}" data-deckday="${iso}"
+      aria-label="${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}${said}">
+      <span>${d.getDate()}</span><span class="cal__pips">${pips}</span>${val}</button>`;
+  }
+  grid.innerHTML = html;
+
+  $('#deckMonthName').textContent = new Date(y, m, 1)
+    .toLocaleDateString('en-US', { month:'long', year:'numeric' });
+  const mt = calTotals(items);
+  $('#deckMonthNote').textContent = mt.n
+    ? `${moneyShort(mt.out)} out \u00b7 ${moneyShort(mt.in)} in \u00b7 `
+      + `net ${mt.net >= 0 ? '+' : '\u2212'}${moneyShort(Math.abs(mt.net))} \u2014 tap a day for the detail`
+    : 'Nothing scheduled or projected in this month.';
+}
+
+/* ---------- what lands on a day ---------- */
+/* The Calendar's own row carries a delete button. This one does not:
+   the deck is a place to look, and a stray tap on a glance screen must
+   not be able to remove a bill from the household's calendar. */
+function deckDayRow(it){
+  const income = it.amount > 0;
+  const kind = it.kind === 'bill' ? (it.repeat === 'monthly' ? 'monthly' : 'scheduled')
+    : it.kind === 'card' ? 'card payment' : 'projected';
+  const from = it.kind === 'proj' && it.from ? ` from ${fmtDate(it.from)}` : '';
+  return `<li class="bill${it.kind === 'proj' ? ' bill--proj' : ''}">
+    <span class="bill__name">${esc(it.name)}</span>
+    <span class="bill__amt" style="color:${income ? 'var(--asset)' : 'var(--owe)'}"
+      >${income ? '+' : '\u2212'}${money(Math.abs(it.amount))}</span>
+    <span class="bill__meta">${esc(it.acct || '')} \u00b7 ${kind}${esc(from)}</span>
+  </li>`;
+}
+
+function openDaySheet(iso){
+  const d = toDate(iso);
+  if (!d) return;
+  const day = deckDayItems(iso);
+  const t = calTotals(day);
+  $('#dayTitle').textContent = d.toLocaleDateString('en-US',
+    { weekday:'long', month:'long', day:'numeric' });
+  $('#dayEyebrow').textContent = isoOf(d) === isoOf(startOfToday()) ? 'Today' : 'What lands';
+  $('#dayNote').textContent = t.n
+    ? `${t.n} item${t.n === 1 ? '' : 's'} \u00b7 ${moneyShort(t.out)} out`
+      + `${t.in ? ` \u00b7 ${moneyShort(t.in)} in` : ''}`
+      + ` \u00b7 net ${t.net >= 0 ? '+' : '\u2212'}${moneyShort(Math.abs(t.net))}`
+      + (t.projs ? ` \u2014 ${t.projs} projected` : '')
+    : '';
+  $('#dayList').innerHTML = t.n
+    ? day.map(deckDayRow).join('')
+    : '<li class="empty" style="padding:14px 6px">Nothing due on this day.</li>';
+  $('#dayModal').hidden = false;
+  document.addEventListener('keydown', dayKeys);
+}
+function dayKeys(e){ if (e.key === 'Escape'){ e.preventDefault(); closeDaySheet(); } }
+function closeDaySheet(){
+  $('#dayModal').hidden = true;
+  document.removeEventListener('keydown', dayKeys);
+}
+
+function renderDeck(){
+  renderDeckStanding();
+  renderDeckMonth();
+  deckFit();
+}
+
+/* The strip is as tall as whatever is on screen, not as tall as its
+   tallest slide. A flex row stretches every child to the tallest one,
+   which left four tiles floating at the top of a card built for a
+   calendar grid. `align-items:flex-start` stops the stretch; this sets
+   the strip itself, because a flex container still takes the height of
+   its tallest child and the empty space would simply move below the
+   card instead of inside it.
+
+   Measured rather than declared: the slides hold live figures whose
+   height depends on how many months a calendar needs and how long a
+   note runs, and a hard-coded height would be wrong the first time
+   either changed. */
+function deckFit(){
+  const strip = $('#deckStrip');
+  if (!strip) return;
+  const slides = $$('.deck__slide', strip);
+  if (!slides.length) return;
+  const w = strip.clientWidth || 1;
+  const i = Math.max(0, Math.min(slides.length - 1, Math.round(strip.scrollLeft / w)));
+  const h = slides[i].offsetHeight;
+  if (h) strip.style.height = h + 'px';
+}
+
+function initDeck(){
+  const strip = $('#deckStrip');
+  const dots = $('#deckDots');
+  if (!strip || !dots) return;
+  const slides = $$('.deck__slide', strip);
+
+  dots.innerHTML = slides.map((sl, i) =>
+    `<button type="button" role="tab" data-deck="${i}" aria-current="${i === 0}"
+      aria-label="${esc(sl.getAttribute('aria-label') || 'Slide ' + (i + 1))}"></button>`).join('');
+  dots.addEventListener('click', e => {
+    const b = e.target.closest('[data-deck]');
+    if (!b) return;
+    strip.scrollTo({ left: +b.dataset.deck * strip.clientWidth, behavior:'smooth' });
+  });
+
+  let raf = null;
+  strip.addEventListener('scroll', () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = null;
+      const i = Math.round(strip.scrollLeft / strip.clientWidth);
+      $$('#deckDots button').forEach(b =>
+        b.setAttribute('aria-current', String(+b.dataset.deck === i)));
+      deckFit();
+    });
+  }, { passive:true });
+
+  $('#deckPrev').addEventListener('click', () => deckStep(-1));
+  $('#deckNext').addEventListener('click', () => deckStep(1));
+  $('#deckGrid').addEventListener('click', e => {
+    const b = e.target.closest('[data-deckday]');
+    if (b) openDaySheet(b.dataset.deckday);
+  });
+  $('#dayX').addEventListener('click', closeDaySheet);
+  $('#dayModal').addEventListener('click', e => {
+    if (e.target === $('#dayModal')) closeDaySheet();
+  });
+
+  /* A rotation or a keyboard changes the width, which changes how a
+     slide wraps, which changes its height. */
+  window.addEventListener('resize', deckFit, { passive:true });
+  window.addEventListener('orientationchange', () => setTimeout(deckFit, 120));
+  deckFit();
 }
 
 /* ============================================================
@@ -9202,6 +9986,57 @@ function initLedgerRotation(){
    flagged as off-catalog rather than dropped.
    The hard rule: nothing a line item points at can be deleted.
    ============================================================ */
+/* ============================================================
+   WHOSE CATEGORY IT IS
+
+   A category can be marked as belonging to one or more of the
+   household. VivExpense is Vivian's; Dispensary is Ryan's; Grocery is
+   everyone's, which is said by marking nobody rather than by marking
+   all four.
+
+   This is a note about the catalog, not a rule about the ledger. It
+   does not file anything, does not claim a row, and does not argue
+   with the ownership rules -- a line's `person` is still whatever the
+   statement or a rule said it was. It answers a different question:
+   not "who spent this" but "who is this category for", which is the
+   one the household asks when it wants to know what a child costs.
+
+   Stored against the category name, so a rename has to carry it
+   across and a delete has to take it away, or the map slowly fills
+   with owners of categories that no longer exist.
+   ============================================================ */
+function catWho(){
+  if (!state.catWho || typeof state.catWho !== 'object') state.catWho = {};
+  return state.catWho;
+}
+/** The people a category is marked for, in household order, names only. */
+function catWhoOf(cat){
+  const v = catWho()[cat];
+  if (!Array.isArray(v)) return [];
+  return FAMILY.map(f => f.id).filter(id => v.includes(id));
+}
+/** Mark or unmark one person. Marking nobody is the resting state and
+    is stored as an absence rather than an empty list, so the map holds
+    only categories that actually carry a note. */
+function catWhoToggle(cat, who){
+  if (!PERSON[who]) return [];
+  const map = catWho();
+  const now = new Set(catWhoOf(cat));
+  now.has(who) ? now.delete(who) : now.add(who);
+  const next = FAMILY.map(f => f.id).filter(id => now.has(id));
+  if (next.length) map[cat] = next; else delete map[cat];
+  return next;
+}
+/** Carry the note across a rename, or merge two notes into one. */
+function catWhoRename(from, to){
+  const map = catWho();
+  const merged = new Set(catWhoOf(from).concat(catWhoOf(to)));
+  const next = FAMILY.map(f => f.id).filter(id => merged.has(id));
+  delete map[from];
+  if (next.length) map[to] = next; else delete map[to];
+}
+function catWhoForget(cat){ delete catWho()[cat]; }
+
 function catStats(){
   const ix = ledgerIndex();
   if (ix.cats) return ix.cats;
@@ -9308,6 +10143,11 @@ function catCardHtml(c){
     <summary>
       <span class="acc__dot" style="background:${catHue(c)}"></span>
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(c)}${listed ? '' : ' <span style="color:var(--danger)">· off-catalog</span>'}</span>
+      ${(() => {
+        const who = catWhoOf(c);
+        return who.length ? `<span class="acc__who" aria-label="For ${esc(who.join(', '))}"
+          >${who.map(id => `<i style="background:${PERSON[id].color}"></i>`).join('')}</span>` : '';
+      })()}
       <span class="acc__count"><b>${st.rows.toLocaleString()}</b> lines</span>
       <span class="acc__chev" aria-hidden="true">▸</span>
     </summary>
@@ -9324,6 +10164,17 @@ function catCardHtml(c){
         out ${money(st.out)} · in ${money(st.in)}
         ${st.orphans ? `<br><span style="color:var(--danger)">${st.orphans} off-catalog subcategor${st.orphans===1?'y':'ies'} in use</span>` : ''}
       </p>
+      <div class="catwho">
+        <span class="catwho__k">For</span>
+        ${FAMILY.map(f => {
+          const on = catWhoOf(c).includes(f.id);
+          return `<button class="catwho__b" type="button" data-catwho="${esc(f.id)}"
+            style="--whoc:${f.color}" aria-pressed="${on}"
+            aria-label="${on ? `${esc(c)} is marked for ${esc(f.id)} — tap to unmark`
+                             : `Mark ${esc(c)} for ${esc(f.id)}`}"
+            ><i class="dot"></i>${esc(f.id)}</button>`;
+        }).join('')}
+      </div>
       <div class="catx__acts">
         <button class="btn btn--sm" data-ren-cat="${esc(c)}" type="button">Rename</button>
         <button class="btn btn--sm" data-rows-cat="${esc(c)}" type="button" ${st.rows ? '' : 'disabled'}>Show lines</button>
@@ -9628,6 +10479,7 @@ function catRename(from, to){
     if (!tax[from]) next[to] = [];
     state.taxonomy = next;
   }
+  catWhoRename(from, to);
   let n = 0;
   state.rows.forEach(r => { if ((r.category || CAT_NONE) === from){ r.category = to; n++; } });
   if (state.filter.cat === from) state.filter.cat = to;
@@ -9722,6 +10574,7 @@ function catDelete(name){
   }
   disarmCatDelete();
   delete taxo()[name];
+  catWhoForget(name);
   state.catUI.open.delete(name);
   if (state.filter.cat === name){ state.filter.cat = ''; state.filter.sub = ''; }
   save(); render();
@@ -9757,6 +10610,7 @@ function catalogFile(){
       const st = statOf(c);
       return {
         name: c, lines: st.rows, out: +st.out.toFixed(2), in: +st.in.toFixed(2),
+        for: catWhoOf(c),
         subcategories: Object.keys(st.subs).filter(x => x !== '').sort().map(x => ({
           name: x, lines: st.subs[x].rows, out: +st.subs[x].out.toFixed(2),
           in: +st.subs[x].in.toFixed(2), on_catalog: st.subs[x].listed,
@@ -9767,14 +10621,15 @@ function catalogFile(){
 }
 function catalogCsv(){
   const q = v => `"${String(v).replace(/"/g,'""')}"`;
-  const head = ['Category','Subcategory','Lines','Out','In','OnCatalog'];
+  const head = ['Category','Subcategory','Lines','Out','In','OnCatalog','For'];
   const body = [];
   Object.keys(taxo()).sort().forEach(c => {
     const st = statOf(c);
-    body.push([c, '', st.rows, st.out.toFixed(2), st.in.toFixed(2), 'true'].map(q).join(','));
+    const who = catWhoOf(c).join(' ');
+    body.push([c, '', st.rows, st.out.toFixed(2), st.in.toFixed(2), 'true', who].map(q).join(','));
     Object.keys(st.subs).filter(x => x !== '').sort().forEach(x => {
       const v = st.subs[x];
-      body.push([c, x, v.rows, v.out.toFixed(2), v.in.toFixed(2), v.listed].map(q).join(','));
+      body.push([c, x, v.rows, v.out.toFixed(2), v.in.toFixed(2), v.listed, who].map(q).join(','));
     });
   });
   return [head.map(q).join(','), ...body].join('\n');
@@ -9813,6 +10668,14 @@ function initCatalog(){
     if (catArmed && !e.target.closest('[data-del-cat]') && !e.target.closest('[data-del-sub]')){
       disarmCatDelete();
       renderCategories();
+    }
+    const cw = e.target.closest('[data-catwho]');
+    if (cw && cat){
+      const now = catWhoToggle(cat, cw.dataset.catwho);
+      state.catUI.open.add(cat);
+      save(); renderCategories();
+      toast(now.length ? `${cat} is for ${now.join(' and ')}` : `${cat} is for the household`);
+      return;
     }
     const rc = e.target.closest('[data-ren-cat]');
     if (rc){ state.catUI.editing = { cat: rc.dataset.renCat, sub: null }; state.catUI.open.add(rc.dataset.renCat); return renderCategories(); }
@@ -10795,10 +11658,72 @@ function selMatch(s, r){
  * of the component so a rail's popover can draw the same list without
  * pretending to be a dropdown.
  */
+/* ---------- the toolbar marks ----------
+   One optical box, content between 4.5 and 19.5 on a 24 grid, so none
+   of the four reads heavier than the others sitting beside it. */
+const MSEL_SVG = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" '
+               + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+const mselIcon = d => `<svg ${MSEL_SVG}>${d}</svg>`;
+const MSEL_ICON = {
+  /* head and shoulders — whose lines are being counted */
+  who:   mselIcon('<circle cx="12" cy="8" r="3.4"/>'
+       + '<path d="M5.2 20.2v-.7a4.4 4.4 0 0 1 4.4-4.4h4.8a4.4 4.4 0 0 1 4.4 4.4v.7"/>'),
+  /* a funnel — many rows in, the ones that matter out */
+  busy:  mselIcon('<path d="M4.2 5.2h15.6l-6 7.1v6.4l-3.6 1.9v-8.3z"/>'),
+  /* a ticked box — take everything the list is showing */
+  all:   mselIcon('<rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3"/>'
+       + '<path d="m8.4 12.2 2.6 2.6 4.6-5"/>'),
+  /* an emptied box — put it all back */
+  none:  mselIcon('<rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3"/>'
+       + '<path d="m9.4 9.4 5.2 5.2"/><path d="m14.6 9.4-5.2 5.2"/>'),
+};
+
 const MSEL_CARET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
   + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
 
-function mselListHtml({ sel, counts, q, open, tax, staged, share }){
+/* ============================================================
+   WHAT THE LIST IS SHOWING
+
+   Two things need this answer and they must never disagree: the rows
+   drawn, and what the take-everything button takes. They used to work
+   it out separately from the same rules, which is a bug waiting for
+   the day the rules change on one side only.
+
+   Three lenses, applied in this order:
+     the query    a category matches on its own name, or lends only
+                  the subcategories that matched
+     `busy`       a category with nothing on file is not worth a row
+     everything   already picked stays visible no matter what
+
+   That last one is not a courtesy. A category hidden while selected
+   could not be unselected, and a lens that can trap a choice is worse
+   than no lens.
+   ============================================================ */
+function mselVisible({ tax, counts, q, sel, busy }){
+  const out = [];
+  const coll = new Intl.Collator('en', { numeric:true, sensitivity:'base' });
+  Object.keys(tax).sort(coll.compare).forEach(c => {
+    const catOn = sel.cats.includes(c);
+    const allSubs = (tax[c] || []).slice().sort(coll.compare);
+    const hitCat = !q || norm(c).includes(q);
+    const subs = hitCat ? allSubs : allSubs.filter(x => norm(x).includes(q));
+    if (!hitCat && !subs.length) return;
+
+    if (busy && !catOn){
+      const n = counts.cats.get(c) || 0;
+      const live = subs.filter(x => (counts.subs.get(catSubKey(c, x)) || 0) > 0);
+      const held = subs.some(x => sel.subs.includes(catSubKey(c, x)));
+      if (!n && !live.length && !held) return;
+      /* A category with lines keeps all of its subcategories: the lens
+         is about finding the category, and a sub with nothing on file
+         is still a place to file something. */
+    }
+    out.push({ cat: c, subs, hitCat, catOn });
+  });
+  return out;
+}
+
+function mselListHtml({ sel, counts, q, open, tax, staged, share, busy }){
   const wait = staged || new Set();
   /* One optional column. Without a share table this returns '' and the
      row is byte-for-byte what it was, which is what keeps the Calendar
@@ -10813,13 +11738,8 @@ function mselListHtml({ sel, counts, q, open, tax, staged, share }){
     const v = m.get(k);
     return v == null ? ', no outflow on file' : `, ${pctText(v)} of outflow`;
   };
-  const coll = new Intl.Collator('en', { numeric:true, sensitivity:'base' });
-  const html = Object.keys(tax).sort(coll.compare).map(c => {
-    const allSubs = (tax[c] || []).slice().sort(coll.compare);
-    const hitCat = !q || norm(c).includes(q);
-    const subs = hitCat ? allSubs : allSubs.filter(x => norm(x).includes(q));
-    if (!hitCat && !subs.length) return '';
-    const catOn = sel.cats.includes(c);
+  const shown = mselVisible({ tax, counts, q, sel, busy });
+  const html = shown.map(({ cat: c, subs, hitCat, catOn }) => {
     const isSubOpen = open.has(c) || (!!q && !hitCat);
     const n = counts.cats.get(c) || 0;
     let pending = 0;
@@ -10860,7 +11780,9 @@ function mselListHtml({ sel, counts, q, open, tax, staged, share }){
         ${pending ? `<p class="msel__stage">${pending} ticked \u2014 tap + to add</p>` : ''}` : ''}
     </div>`;
   }).join('');
-  return html || '<p class="msel__empty">Nothing matches that.</p>';
+  return html || `<p class="msel__empty">${busy
+    ? 'Nothing on file under any category that matches.'
+    : 'Nothing matches that.'}</p>`;
 }
 
 /**
@@ -10914,13 +11836,30 @@ function mselCreate(cfg){
   const open = new Set();
   const staged = new Set();
   const el = k => $('#' + cfg[k]);
+
+  /* ---------- the two lenses ----------
+     Neither is persisted. They are ways of looking at the catalog while
+     the menu is open, not settings the household keeps: a filter that
+     survived a reload would eventually be blamed for categories that
+     had simply been hidden months ago. Both reset when the menu shuts.
+
+     `busy` hides categories with nothing on file. `who` narrows every
+     count and share to one person's lines. Neither touches what is
+     selected, and neither touches the chart -- the note under the
+     toolbar says so in as many words. */
+  let busy = false;
+  let who = '';
+  const WHO_CYCLE = [''].concat(FAMILY.map(f => f.id));
+
+  const countsNow = () => cfg.counts ? cfg.counts(who) : catCounts();
+  const shareNow  = () => cfg.share ? cfg.share(who) : null;
   const isOpen = () => { const m = el('menu'); return Boolean(m && !m.hidden); };
   const setMenu = on => {
     const m = el('menu'), b = el('btn');
     if (!m || !b) return;
     /* anything ticked but never added is abandoned when the list shuts;
        a half-made choice should not be waiting the next time it opens */
-    if (!on) staged.clear();
+    if (!on){ staged.clear(); busy = false; who = ''; }
     m.hidden = !on;
     b.setAttribute('aria-expanded', String(on));
   };
@@ -10940,13 +11879,37 @@ function mselCreate(cfg){
     if (!list) return;
     list.innerHTML = mselListHtml({
       sel: cfg.sel(),
-      counts: cfg.counts ? cfg.counts() : catCounts(),
-      share: cfg.share ? cfg.share() : null,
+      counts: countsNow(),
+      share: shareNow(),
       q: norm((el('q') && el('q').value) || ''),
       open,
       staged,
       tax: cfg.tax ? cfg.tax() : taxo(),
+      busy,
     });
+    paintLenses();
+  }
+
+  /* The toolbar, and the sentence that keeps it honest. */
+  function paintLenses(){
+    const b = el('busy');
+    if (b) b.setAttribute('aria-pressed', String(busy));
+    const w = el('who');
+    if (w){
+      const f = who ? PERSON[who] : null;
+      if (f){ w.dataset.who = who; w.style.setProperty('--whoc', f.color); }
+      else { delete w.dataset.who; w.style.removeProperty('--whoc'); }
+      w.setAttribute('aria-label', who ? `Counting ${who}'s lines only` : 'Whose lines to count — everyone');
+      w.innerHTML = MSEL_ICON.who + (who ? '<i class="who__pip"></i>' : '');
+    }
+    const note = el('lens');
+    if (!note) return;
+    const bits = [];
+    if (who) bits.push(`counting <b>${esc(who)}</b>'s lines only`);
+    if (busy) bits.push('hiding categories with nothing on file');
+    note.hidden = !bits.length;
+    if (bits.length) note.innerHTML = bits.join(' \u00b7 ')
+      + '. The chart still covers the whole household \u2014 this only changes what the list shows.';
   }
 
   /**
@@ -10971,11 +11934,15 @@ function mselCreate(cfg){
    */
   function takeAll(){
     const s = cfg.sel();
-    const q = norm((el('q') && el('q').value) || '');
-    const tax = cfg.tax ? cfg.tax() : taxo();
     let added = 0;
-    Object.keys(tax).forEach(c => {
-      if (!q || norm(c).includes(q)){
+    mselVisible({
+      tax: cfg.tax ? cfg.tax() : taxo(),
+      counts: countsNow(),
+      q: norm((el('q') && el('q').value) || ''),
+      sel: s,
+      busy,
+    }).forEach(({ cat: c, subs, hitCat }) => {
+      if (hitCat){
         if (!s.cats.includes(c)){ s.cats.push(c); added++; }
         /* a whole category swallows its own subcategories, carried or waiting */
         s.subs = s.subs.filter(k => k.split(CATSUB_SEP)[0] !== c);
@@ -10983,8 +11950,7 @@ function mselCreate(cfg){
         return;
       }
       if (s.cats.includes(c)) return;          /* already covered whole */
-      (tax[c] || []).forEach(x => {
-        if (!norm(x).includes(q)) return;
+      subs.forEach(x => {
         const k = catSubKey(c, x);
         if (!s.subs.includes(k)){ s.subs.push(k); added++; }
         staged.delete(k);
@@ -10997,6 +11963,24 @@ function mselCreate(cfg){
     if (!el('btn')) return;
     el('btn').addEventListener('click', () => setMenu(!isOpen()));
     el('q').addEventListener('input', render);
+
+    /* Icons carry no text, so each one says what it did out loud the
+       first time it is pressed. */
+    if (el('all')) el('all').innerHTML = MSEL_ICON.all;
+    if (el('none')) el('none').innerHTML = MSEL_ICON.none;
+    if (el('busy')){
+      el('busy').innerHTML = MSEL_ICON.busy;
+      el('busy').addEventListener('click', () => {
+        busy = !busy;
+        render();
+        toast(busy ? 'Showing only categories with lines' : 'Showing every category');
+      });
+    }
+    if (el('who')) el('who').addEventListener('click', () => {
+      who = WHO_CYCLE[(WHO_CYCLE.indexOf(who) + 1) % WHO_CYCLE.length];
+      render();
+      toast(who ? `Counting ${who}'s lines` : 'Counting everyone');
+    });
     if (el('all')) el('all').addEventListener('click', () => {
       const q = norm((el('q') && el('q').value) || '');
       const added = takeAll();
@@ -11523,7 +12507,7 @@ function confirmImport(){
   /* Rows are in — show what they did. If more files are still queued,
      closeReview() has already opened the next mapping sheet, so stay
      put until the whole batch has landed. */
-  if (!current && !queue.length) goTo(0);
+  if (!current && !queue.length) goHome();
 }
 function next(){
   if (current || !queue.length) return;
@@ -11665,7 +12649,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-13b';
+const BUILD = '2026-08-13i';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
