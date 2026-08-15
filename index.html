@@ -1161,6 +1161,18 @@ html[data-theme="dark"] .card__duelamp[data-tone="green"]{background:#6FBF8C}
 .msel__row--sub .msel__nm{font-family:var(--data);font-size:12px;color:var(--muted)}
 .msel__row--sub input:disabled{opacity:.5}
 .msel__row--on .msel__nm{color:var(--accent);font-weight:500}
+/* held out of a category taken whole: struck through, so it reads as a
+   thing deliberately refused rather than a thing merely not chosen --
+   the plain unticked rows around it already mean that */
+.msel__row--out .msel__nm{color:var(--muted);text-decoration:line-through;
+  text-decoration-color:color-mix(in srgb,var(--danger) 70%,transparent);
+  text-decoration-thickness:1.5px}
+.msel__row--out input{accent-color:var(--muted)}
+/* a category carrying an exclusion is neither on nor off */
+.msel__row--part .msel__nm{text-decoration:underline dotted;
+  text-decoration-color:color-mix(in srgb,var(--accent) 60%,transparent);
+  text-underline-offset:3px}
+.msel__held{padding:2px 12px 8px 12px;font-family:var(--data);font-size:10.5px;color:var(--muted)}
 .msel__empty{padding:16px 12px;text-align:center;color:var(--muted);font-size:12.5px}
 
 /* ============================================================
@@ -3452,9 +3464,10 @@ const state = {
   rxSel:new Set(),       // receipt lines picked on the Itemized screen
   rxPick:'',             // which posted receipt the Itemized screen is reading
   cal:{ y:new Date().getFullYear(), m:new Date().getMonth(), sel:null },
-  calProj:{ cats:['FixedExpense'], subs:[] },   // what the calendar rolls forward: whole
-                         // categories, plus single subcategories written 'Cat\u241FSub'
-  outSel:{ cats:[], subs:[] },   // which outflows the Flow screen charts; empty = the six biggest
+  calProj:{ cats:['FixedExpense'], subs:[], not:[] },   // what the calendar rolls forward: whole
+                         // categories, plus single subcategories written 'Cat\u241FSub',
+                         // less anything in 'not' handed back out of a whole category
+  outSel:{ cats:[], subs:[], not:[] },   // which outflows the Flow screen charts; empty = the six biggest
   outSpan:'all',         // 'all' = every row on file, 'mom' = this month against last
   thread:[],             // {role, content}
   covered:[],            // card lines an item import has replaced, as 'acct|yyyy-mm-dd|cents'.
@@ -5330,13 +5343,17 @@ function applyPayload(data){
   state.trips = data.trips || [];
   state.tripSel = data.tripSel || '';
   if (state.tripSel && !state.trips.some(t => t.id === state.tripSel)) state.tripSel = '';
+  /* `not` is newer than the oldest backups on file. Absent, it restores
+     as empty, which is exactly what those files meant: nothing held out. */
   state.calProj = (data.calProj && Array.isArray(data.calProj.cats))
-    ? { cats: data.calProj.cats.slice(), subs: (data.calProj.subs || []).slice() }
-    : { cats:['FixedExpense'], subs:[] };
+    ? { cats: data.calProj.cats.slice(), subs: (data.calProj.subs || []).slice(),
+        not: (data.calProj.not || []).slice() }
+    : { cats:['FixedExpense'], subs:[], not:[] };
   state.outSpan = data.outSpan === 'mom' ? 'mom' : 'all';
   state.outSel = (data.outSel && Array.isArray(data.outSel.cats))
-    ? { cats: data.outSel.cats.slice(), subs: (data.outSel.subs || []).slice() }
-    : { cats:[], subs:[] };
+    ? { cats: data.outSel.cats.slice(), subs: (data.outSel.subs || []).slice(),
+        not: (data.outSel.not || []).slice() }
+    : { cats:[], subs:[], not:[] };
   state.asins = (data.asins && typeof data.asins === 'object') ? data.asins : {};
   /* Shaped on the way in rather than trusted: a name that is not a
      household member, or a value that is not a list, would otherwise
@@ -9117,8 +9134,13 @@ function carriedFrom(){
   const s = projSel();
   const names = s.cats.concat(s.subs.map(k => k.split(CATSUB_SEP).filter(Boolean).pop()));
   if (!names.length) return 'nothing is set to carry forward';
-  return names.length <= 3 ? names.join(', ')
+  const list = names.length <= 3 ? names.join(', ')
     : `${names.slice(0,2).join(', ')} and ${names.length - 2} more`;
+  /* Naming a category and then quietly carrying less of it than the
+     name implies is how a projection comes up short with nothing on
+     screen to account for it. */
+  const held = selNot(s).length;
+  return held ? `${list} (less ${held} subcategor${held === 1 ? 'y' : 'ies'})` : list;
 }
 
 function renderBudget(){
@@ -9700,8 +9722,9 @@ function renderBeam(){
    against, so the two figures are always drawn from one window.
    ============================================================ */
 function outSel(){
-  if (!state.outSel || !Array.isArray(state.outSel.cats)) state.outSel = { cats:[], subs:[] };
+  if (!state.outSel || !Array.isArray(state.outSel.cats)) state.outSel = { cats:[], subs:[], not:[] };
   if (!Array.isArray(state.outSel.subs)) state.outSel.subs = [];
+  selNot(state.outSel);
   return state.outSel;
 }
 
@@ -9789,7 +9812,10 @@ function outflowMoM(){
     const cat = String(r.category || '');
     let key;
     if (custom){
-      if (s.cats.includes(cat)) key = cat;                   /* the category outranks its subs */
+      if (s.cats.includes(cat)){
+        if (selHeld(s, cat, r.sub)) return;                  /* handed back out of the category */
+        key = cat;                                           /* the category outranks its subs */
+      }
       else if (s.subs.includes(catSubKey(cat, r.sub))) key = String(r.sub || cat);
       else return;
     } else {
@@ -9831,7 +9857,10 @@ function outflowBars(){
       if (!(r.amount < 0)) return;
       const cat = String(r.category || '');
       let key = null;
-      if (s.cats.includes(cat)) key = cat;                    /* the category outranks its subs */
+      if (s.cats.includes(cat)){
+        if (selHeld(s, cat, r.sub)) return;                   /* handed back out of the category */
+        key = cat;                                            /* the category outranks its subs */
+      }
       else if (s.subs.includes(catSubKey(cat, r.sub))) key = String(r.sub || cat);
       if (key === null) return;
       m.set(key, (m.get(key) || 0) + -r.amount);
@@ -10210,9 +10239,16 @@ function renderMoM(){
           : ''}${esc(r.name)}</span>
         ${momFigures(r, momSide)}
       </div>
-      ${open && subs.length ? `<div class="mom__subs">${subs.map(x =>
-        `<div class="mom__row"><span class="mom__nm">${esc(x.name)}</span>
-          ${momFigures(x, momSide)}</div>`).join('')}</div>` : ''}
+      ${open && subs.length ? `<div class="mom__subs">${subs.map(x => {
+        /* The row is already indented under its category and the caret
+           that opened it is inches away, so the prefix is saying a
+           thing the position has said. The full name stays on the
+           title for anywhere a pointer can ask. */
+        const short = shortSub(r.name, x.name);
+        return `<div class="mom__row"><span class="mom__nm"${
+          short === x.name ? '' : ` title="${esc(x.name)}"`}>${esc(short)}</span>
+          ${momFigures(x, momSide)}</div>`;
+      }).join('')}</div>` : ''}
     </div>`;
   }).join('');
 
@@ -11665,8 +11701,9 @@ const catSortLabel = id => (CAT_SORTS.find(s => s.id === id) || CAT_SORTS[0]).la
    me these three categories", so that is what the funnel does now. */
 function catPick(){
   const ui = state.catUI;
-  if (!ui.pick || !Array.isArray(ui.pick.cats)) ui.pick = { cats:[], subs:[] };
+  if (!ui.pick || !Array.isArray(ui.pick.cats)) ui.pick = { cats:[], subs:[], not:[] };
   if (!Array.isArray(ui.pick.subs)) ui.pick.subs = [];
+  selNot(ui.pick);
   if (!ui.pickOpen) ui.pickOpen = new Set();
   return ui.pick;
 }
@@ -11688,7 +11725,11 @@ function catalogTax(){
  */
 function pickedSubs(c, subNames){
   const p = catPick();
-  if (!selCount(p) || p.cats.includes(c)) return subNames;
+  if (!selCount(p)) return subNames;
+  if (p.cats.includes(c)){
+    const held = selHeldOf(p, c).map(k => k.split(CATSUB_SEP)[1]);
+    return held.length ? subNames.filter(x => !held.includes(x)) : subNames;
+  }
   const mine = p.subs
     .filter(k => k.split(CATSUB_SEP)[0] === c)
     .map(k => k.split(CATSUB_SEP)[1]);
@@ -11717,6 +11758,7 @@ function renderCatPick(){
     staged: catPickStaged,
     tax: catalogTax(),
   });
+  mselPaintPartial(list);
 }
 
 /** Paint the rail from catUI. *//** Paint the rail from catUI. */
@@ -11772,6 +11814,7 @@ function initCatRail(){
   $('#cPickNone').addEventListener('click', () => {
     const p = catPick();
     p.cats = []; p.subs = [];
+    selDropNot(p);
     catPickStaged.clear();
     renderCatPick();
     renderCategories();
@@ -12300,8 +12343,9 @@ const CATSUB_SEP = '\u241F';   /* a subcategory name is only unique under its pa
 const catSubKey = (cat, sub) => String(cat || '') + CATSUB_SEP + String(sub || '');
 
 function projSel(){
-  if (!state.calProj || !Array.isArray(state.calProj.cats)) state.calProj = { cats:['FixedExpense'], subs:[] };
+  if (!state.calProj || !Array.isArray(state.calProj.cats)) state.calProj = { cats:['FixedExpense'], subs:[], not:[] };
   if (!Array.isArray(state.calProj.subs)) state.calProj.subs = [];
+  selNot(state.calProj);
   return state.calProj;
 }
 const projCount = () => selCount(projSel());
@@ -12316,10 +12360,42 @@ function addMonthClamped(d){
   return new Date(y, m + 1, Math.min(d.getDate(), dim));
 }
 
-/** A subcategory reads better without its parent repeated in front of it. */
+/**
+ * A subcategory reads better without its parent repeated in front of it.
+ * FixedExpense-Loan-Mortgage under FixedExpense is Loan-Mortgage.
+ *
+ * Three things it will not do, each of which is a way of lying about
+ * what a line is filed as:
+ *
+ *   It will not cut a prefix that is not really one. The category name
+ *   has to be followed by a separator, so Travelodge under Travel keeps
+ *   its whole name rather than becoming "odge".
+ *
+ *   It will not cut a DIFFERENT category's name off the front. Clubs-
+ *   FranklinKnolls sits under Memberships and Fees-LateFees sits under
+ *   LateFees; those prefixes are the interesting part of the name and
+ *   they stay.
+ *
+ *   It will not shorten a name to nothing. A sub called exactly what
+ *   its category is called, which several here are, comes back whole,
+ *   and so does a bare "FixedExpense-".
+ *
+ * The match is case-blind because the ledger is not consistent about
+ * it -- HouseHold-LandscapingGarden is filed under Household.
+ */
 function shortSub(cat, sub){
-  const s = String(sub || ''), c = String(cat || '') + '-';
-  return s.toLowerCase().startsWith(c.toLowerCase()) ? s.slice(c.length) : s;
+  const s = String(sub || '').trim();
+  const c = String(cat || '').trim();
+  /* No category to strip. Everything below would reach the same
+     answer on its own, but a nameless parent is worth refusing out
+     loud rather than by accident. */
+  if (!c) return s;
+  if (s.slice(0, c.length).toLowerCase() !== c.toLowerCase()) return s;
+  /* one separator, with any spaces around it, so "Travel - Maine",
+     "Travel-Maine" and "Travel Maine" all come back as Maine */
+  const gap = /^\s*[-\u2013\u2014_:/]\s*|^\s+/.exec(s.slice(c.length));
+  if (!gap) return s;
+  return s.slice(c.length + gap[0].length) || s;
 }
 
 /** Every carried line rolled one month on, still ahead of today. */
@@ -13109,11 +13185,15 @@ function renderCalendar(){
    MULTI-SELECT
    A checkable list rather than a native <select multiple>, which
    iOS renders as an unusable box. Categories sit at the top; each
-   one unfolds into its subcategories. Checking a category takes
-   the whole thing, and its subcategory boxes go checked and
-   disabled to say so plainly -- there is no hidden third state to
-   guess at. One component, mounted twice: the calendar picks what
-   to roll forward, the Flow screen picks what to chart.
+   one unfolds into its subcategories. Checking a category takes the
+   whole thing, and its subcategory boxes go checked to say so -- but
+   they stay live, because a whole category is the start of a
+   sentence and not the end of one. Untick one and it is held out:
+   the category box goes to its third state, and the list, the field
+   and the fold tag all say how many were refused. One component,
+   mounted twice over: the calendar picks what to roll forward, the
+   Flow screen picks what to chart, and the catalog's own popover
+   borrows the same list to narrow its cards.
    ============================================================ */
 /** Ledger line counts per category and per subcategory, over any row set. */
 function catCounts(rows){
@@ -13137,10 +13217,43 @@ const pctText = v => v == null ? '\u2014' : (v >= 10 ? v.toFixed(0) : v.toFixed(
 /** Everything a selection covers, category first: {cats, subs}. */
 function selCount(s){ return s.cats.length + s.subs.length; }
 
-/** Does a row fall inside a selection? A category outranks its own subs. */
+/* ---------- held out ----------
+   A selection carries three lists, not two. `cats` and `subs` say what
+   was taken; `not` says what was handed back out of something taken
+   whole -- "Amazon, but not the AMEX payment line".
+
+   It has to be an exclusion rather than a rewrite. Unticking one sub
+   COULD be expressed by dropping the category and pushing its other
+   subs in its place, and that was the obvious repair, but it quietly
+   loses rows: a sub the catalog does not list, or a row filed under no
+   sub at all, has no key to push and would fall out of the chart with
+   nothing on screen to explain it. Naming the one thing being refused
+   touches only that thing.
+
+   Nothing enforces that a key in `not` sits under a selected category.
+   Both toggles clear a category's exclusions when it goes on or off,
+   so a stale key cannot outlive the pick that gave it meaning, and
+   selHeld is guarded anyway. */
+function selNot(s){ if (!Array.isArray(s.not)) s.not = []; return s.not; }
+
+/** Held out: the category is taken whole, and this pair was refused. */
+function selHeld(s, cat, sub){
+  return s.cats.includes(String(cat || '')) && selNot(s).includes(catSubKey(cat, sub));
+}
+
+/** Every exclusion under one category. */
+const selHeldOf = (s, c) => selNot(s).filter(k => k.split(CATSUB_SEP)[0] === c);
+
+/** Forget one category's exclusions -- or all of them with no category. */
+function selDropNot(s, c){
+  s.not = c === undefined ? [] : selNot(s).filter(k => k.split(CATSUB_SEP)[0] !== c);
+}
+
+/** Does a row fall inside a selection? A category outranks its own subs,
+    except for the subs it has expressly handed back. */
 function selMatch(s, r){
   const cat = String(r.category || '');
-  if (s.cats.includes(cat)) return true;
+  if (s.cats.includes(cat)) return !selHeld(s, cat, r.sub);
   return s.subs.includes(catSubKey(cat, r.sub));
 }
 
@@ -13217,6 +13330,7 @@ function mselVisible({ tax, counts, q, sel, busy }){
 
 function mselListHtml({ sel, counts, q, open, tax, staged, share, busy }){
   const wait = staged || new Set();
+  const not = Array.isArray(sel.not) ? sel.not : [];
   /* One optional column. Without a share table this returns '' and the
      row is byte-for-byte what it was, which is what keeps the Calendar
      picker and the catalog popover out of this change. */
@@ -13235,15 +13349,25 @@ function mselListHtml({ sel, counts, q, open, tax, staged, share, busy }){
     const isSubOpen = open.has(c) || (!!q && !hitCat);
     const n = counts.cats.get(c) || 0;
     let pending = 0;
+    let heldOut = 0;
     const subHtml = subs.map(x => {
       const k = catSubKey(c, x);
-      const carried = catOn || sel.subs.includes(k);
-      const held = !carried && wait.has(k);
+      /* Three states under a ticked category, not two: carried by it,
+         or expressly handed back. The box is live in both -- it was
+         checked-and-disabled, which drew a decision the household was
+         not allowed to make. */
+      const out = catOn && not.includes(k);
+      const carried = (catOn && !out) || sel.subs.includes(k);
+      const held = !catOn && !carried && wait.has(k);
       if (held) pending++;
+      if (out) heldOut++;
       const sn = counts.subs.get(k) || 0;
-      return `<label class="msel__row msel__row--sub${carried ? ' msel__row--on' : ''}${held ? ' msel__row--pending' : ''}">
-        <input type="checkbox" data-mselsub="${esc(k)}"${carried || held ? ' checked' : ''}${catOn ? ' disabled' : ''}
-               aria-label="${esc(x)}${esc(pctSaid(share ? share.subs : null, k))}">
+      const said = out
+        ? `${x}, held out of ${c}`
+        : `${x}${pctSaid(share ? share.subs : null, k)}`;
+      return `<label class="msel__row msel__row--sub${carried ? ' msel__row--on' : ''}${held ? ' msel__row--pending' : ''}${out ? ' msel__row--out' : ''}">
+        <input type="checkbox" data-mselsub="${esc(k)}"${carried || held ? ' checked' : ''}
+               aria-label="${esc(said)}">
         <span class="msel__nm">${esc(x)}</span>
         ${pctCell(share ? share.subs : null, k)}
         <span class="msel__n">${sn}</span>
@@ -13254,10 +13378,17 @@ function mselListHtml({ sel, counts, q, open, tax, staged, share, busy }){
     const addLabel = pending
       ? `Add ${pending} subcategor${pending === 1 ? 'y' : 'ies'} of ${c}`
       : `Tick a subcategory of ${c} first`;
+    /* Counted over the whole category, not just the rows on screen: a
+       search that has narrowed the subs must not make an exclusion
+       outside it look as though it had been dropped. */
+    const outAll = catOn ? not.filter(k => k.split(CATSUB_SEP)[0] === c).length : 0;
+    const catSaid = outAll
+      ? `${c}, whole less ${outAll} subcategor${outAll === 1 ? 'y' : 'ies'}`
+      : `${c}${pctSaid(share ? share.cats : null, c)}`;
     return `<div class="msel__cat${isSubOpen ? ' is-open' : ''}" data-cat="${esc(c)}">
-      <div class="msel__row${catOn ? ' msel__row--on' : ''}">
-        <input type="checkbox" data-mselcat="${esc(c)}"${catOn ? ' checked' : ''}
-               aria-label="${esc(c)}${esc(pctSaid(share ? share.cats : null, c))}">
+      <div class="msel__row${catOn ? ' msel__row--on' : ''}${outAll ? ' msel__row--part' : ''}">
+        <input type="checkbox" data-mselcat="${esc(c)}"${catOn ? ' checked' : ''}${outAll ? ' data-mselpart' : ''}
+               aria-label="${esc(catSaid)}">
         <span class="msel__nm">${esc(c)}</span>
         ${pctCell(share ? share.cats : null, c)}
         <span class="msel__n">${n} line${n === 1 ? '' : 's'}</span>
@@ -13269,7 +13400,8 @@ function mselListHtml({ sel, counts, q, open, tax, staged, share, busy }){
                 aria-label="${isSubOpen ? 'Hide' : 'Show'} subcategories of ${esc(c)}">${MSEL_CARET}</button>
       </div>
       ${isSubOpen ? `<div class="msel__subs">${subHtml || '<p class="msel__empty">No subcategories</p>'}</div>
-        ${pending ? `<p class="msel__stage">${pending} ticked \u2014 tap + to add</p>` : ''}` : ''}
+        ${pending ? `<p class="msel__stage">${pending} ticked \u2014 tap + to add</p>` : ''}
+        ${outAll ? `<p class="msel__held">${outAll} held out of ${esc(c)} \u2014 tick it back to include it</p>` : ''}` : ''}
     </div>`;
   }).join('');
   return html || `<p class="msel__empty">${busy
@@ -13284,6 +13416,14 @@ function mselListHtml({ sel, counts, q, open, tax, staged, share, busy }){
  * so a handful can be ticked and added together rather than one repaint
  * at a time. Taking a carried subcategory back needs no staging: an
  * untick removes it there and then.
+ *
+ * Under a category that is itself ticked, a subcategory box means
+ * something else again: it is the only control for holding one line of
+ * filing out of a pick that would otherwise swallow it. There is no
+ * staging on that path either -- an exclusion is a refusal, and a
+ * refusal that needed confirming with a second button would read as
+ * having not worked.
+ *
  * Returns 'commit' (the selection changed), 'stage' (only the waiting
  * list changed) or 'none' (the box was not ours).
  */
@@ -13299,10 +13439,21 @@ function mselToggle(sel, box, staged){
     } else {
       sel.cats = sel.cats.filter(x => x !== c);
     }
+    /* Either way the category starts clean. Exclusions are a shape cut
+       out of a whole pick; ticking it again is asking for the whole
+       thing, and unticking it leaves them describing nothing. */
+    selDropNot(sel, c);
     return 'commit';
   }
   if (box.dataset.mselsub !== undefined){
     const k = box.dataset.mselsub;
+    const c = k.split(CATSUB_SEP)[0];
+    if (sel.cats.includes(c)){
+      const not = selNot(sel);
+      if (box.checked) sel.not = not.filter(x => x !== k);
+      else if (!not.includes(k)) not.push(k);
+      return 'commit';
+    }
     if (sel.subs.includes(k)){
       if (box.checked) return 'none';
       sel.subs = sel.subs.filter(x => x !== k);
@@ -13315,6 +13466,22 @@ function mselToggle(sel, box, staged){
 }
 
 /** Carry one category's staged subcategories across. Returns how many moved. */
+/**
+ * The third control state, which only script can set.
+ *
+ * A category ticked with something held out of it is neither on nor
+ * off, and a plain tick would say the whole thing is carried. The
+ * markup marks those boxes with data-mselpart; this turns the mark
+ * into the state. Called after every paint of a list, by both of the
+ * things that paint one.
+ */
+function mselPaintPartial(list){
+  if (!list) return;
+  Array.from(list.querySelectorAll('input[data-mselcat]')).forEach(b => {
+    b.indeterminate = b.dataset.mselpart !== undefined;
+  });
+}
+
 function mselCommit(sel, staged, cat){
   const mine = [...(staged || [])].filter(k => k.split(CATSUB_SEP)[0] === cat);
   mine.forEach(k => {
@@ -13361,7 +13528,12 @@ function mselCreate(cfg){
     const n = selCount(s);
     if (!n) return cfg.emptyLabel || 'Nothing selected';
     const names = s.cats.concat(s.subs.map(k => k.split(CATSUB_SEP)[1] || k));
-    return n <= 2 ? names.join(', ') : names.slice(0, 2).join(', ') + ` +${n - 2} more`;
+    const base = n <= 2 ? names.join(', ') : names.slice(0, 2).join(', ') + ` +${n - 2} more`;
+    /* The field is the only part of the picker visible with the list
+       shut, so an exclusion has to survive into it. Without this, a
+       chart drawn short of its own label would have no explanation. */
+    const held = selNot(s).length;
+    return held ? `${base} \u2212 ${held} held out` : base;
   }
 
   function render(){
@@ -13379,6 +13551,7 @@ function mselCreate(cfg){
       tax: cfg.tax ? cfg.tax() : taxo(),
       busy,
     });
+    mselPaintPartial(list);
     paintLenses();
   }
 
@@ -13435,10 +13608,13 @@ function mselCreate(cfg){
       busy,
     }).forEach(({ cat: c, subs, hitCat }) => {
       if (hitCat){
+        const held = selHeldOf(s, c).length;
         if (!s.cats.includes(c)){ s.cats.push(c); added++; }
+        else if (held) added++;          /* taking back a shape cut out of it is a change */
         /* a whole category swallows its own subcategories, carried or waiting */
         s.subs = s.subs.filter(k => k.split(CATSUB_SEP)[0] !== c);
         [...staged].forEach(k => { if (k.split(CATSUB_SEP)[0] === c) staged.delete(k); });
+        selDropNot(s, c);                /* All means all, exclusions included */
         return;
       }
       if (s.cats.includes(c)) return;          /* already covered whole */
@@ -13486,6 +13662,7 @@ function mselCreate(cfg){
     el('none').addEventListener('click', () => {
       const s = cfg.sel();
       s.cats = []; s.subs = [];
+      selDropNot(s);
       staged.clear();
       cfg.onChange();
       if (cfg.clearToast) toast(cfg.clearToast);
@@ -13560,8 +13737,9 @@ function renderCalCats(fx){
   const proj = fx || calForecasts();
   const total = proj.reduce((t, f) => t + Math.abs(f.amount), 0);
   const tag = $('#calCatTag');
+  const held = selNot(projSel()).length;
   if (tag) tag.textContent = projCount()
-    ? `${projCount()} selected \u00b7 ${proj.length} line${proj.length === 1 ? '' : 's'} \u00b7 ${moneyShort(total)}`
+    ? `${projCount()} selected${held ? ` less ${held}` : ''} \u00b7 ${proj.length} line${proj.length === 1 ? '' : 's'} \u00b7 ${moneyShort(total)}`
     : 'nothing carried forward';
   CAL_MSEL.render();
 }
@@ -14948,7 +15126,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14s';
+const BUILD = '2026-08-14u';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
