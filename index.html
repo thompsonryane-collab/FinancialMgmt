@@ -595,18 +595,38 @@ html[data-theme="dark"] .card__duelamp[data-tone="green"]{background:#6FBF8C}
 .bars .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:baseline;font-size:13px}
 .bars .row .track{grid-column:1/3;height:8px;border-radius:4px;background:var(--ink);border:1px solid var(--rule);overflow:hidden}
 .bars .row .fill{height:100%;background-color:var(--owe);border-radius:4px}
-.bars .row .amt{font-family:var(--data);color:var(--owe)}
+.bars .row .amt{font-family:var(--data);color:var(--owe);font-variant-numeric:tabular-nums}
+/* A long category name must never reach the figures. Every .row is its
+   own grid, so minmax(0,1fr) lets the label track shrink but nothing
+   stops the text itself -- it runs straight out of the track and lands
+   on top of the amount. The ellipsis is what keeps it inside. */
+.bars .row .lbl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  letter-spacing:.02em}
 /* a third column for the share of income; the track still spans the lot */
 .bars .row--pct{grid-template-columns:minmax(0,1fr) auto auto}
 .bars .row--pct .track{grid-column:1/4}
-/* Month on month: this month's figure, last month's beside it, and the
-   change. The bar is this month; the tick on it is where last month
-   finished, so the two are read in one glance instead of two. */
-.bars .row--mom{grid-template-columns:minmax(0,1fr) auto auto auto}
-.bars .row--mom .track{grid-column:1/5;position:relative;overflow:visible}
-.bars .row--mom .track .fill{border-radius:4px 0 0 4px}
+/* Month on month, on two lines rather than four columns.
+   Four figures across a phone left the name a few pixels of width, and
+   with each row sizing its own columns nothing lined up down the card.
+   Split in two, every item is anchored to an edge instead: the name and
+   "was" to the left, this month's figure and the change to the right,
+   where they make a rail the eye can run down. */
+.bars .row--mom{grid-template-columns:minmax(0,1fr) auto;gap:1px 12px}
+.bars .row--mom .amt{font-size:14px;text-align:right}
+.bars .row--mom .was{justify-self:start}
+.bars .row--mom .pct{justify-self:end}
+.bars .row--mom .track{grid-column:1/3;height:9px;margin-top:5px;
+  position:relative;overflow:visible}
+.bars .row--mom .track .fill{position:relative;z-index:1;border-radius:4px 0 0 4px}
+/* Last month, drawn faint underneath. Where this month's fill stops
+   short the ghost keeps running, so a category that fell reads as a
+   drop at a glance rather than as a stub of a bar with a tick out on
+   its own at the far end. The tick stays: it is the exact figure. */
+.bars .row--mom .track .ghost{position:absolute;left:0;top:0;bottom:0;
+  border-radius:4px 0 0 4px;pointer-events:none;
+  background:color-mix(in srgb,var(--muted) 30%,transparent)}
 .bars .row .was{font-family:var(--data);font-size:11.5px;color:var(--muted);white-space:nowrap}
-.bars .row .mark{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;
+.bars .row .mark{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;z-index:2;
   background:var(--muted);opacity:.9;pointer-events:none}
 .bars .row .mark--none{display:none}
 .bars .row .pct{font-family:var(--data);font-size:11.5px;color:var(--muted);
@@ -9839,10 +9859,34 @@ const initOutflows = () => { OUT_MSEL.init(); initMoM(); initDeck(); };
 
 /** "+$412" / "-$88", coloured the way the household reads it: more spend
     than the month before is the owe colour, less is the asset colour. */
-function deltaText(d){
+function deltaText(d, fmt = moneyShort){
   if (Math.abs(d) < 0.005) return '<span class="pct">level</span>';
   const tone = d > 0 ? 'tone-owe' : 'tone-asset';
-  return `<span class="pct ${tone}">${d > 0 ? '+' : '\u2212'}${moneyShort(Math.abs(d))}</span>`;
+  return `<span class="pct ${tone}">${d > 0 ? '+' : '\u2212'}${fmt(Math.abs(d))}</span>`;
+}
+
+/** One cents precision across figures that are read side by side.
+
+    moneyShort drops the cents past ten thousand, which is right for a
+    figure standing on its own and ragged in a column: "$737.44" above
+    "$12,737" reads as two different kinds of number and the decimal
+    points stop lining up. Either every figure in the set keeps its
+    cents or none of them does.
+
+    Which way it settles depends on the room. A LIST gives each figure a
+    line of its own, so it can afford the cents and drops them only when
+    every figure is large enough that they are noise on all of them --
+    rounding $43.80 to $44 to tidy a column would be paying in accuracy
+    for a problem the two-line row already solved. A SUMMARY is one
+    tight line of totals, so it drops them as soon as any figure on it
+    has earned that under moneyShort. */
+function listFmt(values){
+  const all = values.length > 0 && values.every(v => Math.abs(v || 0) >= 10000);
+  return n => (all ? usd0 : usd2).format(n || 0);
+}
+function sumFmt(values){
+  const any = values.some(v => Math.abs(v || 0) >= 10000);
+  return n => (any ? usd0 : usd2).format(n || 0);
 }
 
 function renderOutflowsMoM(){
@@ -9851,32 +9895,43 @@ function renderOutflowsMoM(){
   /* One scale for both figures, or the bar and the tick would be drawn
      against different rulers and the comparison would be a lie. */
   const max = Math.max(1, ...o.bars.map(b => Math.max(b.total, b.was)));
+  const fmt = listFmt(o.bars.flatMap(b => [b.total, b.was, b.delta]));
+  /* Clamped, because a width past 100% would push the fill out of the
+     track and a tick past the end would sit off the card. Nothing on
+     this list can exceed max, but the guard costs nothing. */
+  const w = v => (Math.min(Math.max(v, 0), max) / max * 100).toFixed(1);
 
   host.innerHTML = o.bars.length ? o.bars.map(x => `
-    <div class="row row--mom"><span>${esc(x.label)}</span>
-      <span class="amt">${moneyShort(x.total)}</span>
-      <span class="was">was ${moneyShort(x.was)}</span>
-      ${deltaText(x.delta)}
+    <div class="row row--mom">
+      <span class="lbl" title="${esc(x.label)}">${esc(x.label)}</span>
+      <span class="amt">${fmt(x.total)}</span>
+      <span class="was">was ${fmt(x.was)}</span>
+      ${deltaText(x.delta, fmt)}
       <div class="track">
-        <div class="fill" style="width:${(x.total/max*100).toFixed(1)}%"></div>
+        <i class="ghost" style="width:${w(x.was)}%" aria-hidden="true"></i>
+        <div class="fill" style="width:${w(x.total)}%"></div>
         <i class="mark${x.was > 0 ? '' : ' mark--none'}"
-           style="left:${(x.was/max*100).toFixed(1)}%" aria-hidden="true"></i>
+           style="left:${w(x.was)}%" aria-hidden="true"></i>
       </div>
     </div>`).join('')
     : `<p class="empty">${o.empty ? 'Two months of rows are needed before there is anything to compare.'
         : o.custom ? 'Nothing on file under those categories in either month.'
         : 'No outflows in either month.'}</p>`;
 
+  /* The footer carries its own scale: it is three figures of its own,
+     an order of magnitude above the rows, and they have to agree with
+     each other rather than with the list. */
+  const sfmt = sumFmt([o.total, o.wasTotal, o.delta]);
   const pct = $('#outPct');
   if (pct){
     pct.textContent = o.bars.length
-      ? `${o.delta > 0 ? '+' : o.delta < 0 ? '\u2212' : ''}${moneyShort(Math.abs(o.delta))}`
+      ? `${o.delta > 0 ? '+' : o.delta < 0 ? '\u2212' : ''}${sfmt(Math.abs(o.delta))}`
       : '\u2014';
     pct.className = 'num' + (o.delta > 0.005 ? ' tone-owe' : o.delta < -0.005 ? ' tone-asset' : '');
   }
   const sumLabel = $('#outSumLabel');
   if (sumLabel) sumLabel.textContent = o.empty ? 'Nothing to compare yet'
-    : `${monthLabel(o.curKey)} ${moneyShort(o.total)} \u00b7 ${monthLabel(o.prevKey)} ${moneyShort(o.wasTotal)}`;
+    : `${monthLabel(o.curKey)} ${sfmt(o.total)} \u00b7 ${monthLabel(o.prevKey)} ${sfmt(o.wasTotal)}`;
 
   const tag = $('#outTag');
   if (tag) tag.textContent = o.empty ? 'month on month'
@@ -9888,9 +9943,10 @@ function renderOutflowsMoM(){
     ? 'No rows on file yet, so there are no months to set against each other.'
     : `${monthLabel(o.curKey)} against ${monthLabel(o.prevKey)} \u2014 the newest month on file `
       + 'and the one before it. If the newest is still running it is a part month next to a '
-      + 'whole one, and some of that gap is the calendar rather than the spending. The bar is '
-      + 'the newer month; the tick on it is where the older one finished. A category shows if '
-      + 'it had spend in either month, so one that stopped is still on the list.';
+      + 'whole one, and some of that gap is the calendar rather than the spending. The solid '
+      + 'bar is the newer month and the faint one behind it is the older, with a tick where '
+      + 'the older one finished. A category shows if it had spend in either month, so one '
+      + 'that stopped is still on the list.';
 }
 
 function renderOutflows(){
@@ -9911,7 +9967,7 @@ function renderOutflows(){
   const max = o.bars.length ? o.bars[0].total : 1;
 
   host.innerHTML = o.bars.length ? o.bars.map(x => `
-    <div class="row row--pct"><span>${esc(x.label)}</span>
+    <div class="row row--pct"><span class="lbl" title="${esc(x.label)}">${esc(x.label)}</span>
       <span class="amt">${moneyShort(x.total)}</span>
       <span class="pct">${pctText(x.pct)}</span>
       <div class="track"><div class="fill" style="width:${(x.total/max*100).toFixed(1)}%"></div></div>
@@ -14892,7 +14948,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14r';
+const BUILD = '2026-08-14s';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
