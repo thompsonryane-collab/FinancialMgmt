@@ -615,30 +615,60 @@ html[data-theme="dark"] .card__duelamp[data-tone="green"]{background:#6FBF8C}
 .bars .row--mom .amt{font-size:14px;text-align:right}
 .bars .row--mom .was{justify-self:start}
 .bars .row--mom .pct{justify-self:end}
-.bars .row--mom .track{grid-column:1/3;height:9px;margin-top:5px;
+.bars .row--mom .track{grid-column:1/3;height:9px;margin-top:9px;
   position:relative;overflow:visible}
 .bars .row--mom .track .fill{position:relative;z-index:1;border-radius:4px 0 0 4px}
-/* What is still on the card. A different colour and a different shape
-   from the month tick, because it is a different kind of fact: not a
-   month's spending but a standing debt, and the eye should not read
-   the two as the same sort of mark. It sits above everything, since a
-   fill drawn over it would hide the one thing it is there to say. */
-.bars .row--mom .track .owed{position:absolute;top:-6px;bottom:-6px;width:2px;z-index:3;
-  border-radius:1px;background:var(--danger);pointer-events:none}
-.bars .row--mom .track .owed::before{content:'';position:absolute;left:-3px;top:-1px;
-  border-left:4px solid transparent;border-right:4px solid transparent;
-  border-top:5px solid var(--danger)}
-/* pinned at the end rather than drawn off it; the line above says so */
-.bars .row--mom .track .owed--over{opacity:.6}
+/* ---------- the marks ----------
+   Every mark on a track names a value, and `left` alone does not put it
+   there: the element starts at its value and grows rightwards, so one
+   at 100% is drawn wholly past the end of the track and one at 0% is
+   drawn wholly inside it. Neither sits on the thing it names. Centring
+   is what makes the position true, and it is what stopped the month
+   tick at the far end from reading as a stray tick hanging off the bar.
+
+   The ring is the other half. A mark crosses the fill, the ghost or
+   bare track depending on where its value falls, and at two pixels
+   wide with no edge it disappeared into whichever it landed on. One
+   pixel of the track's own colour all the way round gives it an edge
+   against all three. */
+.bars .row--mom .track .mark,
+.bars .row--mom .track .owed{transform:translateX(-50%);
+  box-shadow:0 0 0 1px var(--ink)}
+
+/* The month tick: where the older month finished. Dark rather than
+   muted, because muted on a muted ghost was the least readable pairing
+   on the card. */
+.bars .row--mom .track .mark{width:3px;top:-4px;bottom:-4px;border-radius:1.5px;
+  background:var(--paper);opacity:.7}
+
+/* The card's running balance. Its own colour and its own shape -- a
+   flag rather than a bar -- because it is a different kind of fact from
+   a month's spending and the two must not read as the same mark, least
+   of all on the one row that carries both. Above everything, since a
+   fill drawn over it would hide the thing it is there to say. */
+.bars .row--mom .track .owed{width:3px;top:-8px;bottom:-4px;z-index:3;border-radius:1.5px;
+  background:currentColor;color:var(--muted);pointer-events:none}
+.bars .row--mom .track .owed::before{content:'';position:absolute;left:-3.5px;top:-1px;
+  border-left:5px solid transparent;border-right:5px solid transparent;
+  border-top:6px solid currentColor}
+/* pinned at the end rather than drawn off it; the figure says so with a
+   chevron rather than a sentence, there being three of them now */
+.bars .row--mom .track .owed--over{opacity:.62}
+/* The three cards, on one line. The letter takes its card's tint and
+   the mark on the bar takes the same one, which is how a tick three
+   pixels wide says which card it belongs to without being written on.
+   The figures stay in the body colour: tinting those as well would
+   make a line of coloured numbers and lose the tags in it. */
 .bars .row--mom .owedline{grid-column:1/3;font-family:var(--data);font-size:11px;
-  color:var(--danger);margin-top:2px;font-variant-numeric:tabular-nums}
+  color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.bars .row--mom .owedline b{font-weight:600}
 /* Last month, drawn faint underneath. Where this month's fill stops
    short the ghost keeps running, so a category that fell reads as a
    drop at a glance rather than as a stub of a bar with a tick out on
    its own at the far end. The tick stays: it is the exact figure. */
 .bars .row--mom .track .ghost{position:absolute;left:0;top:0;bottom:0;
   border-radius:4px 0 0 4px;pointer-events:none;
-  background:color-mix(in srgb,var(--muted) 30%,transparent)}
+  background:color-mix(in srgb,var(--muted) 46%,transparent)}
 .bars .row .was{font-family:var(--data);font-size:11.5px;color:var(--muted);white-space:nowrap}
 .bars .row .mark{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;z-index:2;
   background:var(--muted);opacity:.9;pointer-events:none}
@@ -9912,60 +9942,90 @@ const initOutflows = () => { OUT_MSEL.init(); initMoM(); initDeck(); };
    light month of payments and a heavy one look like a change in
    spending when they are usually a change in timing.
 
-   Read off the running ledger balance rather than the stated Total
-   Balance, for the same reason the calendar lock reads it: the stated
-   figure is whatever was last typed in from a statement, and the row
-   beside it is derived from the rows on file. Two figures from two
-   sources on one line is how a card comes to owe two different amounts.
+   The figure is the one the Position card labels Running Balance:
+   statedDelta(), the stated Total Balance less the balance the ledger
+   holds. On AMEX today that is $18,743.11 against $13,073.49, so the
+   row reads +$5,669.62 -- the part of the statement the ledger has not
+   caught up with yet.
 
-   Each card is named on its own row rather than pooled. The grain a
-   card can be marked at is not the same for all three, and that is the
-   whole of the design here:
+   That is a narrower claim than "what is owed", and the line says so.
+   Two figures live on that card and the wrong one on this row would be
+   the same number wearing another number's name.
 
-     AMEX          filed under CreditCardPayment, a category that is
-                   almost nothing but that card, so the category row
-                   carries it as well as the subcategory row.
+   It follows from this that a card with no Total Balance typed in has
+   no running balance to show, and gets no mark. That is not a gap to
+   paper over: with nothing stated there is nothing to be running
+   against, and a zero would be an assertion rather than a reading.
 
-     PenFed        filed under FixedExpense-PenFedVisa, and
-     USAA Visa     FixedExpense-USAAvisa -- subcategories of a category
-                   that is also the mortgage, both insurances, the gas
-                   and the water. Marking a card's balance against the
-                   whole of FixedExpense would draw a debt against a
-                   bar that is mostly not that debt, so those two are
-                   offered at the subcategory grain only.
+   All three revolving cards, on the one row that is about paying them.
+   An earlier build hung PenFed and the USAA Visa off their own
+   subcategory rows under FixedExpense; that is not where the question
+   gets asked. The card-payment row is, so all three answer there,
+   tagged A, P and V.
+
+   Identity is carried in colour, not in a label: three ticks on a
+   nine-pixel track cannot be written on. Each takes its institution's
+   tint from INST_TINT -- the same AMEX, PenFed and USAA colours the
+   Position screen uses -- and the letter in the text is set in the
+   same colour, so letter and mark find each other.
+
+   That gives up the owe/asset tone a lone figure used to carry. The
+   sign stays on the figure, which is where direction belongs; with
+   three of them, which card is which matters more.
+
+   The AMEX subcategory row answers for AMEX alone. It is a row about
+   one card, and the other two would be answering a question it did not
+   ask.
 
    CreditCardPayment carries the Best Buy card too, and it has no
-   account behind it. Rolling it into the AMEX figure, or letting its
-   own row show the AMEX figure, would put a number on screen that no
-   account actually holds -- so it gets nothing, like every other row.
+   account behind it. It is not on the list and gets no figure, because
+   a number no account holds is worse than a gap.
    ============================================================ */
+const CARD_TAG = { AMEX:'A', PenFed:'P', USAAVISA:'V' };
 const OWED_ON = [
-  { acct:'AMEX',     cat:'CreditCardPayment', sub:'CreditCardPayment-AMEX' },
-  { acct:'PenFed',                            sub:'FixedExpense-PenFedVisa' },
-  { acct:'USAAVISA',                          sub:'FixedExpense-USAAvisa' },
+  { cat:'CreditCardPayment', cards:['AMEX', 'PenFed', 'USAAVISA'] },
+  { sub:'CreditCardPayment-AMEX', cards:['AMEX'] },
 ];
 
 /**
- * The balance to mark on one outflow row, or null for every other row.
+ * The card balances to mark on one outflow row. Always an array, empty
+ * for every row that is not about paying a card.
  *
  * The match is case-blind because the filing is not: the catalog holds
  * 'FixedExpense-USAAvisa' with a lowercase v, and a row that arrived
  * from a statement spelled 'USAAVisa' is the same subcategory to every
  * eye but a strict comparison.
  *
- * Null rather than zero when there is no account or no rows behind it.
- * A mark pinned at the left end saying nothing is owed, on an account
- * the app knows nothing about, is a claim it has not earned.
+ * A card drops out silently at every refusal -- no account on file, no
+ * Total Balance typed, nothing derivable. It is not carried as a zero
+ * or a dash: with nothing stated there is nothing to be running
+ * against, and either of those would be an assertion rather than a
+ * reading. Two cards set up and one not shows two figures.
+ *
+ * The sign is kept. A negative running balance means the ledger has
+ * gone past the stated total, which is a real state and a different one
+ * from being level.
  */
 function owedOnCard(label){
   const k = String(label || '').toLowerCase();
-  if (!k) return null;
+  if (!k) return [];
   const on = OWED_ON.find(c =>
-    k === String(c.sub).toLowerCase() || (c.cat && k === c.cat.toLowerCase()));
-  if (!on || !ACCT[on.acct]) return null;
-  const b = balanceOf(on.acct);
-  if (!b || b.source === 'empty' || typeof b.value !== 'number' || !isFinite(b.value)) return null;
-  return { acct: on.acct, name: (ACCT[on.acct] || {}).name || on.acct, value: b.value, source: b.source };
+    (c.sub && k === c.sub.toLowerCase()) || (c.cat && k === c.cat.toLowerCase()));
+  if (!on) return [];
+  return on.cards.reduce((out, id) => {
+    if (!ACCT[id]) return out;
+    const sd = statedDelta(id);
+    if (!sd || typeof sd.delta !== 'number' || !isFinite(sd.delta)) return out;
+    out.push({
+      acct: id,
+      tag: CARD_TAG[id] || id.slice(0, 1),
+      name: (ACCT[id] || {}).name || id,
+      value: sd.delta,
+      tint: instTint((ACCT[id] || {}).inst || id),
+      anchored: sd.anchored,
+    });
+    return out;
+  }, []);
 }
 
 function deltaText(d, fmt = moneyShort){
@@ -10016,23 +10076,32 @@ function renderOutflowsMoM(){
        a card carrying more than either month's payments is an ordinary
        state of affairs -- so the mark is pinned and says so rather than
        being drawn somewhere it is not. */
-    const owed = owedOnCard(x.label);
-    const over = owed ? owed.value > max : false;
+    /* Marked on the SIZE of each gap. The sign says which way it runs;
+       the bar is a scale of magnitudes and has no left of zero. A card
+       carrying more than either month's payments is ordinary, so a mark
+       past the end is pinned and the figure says so rather than being
+       drawn somewhere it is not. */
+    const cards = owedOnCard(x.label).map(c => {
+      const at = Math.abs(c.value);
+      return { ...c, at, over: at > max,
+        fig: (c.value < -0.005 ? '\u2212' : '') + fmt(at) };
+    });
     return `
     <div class="row row--mom">
       <span class="lbl" title="${esc(x.label)}">${esc(x.label)}</span>
       <span class="amt">${fmt(x.total)}</span>
       <span class="was">was ${fmt(x.was)}</span>
       ${deltaText(x.delta, fmt)}
-      ${owed ? `<span class="owedline">${esc(owed.name)} still owes ${fmt(owed.value)}${
-        over ? ' \u2014 past the end of the bar' : ''}</span>` : ''}
+      ${cards.length ? `<span class="owedline">${cards.map(c =>
+        `<b style="color:${esc(c.tint)}" title="${esc(c.name)} running balance">${esc(c.tag)}-</b> ${
+          c.fig}${c.over ? '\u203a' : ''}`).join(' \u00b7 ')}</span>` : ''}
       <div class="track">
         <i class="ghost" style="width:${w(x.was)}%" aria-hidden="true"></i>
         <div class="fill" style="width:${w(x.total)}%"></div>
         <i class="mark${x.was > 0 ? '' : ' mark--none'}"
            style="left:${w(x.was)}%" aria-hidden="true"></i>
-        ${owed ? `<i class="owed${over ? ' owed--over' : ''}" style="left:${w(owed.value)}%"
-           aria-hidden="true"></i>` : ''}
+        ${cards.map(c => `<i class="owed${c.over ? ' owed--over' : ''}"
+           style="left:${w(c.at)}%;color:${esc(c.tint)}" aria-hidden="true"></i>`).join('')}
       </div>
     </div>`;
   }).join('')
@@ -10068,10 +10137,11 @@ function renderOutflowsMoM(){
       + 'whole one, and some of that gap is the calendar rather than the spending. The solid '
       + 'bar is the newer month and the faint one behind it is the older, with a tick where '
       + 'the older one finished. A category shows if it had spend in either month, so one '
-      + 'that stopped is still on the list. A row that is one credit card carries one extra '
-      + 'mark: what is still owed on that card right now, read off the running ledger '
-      + 'balance. AMEX shows it on the card payment row; the two Visas show it on their own '
-      + 'subcategory rows, since the category above them is mostly not the card.';
+      + 'that stopped is still on the list. The card payment row carries the three cards\u2019 '
+      + 'running balances \u2014 A for AMEX, P for PenFed, V for the USAA Visa \u2014 each '
+      + 'the stated Total Balance less the balance the ledger already holds, which is the '
+      + 'part of the statement the rows have not caught up with. Each is marked on the bar '
+      + 'in its own colour, and a card with no Total Balance typed on it is left out.';
 }
 
 function renderOutflows(){
@@ -12494,20 +12564,47 @@ function shortSub(cat, sub){
   return s.slice(c.length + gap[0].length) || s;
 }
 
-/** Every carried line rolled one month on, still ahead of today. */
+/**
+ * Every carried line rolled one month on, still ahead of today.
+ *
+ * ONE LINE PER VENDOR PER DAY, and it is the last charge of that day.
+ *
+ * The key used to carry the amount, so a vendor billed twice on a day
+ * projected twice -- Zelle to Lidia at $121 and again at $120 off the
+ * same Thursday. Both rows are real. As a forecast they are one
+ * obligation counted twice: the household pays Lidia on the 23rd, and
+ * how the statement happened to split it that day is not a fact about
+ * next month. Dropping the amount from the key is the whole fix; what
+ * used to be a guard against two statements carrying the same charge
+ * now also collapses a vendor's several charges into one promise.
+ *
+ * WHICH one, with no clock on the rows, is last in ledger order. That
+ * is not a shrug: normalize() already rests on the same fact, noting
+ * that banks list same-day lines in POSTING order and using later file
+ * position to break a tie. So file order within a day IS the order the
+ * charges landed, and the last of them is the last charge of the day.
+ *
+ * Getting it out is arithmetic on that: state.rows is newest-first by
+ * date and stable within a date, so walking it forward and letting each
+ * write win leaves the last row of that day standing.
+ *
+ * The ACCOUNT stays in the key. The same vendor on two cards on one day
+ * is two obligations, not one written twice, and hiding one of those is
+ * a worse failure for a forecast than showing both.
+ *
+ * Each line counts what it stands for, so a day's total coming out
+ * lower is accounted for on the row that caused it.
+ */
 function calForecasts(){
   const from = startOfToday();
-  const seen = new Set();
-  const out = [];
+  const pick = new Map();
   state.rows.forEach(r => {
     if (!r.amount || !(r.date instanceof Date) || !rowProjected(r)) return;
     const next = addMonthClamped(r.date);
     if (next < from) return;                    /* the day passed -- drop it off */
-    /* two statements can carry the same charge; one promise is enough */
-    const k = isoOf(next) + '|' + norm(r.desc) + '|' + r.amount;
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push({
+    const k = isoOf(next) + '|' + r.acct + '|' + norm(r.desc);
+    const had = pick.get(k);
+    pick.set(k, {
       kind: 'proj',
       id: 'FX-' + r.id,
       name: r.desc,
@@ -12517,9 +12614,12 @@ function calForecasts(){
       sub: shortSub(r.category, r.sub),
       date: next,
       from: r.date,
+      /* how many rows this line is standing in for, itself included */
+      of: (had ? had.of : 0) + 1,
     });
   });
-  return out.sort((a, b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
+  return Array.from(pick.values())
+    .sort((a, b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
 }
 
 /* ============================================================
@@ -12775,10 +12875,16 @@ function projRow(f, showDate){
   const when = showDate ? fmtDate(f.date) + ' \u00b7 ' : '';
   const tag = f.sub ? ' \u00b7 ' + esc(f.sub) : '';
   const income = f.amount > 0;
+  /* A vendor billed more than once that day is carried by its last
+     charge alone. Saying so on the line is what keeps the day's total
+     from quietly shrinking with nothing on screen to account for it. */
+  const stood = f.of > 1
+    ? ` \u00b7 last of ${f.of} that day`
+    : '';
   return `<li class="bill bill--proj">
     <span class="bill__name">${esc(f.name)}</span>
     <span class="bill__amt" style="color:${income ? 'var(--asset)' : 'var(--owe)'}">${income ? '+' : '\u2212'}${money(Math.abs(f.amount))}</span>
-    <span class="bill__meta">${when}${esc(f.acct)}${tag} \u00b7 projected from ${fmtDate(f.from)}</span>
+    <span class="bill__meta">${when}${esc(f.acct)}${tag} \u00b7 projected from ${fmtDate(f.from)}${stood}</span>
   </li>`;
 }
 
@@ -15222,7 +15328,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14w';
+const BUILD = '2026-08-14z';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
