@@ -618,27 +618,54 @@ html[data-theme="dark"] .card__duelamp[data-tone="green"]{background:#6FBF8C}
 .bars .row--mom .track{grid-column:1/3;height:9px;margin-top:5px;
   position:relative;overflow:visible}
 .bars .row--mom .track .fill{position:relative;z-index:1;border-radius:4px 0 0 4px}
-/* What is still on the card. A different colour and a different shape
-   from the month tick, because it is a different kind of fact: not a
-   month's spending but a standing debt, and the eye should not read
-   the two as the same sort of mark. It sits above everything, since a
-   fill drawn over it would hide the one thing it is there to say. */
-.bars .row--mom .track .owed{position:absolute;top:-6px;bottom:-6px;width:2px;z-index:3;
-  border-radius:1px;background:var(--danger);pointer-events:none}
-.bars .row--mom .track .owed::before{content:'';position:absolute;left:-3px;top:-1px;
-  border-left:4px solid transparent;border-right:4px solid transparent;
-  border-top:5px solid var(--danger)}
+/* ---------- the marks ----------
+   Every mark on a track names a value, and `left` alone does not put it
+   there: the element starts at its value and grows rightwards, so one
+   at 100% is drawn wholly past the end of the track and one at 0% is
+   drawn wholly inside it. Neither sits on the thing it names. Centring
+   is what makes the position true, and it is what stopped the month
+   tick at the far end from reading as a stray tick hanging off the bar.
+
+   The ring is the other half. A mark crosses the fill, the ghost or
+   bare track depending on where its value falls, and at two pixels
+   wide with no edge it disappeared into whichever it landed on. One
+   pixel of the track's own colour all the way round gives it an edge
+   against all three. */
+.bars .row--mom .track .mark,
+.bars .row--mom .track .owed{transform:translateX(-50%);
+  box-shadow:0 0 0 1px var(--ink)}
+
+/* The month tick: where the older month finished. Dark rather than
+   muted, because muted on a muted ghost was the least readable pairing
+   on the card. */
+.bars .row--mom .track .mark{width:3px;top:-4px;bottom:-4px;border-radius:1.5px;
+  background:var(--paper);opacity:.7}
+
+/* The card's running balance. Its own colour and its own shape -- a
+   flag rather than a bar -- because it is a different kind of fact from
+   a month's spending and the two must not read as the same mark, least
+   of all on the one row that carries both. Above everything, since a
+   fill drawn over it would hide the thing it is there to say. */
+.bars .row--mom .track .owed{width:3px;top:-8px;bottom:-4px;z-index:3;border-radius:1.5px;
+  background:currentColor;color:var(--muted);pointer-events:none}
+.bars .row--mom .track .owed.tone-owe{color:var(--owe)}
+.bars .row--mom .track .owed.tone-asset{color:var(--asset)}
+.bars .row--mom .track .owed::before{content:'';position:absolute;left:-3.5px;top:-1px;
+  border-left:5px solid transparent;border-right:5px solid transparent;
+  border-top:6px solid currentColor}
 /* pinned at the end rather than drawn off it; the line above says so */
-.bars .row--mom .track .owed--over{opacity:.6}
+.bars .row--mom .track .owed--over{opacity:.62}
 .bars .row--mom .owedline{grid-column:1/3;font-family:var(--data);font-size:11px;
-  color:var(--danger);margin-top:2px;font-variant-numeric:tabular-nums}
+  color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.bars .row--mom .owedline.tone-owe{color:var(--owe)}
+.bars .row--mom .owedline.tone-asset{color:var(--asset)}
 /* Last month, drawn faint underneath. Where this month's fill stops
    short the ghost keeps running, so a category that fell reads as a
    drop at a glance rather than as a stub of a bar with a tick out on
    its own at the far end. The tick stays: it is the exact figure. */
 .bars .row--mom .track .ghost{position:absolute;left:0;top:0;bottom:0;
   border-radius:4px 0 0 4px;pointer-events:none;
-  background:color-mix(in srgb,var(--muted) 30%,transparent)}
+  background:color-mix(in srgb,var(--muted) 46%,transparent)}
 .bars .row .was{font-family:var(--data);font-size:11.5px;color:var(--muted);white-space:nowrap}
 .bars .row .mark{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;z-index:2;
   background:var(--muted);opacity:.9;pointer-events:none}
@@ -9912,27 +9939,31 @@ const initOutflows = () => { OUT_MSEL.init(); initMoM(); initDeck(); };
    light month of payments and a heavy one look like a change in
    spending when they are usually a change in timing.
 
-   Read off the running ledger balance rather than the stated Total
-   Balance, for the same reason the calendar lock reads it: the stated
-   figure is whatever was last typed in from a statement, and the row
-   beside it is derived from the rows on file. Two figures from two
-   sources on one line is how a card comes to owe two different amounts.
+   The figure is the one the Position card labels Running Balance:
+   statedDelta(), the stated Total Balance less the balance the ledger
+   holds. On AMEX today that is $18,743.11 against $13,073.49, so the
+   row reads +$5,669.62 -- the part of the statement the ledger has not
+   caught up with yet.
 
-   Each card is named on its own row rather than pooled. The grain a
-   card can be marked at is not the same for all three, and that is the
-   whole of the design here:
+   That is a narrower claim than "what is owed", and the line says so.
+   Two figures live on that card and the wrong one on this row would be
+   the same number wearing another number's name.
 
-     AMEX          filed under CreditCardPayment, a category that is
-                   almost nothing but that card, so the category row
-                   carries it as well as the subcategory row.
+   It follows from this that a card with no Total Balance typed in has
+   no running balance to show, and gets no mark. That is not a gap to
+   paper over: with nothing stated there is nothing to be running
+   against, and a zero would be an assertion rather than a reading.
 
-     PenFed        filed under FixedExpense-PenFedVisa, and
-     USAA Visa     FixedExpense-USAAvisa -- subcategories of a category
-                   that is also the mortgage, both insurances, the gas
-                   and the water. Marking a card's balance against the
-                   whole of FixedExpense would draw a debt against a
-                   bar that is mostly not that debt, so those two are
-                   offered at the subcategory grain only.
+   One card, on the CreditCardPayment total. An earlier build spread the
+   mark to PenFed and the USAA Visa as well, at subcategory grain, since
+   those two are filed under FixedExpense-PenFedVisa and
+   FixedExpense-USAAvisa. It is off again: the row this belongs on is
+   the card-payment total, and a second and third mark elsewhere on the
+   list turned one annotation into a habit.
+
+   The table stays a table rather than collapsing back to a pair of
+   constants, because the shape of the question has not changed -- only
+   how many rows are answering it. Another card is one line.
 
    CreditCardPayment carries the Best Buy card too, and it has no
    account behind it. Rolling it into the AMEX figure, or letting its
@@ -9940,9 +9971,7 @@ const initOutflows = () => { OUT_MSEL.init(); initMoM(); initDeck(); };
    account actually holds -- so it gets nothing, like every other row.
    ============================================================ */
 const OWED_ON = [
-  { acct:'AMEX',     cat:'CreditCardPayment', sub:'CreditCardPayment-AMEX' },
-  { acct:'PenFed',                            sub:'FixedExpense-PenFedVisa' },
-  { acct:'USAAVISA',                          sub:'FixedExpense-USAAvisa' },
+  { acct:'AMEX', cat:'CreditCardPayment', sub:'CreditCardPayment-AMEX' },
 ];
 
 /**
@@ -9953,9 +9982,15 @@ const OWED_ON = [
  * from a statement spelled 'USAAVisa' is the same subcategory to every
  * eye but a strict comparison.
  *
- * Null rather than zero when there is no account or no rows behind it.
- * A mark pinned at the left end saying nothing is owed, on an account
- * the app knows nothing about, is a claim it has not earned.
+ * Null rather than zero at every refusal -- no account, no stated
+ * total, nothing derivable. A mark pinned at the left end of a bar
+ * saying a card is level, on a card the app has been told nothing
+ * about, is a claim it has not earned.
+ *
+ * The sign is kept. A negative running balance means the ledger has
+ * gone past the stated total, which is a real state and a different
+ * one from being level, and the tone follows it the way the card's
+ * does so the two readings of one number agree on screen.
  */
 function owedOnCard(label){
   const k = String(label || '').toLowerCase();
@@ -9963,9 +9998,18 @@ function owedOnCard(label){
   const on = OWED_ON.find(c =>
     k === String(c.sub).toLowerCase() || (c.cat && k === c.cat.toLowerCase()));
   if (!on || !ACCT[on.acct]) return null;
-  const b = balanceOf(on.acct);
-  if (!b || b.source === 'empty' || typeof b.value !== 'number' || !isFinite(b.value)) return null;
-  return { acct: on.acct, name: (ACCT[on.acct] || {}).name || on.acct, value: b.value, source: b.source };
+  const sd = statedDelta(on.acct);
+  if (!sd || typeof sd.delta !== 'number' || !isFinite(sd.delta)) return null;
+  /* Half a cent, the same threshold the card uses, so a rounding tail
+     is not coloured as a difference the household could act on. */
+  const level = Math.abs(sd.delta) < 0.005;
+  return {
+    acct: on.acct,
+    name: (ACCT[on.acct] || {}).name || on.acct,
+    value: sd.delta,
+    tone: level ? '' : sd.delta > 0 ? 'tone-owe' : 'tone-asset',
+    anchored: sd.anchored,
+  };
 }
 
 function deltaText(d, fmt = moneyShort){
@@ -10017,21 +10061,27 @@ function renderOutflowsMoM(){
        state of affairs -- so the mark is pinned and says so rather than
        being drawn somewhere it is not. */
     const owed = owedOnCard(x.label);
-    const over = owed ? owed.value > max : false;
+    /* Marked on the size of the gap. The sign says which way it runs;
+       the bar is a scale of magnitudes and has no left of zero. */
+    const owedAt = owed ? Math.abs(owed.value) : 0;
+    const over = owed ? owedAt > max : false;
+    const owedFig = owed
+      ? (owed.value > 0.005 ? '+' : owed.value < -0.005 ? '\u2212' : '') + fmt(Math.abs(owed.value))
+      : '';
     return `
     <div class="row row--mom">
       <span class="lbl" title="${esc(x.label)}">${esc(x.label)}</span>
       <span class="amt">${fmt(x.total)}</span>
       <span class="was">was ${fmt(x.was)}</span>
       ${deltaText(x.delta, fmt)}
-      ${owed ? `<span class="owedline">${esc(owed.name)} still owes ${fmt(owed.value)}${
+      ${owed ? `<span class="owedline ${owed.tone}">${esc(owed.name)} running balance ${owedFig}${
         over ? ' \u2014 past the end of the bar' : ''}</span>` : ''}
       <div class="track">
         <i class="ghost" style="width:${w(x.was)}%" aria-hidden="true"></i>
         <div class="fill" style="width:${w(x.total)}%"></div>
         <i class="mark${x.was > 0 ? '' : ' mark--none'}"
            style="left:${w(x.was)}%" aria-hidden="true"></i>
-        ${owed ? `<i class="owed${over ? ' owed--over' : ''}" style="left:${w(owed.value)}%"
+        ${owed ? `<i class="owed ${owed.tone}${over ? ' owed--over' : ''}" style="left:${w(owedAt)}%"
            aria-hidden="true"></i>` : ''}
       </div>
     </div>`;
@@ -10068,10 +10118,10 @@ function renderOutflowsMoM(){
       + 'whole one, and some of that gap is the calendar rather than the spending. The solid '
       + 'bar is the newer month and the faint one behind it is the older, with a tick where '
       + 'the older one finished. A category shows if it had spend in either month, so one '
-      + 'that stopped is still on the list. A row that is one credit card carries one extra '
-      + 'mark: what is still owed on that card right now, read off the running ledger '
-      + 'balance. AMEX shows it on the card payment row; the two Visas show it on their own '
-      + 'subcategory rows, since the category above them is mostly not the card.';
+      + 'that stopped is still on the list. The card payment row carries one extra mark: '
+      + 'the AMEX running balance \u2014 the stated Total Balance less the balance the '
+      + 'ledger already holds, which is the part of the statement the rows have not caught '
+      + 'up with. It needs a Total Balance typed on the card to have anything to say.';
 }
 
 function renderOutflows(){
@@ -15222,7 +15272,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14w';
+const BUILD = '2026-08-14x';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
