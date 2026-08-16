@@ -12544,20 +12544,47 @@ function shortSub(cat, sub){
   return s.slice(c.length + gap[0].length) || s;
 }
 
-/** Every carried line rolled one month on, still ahead of today. */
+/**
+ * Every carried line rolled one month on, still ahead of today.
+ *
+ * ONE LINE PER VENDOR PER DAY, and it is the last charge of that day.
+ *
+ * The key used to carry the amount, so a vendor billed twice on a day
+ * projected twice -- Zelle to Lidia at $121 and again at $120 off the
+ * same Thursday. Both rows are real. As a forecast they are one
+ * obligation counted twice: the household pays Lidia on the 23rd, and
+ * how the statement happened to split it that day is not a fact about
+ * next month. Dropping the amount from the key is the whole fix; what
+ * used to be a guard against two statements carrying the same charge
+ * now also collapses a vendor's several charges into one promise.
+ *
+ * WHICH one, with no clock on the rows, is last in ledger order. That
+ * is not a shrug: normalize() already rests on the same fact, noting
+ * that banks list same-day lines in POSTING order and using later file
+ * position to break a tie. So file order within a day IS the order the
+ * charges landed, and the last of them is the last charge of the day.
+ *
+ * Getting it out is arithmetic on that: state.rows is newest-first by
+ * date and stable within a date, so walking it forward and letting each
+ * write win leaves the last row of that day standing.
+ *
+ * The ACCOUNT stays in the key. The same vendor on two cards on one day
+ * is two obligations, not one written twice, and hiding one of those is
+ * a worse failure for a forecast than showing both.
+ *
+ * Each line counts what it stands for, so a day's total coming out
+ * lower is accounted for on the row that caused it.
+ */
 function calForecasts(){
   const from = startOfToday();
-  const seen = new Set();
-  const out = [];
+  const pick = new Map();
   state.rows.forEach(r => {
     if (!r.amount || !(r.date instanceof Date) || !rowProjected(r)) return;
     const next = addMonthClamped(r.date);
     if (next < from) return;                    /* the day passed -- drop it off */
-    /* two statements can carry the same charge; one promise is enough */
-    const k = isoOf(next) + '|' + norm(r.desc) + '|' + r.amount;
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push({
+    const k = isoOf(next) + '|' + r.acct + '|' + norm(r.desc);
+    const had = pick.get(k);
+    pick.set(k, {
       kind: 'proj',
       id: 'FX-' + r.id,
       name: r.desc,
@@ -12567,9 +12594,12 @@ function calForecasts(){
       sub: shortSub(r.category, r.sub),
       date: next,
       from: r.date,
+      /* how many rows this line is standing in for, itself included */
+      of: (had ? had.of : 0) + 1,
     });
   });
-  return out.sort((a, b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
+  return Array.from(pick.values())
+    .sort((a, b) => a.date - b.date || Math.abs(b.amount) - Math.abs(a.amount));
 }
 
 /* ============================================================
@@ -12825,10 +12855,16 @@ function projRow(f, showDate){
   const when = showDate ? fmtDate(f.date) + ' \u00b7 ' : '';
   const tag = f.sub ? ' \u00b7 ' + esc(f.sub) : '';
   const income = f.amount > 0;
+  /* A vendor billed more than once that day is carried by its last
+     charge alone. Saying so on the line is what keeps the day's total
+     from quietly shrinking with nothing on screen to account for it. */
+  const stood = f.of > 1
+    ? ` \u00b7 last of ${f.of} that day`
+    : '';
   return `<li class="bill bill--proj">
     <span class="bill__name">${esc(f.name)}</span>
     <span class="bill__amt" style="color:${income ? 'var(--asset)' : 'var(--owe)'}">${income ? '+' : '\u2212'}${money(Math.abs(f.amount))}</span>
-    <span class="bill__meta">${when}${esc(f.acct)}${tag} \u00b7 projected from ${fmtDate(f.from)}</span>
+    <span class="bill__meta">${when}${esc(f.acct)}${tag} \u00b7 projected from ${fmtDate(f.from)}${stood}</span>
   </li>`;
 }
 
@@ -15272,7 +15308,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14x';
+const BUILD = '2026-08-14y';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
