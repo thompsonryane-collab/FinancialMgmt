@@ -618,6 +618,20 @@ html[data-theme="dark"] .card__duelamp[data-tone="green"]{background:#6FBF8C}
 .bars .row--mom .track{grid-column:1/3;height:9px;margin-top:5px;
   position:relative;overflow:visible}
 .bars .row--mom .track .fill{position:relative;z-index:1;border-radius:4px 0 0 4px}
+/* What is still on the card. A different colour and a different shape
+   from the month tick, because it is a different kind of fact: not a
+   month's spending but a standing debt, and the eye should not read
+   the two as the same sort of mark. It sits above everything, since a
+   fill drawn over it would hide the one thing it is there to say. */
+.bars .row--mom .track .owed{position:absolute;top:-6px;bottom:-6px;width:2px;z-index:3;
+  border-radius:1px;background:var(--danger);pointer-events:none}
+.bars .row--mom .track .owed::before{content:'';position:absolute;left:-3px;top:-1px;
+  border-left:4px solid transparent;border-right:4px solid transparent;
+  border-top:5px solid var(--danger)}
+/* pinned at the end rather than drawn off it; the line above says so */
+.bars .row--mom .track .owed--over{opacity:.6}
+.bars .row--mom .owedline{grid-column:1/3;font-family:var(--data);font-size:11px;
+  color:var(--danger);margin-top:2px;font-variant-numeric:tabular-nums}
 /* Last month, drawn faint underneath. Where this month's fill stops
    short the ghost keeps running, so a category that fell reads as a
    drop at a glance rather than as a stub of a bar with a tick out on
@@ -9888,6 +9902,72 @@ const initOutflows = () => { OUT_MSEL.init(); initMoM(); initDeck(); };
 
 /** "+$412" / "-$88", coloured the way the household reads it: more spend
     than the month before is the owe colour, less is the asset colour. */
+/* ============================================================
+   WHAT IS STILL ON THE CARD
+
+   One row on the outflow list gets an annotation the others do not.
+   CreditCardPayment answers "how much went at the card", and the
+   household's next question is always "and how much is still on it" --
+   a question the two months on the row cannot answer between them. A
+   light month of payments and a heavy one look like a change in
+   spending when they are usually a change in timing.
+
+   Read off the running ledger balance rather than the stated Total
+   Balance, for the same reason the calendar lock reads it: the stated
+   figure is whatever was last typed in from a statement, and the row
+   beside it is derived from the rows on file. Two figures from two
+   sources on one line is how a card comes to owe two different amounts.
+
+   Each card is named on its own row rather than pooled. The grain a
+   card can be marked at is not the same for all three, and that is the
+   whole of the design here:
+
+     AMEX          filed under CreditCardPayment, a category that is
+                   almost nothing but that card, so the category row
+                   carries it as well as the subcategory row.
+
+     PenFed        filed under FixedExpense-PenFedVisa, and
+     USAA Visa     FixedExpense-USAAvisa -- subcategories of a category
+                   that is also the mortgage, both insurances, the gas
+                   and the water. Marking a card's balance against the
+                   whole of FixedExpense would draw a debt against a
+                   bar that is mostly not that debt, so those two are
+                   offered at the subcategory grain only.
+
+   CreditCardPayment carries the Best Buy card too, and it has no
+   account behind it. Rolling it into the AMEX figure, or letting its
+   own row show the AMEX figure, would put a number on screen that no
+   account actually holds -- so it gets nothing, like every other row.
+   ============================================================ */
+const OWED_ON = [
+  { acct:'AMEX',     cat:'CreditCardPayment', sub:'CreditCardPayment-AMEX' },
+  { acct:'PenFed',                            sub:'FixedExpense-PenFedVisa' },
+  { acct:'USAAVISA',                          sub:'FixedExpense-USAAvisa' },
+];
+
+/**
+ * The balance to mark on one outflow row, or null for every other row.
+ *
+ * The match is case-blind because the filing is not: the catalog holds
+ * 'FixedExpense-USAAvisa' with a lowercase v, and a row that arrived
+ * from a statement spelled 'USAAVisa' is the same subcategory to every
+ * eye but a strict comparison.
+ *
+ * Null rather than zero when there is no account or no rows behind it.
+ * A mark pinned at the left end saying nothing is owed, on an account
+ * the app knows nothing about, is a claim it has not earned.
+ */
+function owedOnCard(label){
+  const k = String(label || '').toLowerCase();
+  if (!k) return null;
+  const on = OWED_ON.find(c =>
+    k === String(c.sub).toLowerCase() || (c.cat && k === c.cat.toLowerCase()));
+  if (!on || !ACCT[on.acct]) return null;
+  const b = balanceOf(on.acct);
+  if (!b || b.source === 'empty' || typeof b.value !== 'number' || !isFinite(b.value)) return null;
+  return { acct: on.acct, name: (ACCT[on.acct] || {}).name || on.acct, value: b.value, source: b.source };
+}
+
 function deltaText(d, fmt = moneyShort){
   if (Math.abs(d) < 0.005) return '<span class="pct">level</span>';
   const tone = d > 0 ? 'tone-owe' : 'tone-asset';
@@ -9930,19 +10010,32 @@ function renderOutflowsMoM(){
      this list can exceed max, but the guard costs nothing. */
   const w = v => (Math.min(Math.max(v, 0), max) / max * 100).toFixed(1);
 
-  host.innerHTML = o.bars.length ? o.bars.map(x => `
+  host.innerHTML = o.bars.length ? o.bars.map(x => {
+    /* The balance sits on the months' own scale so the three can be
+       read against each other. It can run past the end of that scale --
+       a card carrying more than either month's payments is an ordinary
+       state of affairs -- so the mark is pinned and says so rather than
+       being drawn somewhere it is not. */
+    const owed = owedOnCard(x.label);
+    const over = owed ? owed.value > max : false;
+    return `
     <div class="row row--mom">
       <span class="lbl" title="${esc(x.label)}">${esc(x.label)}</span>
       <span class="amt">${fmt(x.total)}</span>
       <span class="was">was ${fmt(x.was)}</span>
       ${deltaText(x.delta, fmt)}
+      ${owed ? `<span class="owedline">${esc(owed.name)} still owes ${fmt(owed.value)}${
+        over ? ' \u2014 past the end of the bar' : ''}</span>` : ''}
       <div class="track">
         <i class="ghost" style="width:${w(x.was)}%" aria-hidden="true"></i>
         <div class="fill" style="width:${w(x.total)}%"></div>
         <i class="mark${x.was > 0 ? '' : ' mark--none'}"
            style="left:${w(x.was)}%" aria-hidden="true"></i>
+        ${owed ? `<i class="owed${over ? ' owed--over' : ''}" style="left:${w(owed.value)}%"
+           aria-hidden="true"></i>` : ''}
       </div>
-    </div>`).join('')
+    </div>`;
+  }).join('')
     : `<p class="empty">${o.empty ? 'Two months of rows are needed before there is anything to compare.'
         : o.custom ? 'Nothing on file under those categories in either month.'
         : 'No outflows in either month.'}</p>`;
@@ -9975,7 +10068,10 @@ function renderOutflowsMoM(){
       + 'whole one, and some of that gap is the calendar rather than the spending. The solid '
       + 'bar is the newer month and the faint one behind it is the older, with a tick where '
       + 'the older one finished. A category shows if it had spend in either month, so one '
-      + 'that stopped is still on the list.';
+      + 'that stopped is still on the list. A row that is one credit card carries one extra '
+      + 'mark: what is still owed on that card right now, read off the running ledger '
+      + 'balance. AMEX shows it on the card payment row; the two Visas show it on their own '
+      + 'subcategory rows, since the category above them is mostly not the card.';
 }
 
 function renderOutflows(){
@@ -15126,7 +15222,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14u';
+const BUILD = '2026-08-14w';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
