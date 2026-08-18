@@ -4968,25 +4968,56 @@ function balanceCompute(id){
   if (withBal.length){
     const newest = withBal.reduce((m,r) => r.date > m.date ? r : m, withBal[0]);
     const cut = endOfDay(newest.date.getTime());
-    const move = rs.filter(r => r.date.getTime() > cut).reduce((s,r) => s + r.amount, 0);
+    const after = rs.filter(r => r.date.getTime() > cut);
+    const move = after.reduce((s,r) => s + r.amount, 0);
     const base = acct.side === 'liability' ? Math.abs(newest.balance) : newest.balance;
     const value = acct.side === 'liability' ? base - move : base + move;
-    return { value, source:'derived', at:newest.date.getTime(), anchor:base, since:0 };
+    /* `since` is the count of rows sitting past the anchor, and it was
+       hardcoded to 0 here while `move` was summing those very rows.
+       Two things read it. The card prints "+ N rows since", which
+       simply went missing. openBalance does worse: it seeds its field
+       with `anchor` only when `since` is truthy and falls back to the
+       rolled-forward `value` otherwise — so on any export carrying a
+       running-balance column, opening the balance sheet and saving it
+       untouched wrote the rolled-forward total back as a fresh anchor
+       and counted the movement twice. The guard was there; the number
+       it keys off was not. */
+    return { value, source:'derived', at:newest.date.getTime(), anchor:base,
+             since:after.length, move };
   }
 
   /* Nothing anchors this account: no opening balance, no statement
      figure, no running-balance column. All that is left is the net of
      every row on file — the period's movement, not a balance.
 
-     A debt is carried as a magnitude throughout, so a liability keeps
-     the absolute. An asset must NOT: this figure was reading through
-     Math.abs on both sides, so a checking account that spent 16,168.69
-     more than it took in reported +$16,169 in green — the right number
-     pointing the wrong way, and the wrong way is the one that looks
-     like money in the bank. Set an opening balance to turn this into a
-     real balance; until then it is signed movement and says so. */
+     Both sides keep their sign. The asset side was straightened first:
+     it was reading through Math.abs, so a checking account that spent
+     16,168.69 more than it took in reported +$16,169 in green — the
+     right number pointing the wrong way, and the wrong way is the one
+     that looks like money in the bank.
+
+     The liability side kept `Math.min(sum, 0)`, which is the same
+     defect facing the other way and a worse one to leave standing. It
+     clamps every period that netted the household's way to zero, and
+     zero on a credit card does not read as "no figure", it reads as
+     PAID OFF. AMEX is the case: the household imports one month at a
+     time, and three of the eight months on file — January, April and
+     May — took more off the card than they put on it. Each of those
+     imports printed $0.00 owed. Worse, with a Total Balance typed on
+     the card, Running Balance is the stated total minus this figure,
+     so a clamped zero handed the WHOLE statement back as the gap:
+     $18,743.11 stated against a ledger that claimed to hold nothing.
+
+     Negating the sum is the whole repair. A charge is negative, so a
+     month of charges negates to a positive debt; a month that paid the
+     card down past its charges negates to a negative one, which is a
+     credit balance — a real state a card reaches after a refund or an
+     overpayment, and one the household is owed a sight of.
+
+     This is still movement and not a balance either way. Set an
+     opening balance to turn it into one; until then it says so. */
   const sum = rs.reduce((s,r) => s + r.amount, 0);
-  return { value: acct.side === 'liability' ? Math.abs(Math.min(sum,0)) : sum,
+  return { value: acct.side === 'liability' ? -sum : sum,
            source:'derived', since:0, netOnly:true };
 }
 
@@ -5074,7 +5105,13 @@ function totals(){
   let assets = 0, owed = 0;
   balanceAccounts().forEach(a => {
     const v = balanceOf(a.id).value;
-    if (a.side === 'asset') assets += v; else owed += Math.abs(v);
+    /* No Math.abs on the liability. A card carrying a credit balance
+       holds a negative figure, and taking its magnitude would book
+       money the household is AHEAD as money it owes — the same error
+       twice over, since it also drags the net down by that amount
+       instead of lifting it. Every figure here is already signed the
+       way its side means it. */
+    if (a.side === 'asset') assets += v; else owed += v;
   });
   return (ix.sum = { assets, owed, net: assets - owed });
 }
@@ -5373,7 +5410,17 @@ function applyPayload(data){
       at: Number(t.at) || 0,
       doneAt: Number(t.doneAt) || 0,
     }));
-  state.totalBal = (data.totalBal && typeof data.totalBal === 'object') ? data.totalBal : {};
+  /* Shaped on the way in, the same as dueDay below. This key used to
+     be taken on trust, so a backup written by an older build or by
+     hand could seat a string, a NaN or a negative on a card. Reading
+     is normalised too (totalBalOf), but a store that cannot hold a
+     bad figure is better than one that only hides it. */
+  state.totalBal = {};
+  if (data.totalBal && typeof data.totalBal === 'object')
+    Object.keys(data.totalBal).forEach(id => {
+      const v = Number(data.totalBal[id]);
+      if (isFinite(v)) state.totalBal[id] = Math.abs(v);
+    });
   /* Guard the range on the way in: a backup written by hand, or by an
      older build that never held this key, must not seat a 0 or a 47 on
      a card and hand nextDue an impossible month. */
@@ -8082,10 +8129,22 @@ const CARD_ACCTS = ['AMEX', 'USAAVISA', 'PenFed'];
 const TOTAL_BAL_ACCTS = CARD_ACCTS;
 const carriesTotal = id => TOTAL_BAL_ACCTS.includes(id) && Boolean(ACCT[id]);
 
-/** The stated Total Balance, or null when none has been typed. */
+/** The stated Total Balance, or null when none has been typed.
+
+    Returned as a magnitude, which is the only form the field can
+    produce: the input stores Math.abs of whatever is typed and the
+    card renders Math.abs of whatever is stored. statedDelta was
+    reading the raw value instead, so the two could disagree — and a
+    negative reaches state.totalBal easily enough, out of a restored
+    backup or a file written by hand, neither of which this key was
+    ever checked on. The card then printed $500.00 and did its
+    arithmetic with -500.00, a 1,000.00 error with nothing on screen
+    to show for it, and retyping the figure the card was already
+    showing would have "changed" it. Normalising at the one read every
+    caller funnels through is what makes that unrepresentable. */
 function totalBalOf(id){
   const v = state.totalBal[id];
-  return typeof v === 'number' && isFinite(v) ? v : null;
+  return typeof v === 'number' && isFinite(v) ? Math.abs(v) : null;
 }
 
 /* ============================================================
@@ -8296,7 +8355,7 @@ function renderCards(){
               <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
             </svg>
           </button></div><p class="card__name">${esc(a.name)}</p></div>
-        <button type="button" class="card__bal ${a.side==='asset'&&bal.value>=0?'tone-asset':'tone-owe'}${byHand?' card__bal--set':''}"
+        <button type="button" class="card__bal ${bal.value>=0===(a.side==='asset')?'tone-asset':'tone-owe'}${byHand?' card__bal--set':''}"
                 data-acct="${a.id}"
                 aria-label="${bal.source === 'empty'
                   ? `Set the ${esc(a.name)} balance or opening balance. Nothing on file yet`
@@ -15328,7 +15387,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-14z';
+const BUILD = '2026-08-18a';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
