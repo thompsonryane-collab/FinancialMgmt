@@ -8293,6 +8293,72 @@ function statedPairView(id){
   };
 }
 
+/* ------------------------------------------------------------
+   COMMITTING A STATED TOTAL
+
+   Two calls, and the difference between them is only how much of the
+   app is allowed to move.
+
+   `commitTotal(el)` runs on every keystroke. It parses, stores, and
+   repaints the pair -- and touches nothing else. It does NOT call
+   save(), because save() calls ledgerTouched(), which throws away the
+   derived-figure index and would re-walk two thousand rows per digit.
+   It does not need to: state.totalBal is not part of that index, so
+   the figure beside the field is correct the moment the digit lands
+   whether or not anything has been written to storage yet.
+
+   `settleTotal(el)` runs when the field is done with -- blur, or the
+   change event, whichever the platform decides to send. That is where
+   the write, the calendar redraw and the card rebuild happen, and it
+   is the only place that complains about an amount it cannot read.
+
+   The live path stays silent on garbage on purpose. "$" and "20." are
+   what a half-typed figure looks like, not a mistake, and a toast per
+   keystroke would be its own defect.
+   ------------------------------------------------------------ */
+let totalSaveT = null;
+
+/** Store what is in the field and repaint the pair. Nothing else. */
+function commitTotal(el){
+  const id = el && el.dataset ? el.dataset.total : null;
+  if (!id) return false;
+  const raw = String(el.value || '').trim();
+  const v = raw ? toNumber(raw) : null;
+  if (raw && v == null) return false;          /* mid-entry, not an error */
+  const next = v == null ? null : Math.abs(v);
+  if (next == null) delete state.totalBal[id];
+  else state.totalBal[id] = next;
+  paintStatedPair(id);
+  /* The write can wait for a pause in the typing; the figure could not. */
+  clearTimeout(totalSaveT);
+  totalSaveT = setTimeout(() => { totalSaveT = null; save(); }, 600);
+  return true;
+}
+
+/** The field is done with: write it, and let the rest of the app move. */
+function settleTotal(el){
+  const id = el && el.dataset ? el.dataset.total : null;
+  if (!id) return false;
+  const raw = String(el.value || '').trim();
+  const v = raw ? toNumber(raw) : null;
+  if (raw && v == null){ toast('That is not an amount'); el.focus(); return false; }
+  const next = v == null ? null : Math.abs(v);
+  if (next == null) delete state.totalBal[id];
+  else state.totalBal[id] = next;
+  clearTimeout(totalSaveT); totalSaveT = null;
+  save();
+  /* No paint here. Build 18b needed one, because settle was the only
+     commit and the rebuild below can be declined. Every path into this
+     function now passes through commitTotal first -- typing, and the
+     clear button, which dispatches input before change -- so the pair
+     on screen is already current and a second paint would be a line no
+     test could reach. */
+  /* The calendar is a different region and safe to redraw now; the
+     cards are the ground this handler is standing on. */
+  renderCalendar(); renderCardsSoon();
+  return true;
+}
+
 /** Update the pair on a card that is already on screen.
 
     This exists because the figure must not wait on a rebuild. Typing a
@@ -8481,6 +8547,7 @@ function renderCards(){
           return `<div class="card__extra">
             <span class="card__xlab" id="tbl-${esc(a.id)}">Total Balance</span>
             <input class="card__xfield" type="text" inputmode="decimal" data-total="${esc(a.id)}"
+                   enterkeyhint="done"
                    value="${t == null ? '' : esc(formatMoneyField(Math.abs(t).toFixed(2)))}"
                    placeholder="$0.00" aria-labelledby="tbl-${esc(a.id)}">
             <span class="card__xlab" id="rbl-${esc(a.id)}">Running Balance</span>
@@ -8563,23 +8630,25 @@ function renderCards(){
      outside-tap handlers honest. */
   $$('input[data-total]').forEach(el => {
     attachMoneyInput(el);
-    el.addEventListener('change', () => {
-      const id = el.dataset.total;
-      const raw = el.value.trim();
-      const v = raw ? toNumber(raw) : null;
-      if (raw && v == null){ toast('That is not an amount'); el.focus(); return; }
-      if (v == null) delete state.totalBal[id];
-      else state.totalBal[id] = Math.abs(v);
-      save();
-      /* Paint the figure NOW. The rebuild below may be declined and
-         booked as owed, and the household must not be shown a stale
-         em dash next to a number it just typed while that debt waits
-         on a focusout that may never come. */
-      paintStatedPair(id);
-      /* The calendar is a different region and safe to redraw now; the
-         cards are the ground this handler is standing on. */
-      renderCalendar(); renderCardsSoon();
-    });
+    /* LIVE. This is the one that makes the card work on a phone: the
+       Running Balance is right while the keypad is still up, so no
+       Done, no checkmark, no accessory bar and no tap-somewhere-else
+       is needed to see it. attachMoneyInput above has already
+       reformatted the value by the time this runs. */
+    el.addEventListener('input', () => commitTotal(el));
+
+    /* SETTLE. Both of these are wired because the platforms disagree
+       about which one arrives. A laptop sends change on blur. iOS
+       sends change when it dismisses the keyboard, sometimes, and the
+       cases where it does not are exactly the ones this field kept
+       falling into. A second commit is harmless -- it stores the same
+       figure and paints the same pair -- and a missing one is not. */
+    el.addEventListener('change', () => settleTotal(el));
+    el.addEventListener('blur',   () => settleTotal(el));
+
+    /* The decimal keypad has no return key, so this fires only from a
+       hardware keyboard. Kept for that, and for enterkeyhint below on
+       any platform that does give the field one. */
     el.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); el.blur(); } });
   });
   $$('select[data-due]').forEach(el => {
@@ -15475,7 +15544,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-18b';
+const BUILD = '2026-08-18c';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
