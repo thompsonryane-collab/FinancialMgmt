@@ -8262,6 +8262,95 @@ function statedDelta(id){
 }
 
 /* ============================================================
+   THE STATED PAIR, BUILT ONCE
+
+   Total Balance and Running Balance are drawn in two places now: by
+   renderCards, which builds the whole card, and by paintStatedPair,
+   which reaches into a card already on screen and updates just the
+   figure. Two copies of this arithmetic would drift the first time one
+   of them was touched, so there is one.
+   ============================================================ */
+function statedPairView(id){
+  const sd = statedDelta(id);
+  /* Half a cent, so a rounding tail is not dressed up as a difference
+     the household could act on. Inside that, the two figures agree and
+     the card says so with a plain zero rather than a signed hair. */
+  const even = sd && Math.abs(sd.delta) < 0.005;
+  return {
+    sd,
+    fig: !sd ? '\u2014'
+       : even ? money(0)
+       : (sd.delta > 0 ? '+' : '\u2212') + moneyShort(Math.abs(sd.delta)),
+    /* Zero is the good state here, so it is not coloured as though
+       something were owed. A live difference is, and its direction is
+       already in the sign. */
+    tone: !sd || even ? 'fig--none'
+        : sd.delta > 0 ? 'tone-owe' : 'tone-asset',
+    said: !sd ? 'no total stated yet'
+        : even ? 'the stated total and the ledger agree'
+        : `the stated total is ${money(Math.abs(sd.delta))} `
+          + `${sd.delta > 0 ? 'above' : 'below'} the ledger balance`,
+  };
+}
+
+/** Update the pair on a card that is already on screen.
+
+    This exists because the figure must not wait on a rebuild. Typing a
+    Total Balance and committing it used to call renderCardsSoon(),
+    which declines to rebuild while a thumb is on the cards and books
+    the work as owed instead -- and the only thing that ever pays that
+    debt is a document focusout. On a desktop the commit and the
+    focusout arrive together, so the card redrew and the arithmetic
+    looked fine. iOS commits a field when the keyboard is dismissed and
+    does not reliably move focus out of it, so the focusout that would
+    have paid the debt had already gone by. state.totalBal held 20,361,
+    the card held an em dash, and no amount of scrolling or tapping
+    brought the two together -- the household had typed a figure into a
+    card that appeared to ignore it.
+
+    Nothing here replaces a node, so there is nothing to pull out from
+    under a thumb and no reason to defer it. The text, the tone, the
+    label and the note are the whole of what the stated pair says.
+
+    The input itself is left alone while it holds focus: normalising
+    "$20,361" to "$20,361.00" mid-gesture would move the caret the
+    household is still using. Once focus is elsewhere it is safe to
+    settle, and attachMoneyInput's own blur handler has usually done it
+    already. */
+function paintStatedPair(id){
+  const val = document.querySelector(`[data-running="${CSS.escape(id)}"]`);
+  if (!val) return false;
+  const a = ACCT[id];
+  const v = statedPairView(id);
+  val.textContent = v.fig;
+  val.className = `card__xval ${v.tone}`;
+  val.setAttribute('aria-label',
+    `Running balance for ${(a && a.name) || id} \u2014 ${v.said}`);
+
+  /* the unanchored warning belongs to the same pair and moves with it */
+  const extra = val.closest('.card__extra');
+  if (extra){
+    const has = extra.querySelector('.card__xnote--off');
+    const want = Boolean(v.sd && !v.sd.anchored);
+    if (want && !has){
+      const n = document.createElement('span');
+      n.className = 'card__xnote card__xnote--off';
+      n.textContent = `${id} has no anchored balance yet, so the ledger side of `
+        + 'this is the movement across its rows rather than a balance';
+      extra.appendChild(n);
+    } else if (!want && has){ has.remove(); }
+  }
+
+  const field = document.querySelector(`input[data-total="${CSS.escape(id)}"]`);
+  if (field && document.activeElement !== field){
+    const t = totalBalOf(id);
+    field.value = t == null ? '' : formatMoneyField(Math.abs(t).toFixed(2));
+    if (typeof clrSync === 'function') clrSync(field);
+  }
+  return true;
+}
+
+/* ============================================================
    REBUILDING THE CARDS WITHOUT PULLING THEM OUT FROM UNDER A THUMB
 
    renderCards() replaces the whole of #assetCards and #liabCards. Every
@@ -8314,6 +8403,14 @@ function initCardFlush(){
      is deferred a turn -- otherwise moving from the balance field to the
      due picker would read as "nothing focused" and rebuild anyway. */
   document.addEventListener('focusout', () => setTimeout(flushCards, 0), true);
+
+  /* focusout stays the only collector. A second one was written here
+     and taken back out: with paintStatedPair carrying the figure, an
+     owed rebuild no longer hides a number the household typed, and
+     every tap that could pay the debt moves focus and fires focusout
+     anyway. No test could tell the extra listener apart from the one
+     already here, and a guard against a case that cannot be
+     demonstrated is a guess wearing a comment. */
 }
 
 function renderCards(){
@@ -8378,24 +8475,9 @@ function renderCards(){
         })()}
         ${carriesTotal(a.id) ? (() => {
           const t = totalBalOf(a.id);
-          const sd = statedDelta(a.id);
-          /* Half a cent, so a rounding tail is not dressed up as a
-             difference the household could act on. Inside that, the two
-             figures agree and the card says so with a plain zero rather
-             than a signed hair. */
-          const even = sd && Math.abs(sd.delta) < 0.005;
-          const fig = !sd ? '\u2014'
-            : even ? money(0)
-            : (sd.delta > 0 ? '+' : '\u2212') + moneyShort(Math.abs(sd.delta));
-          /* Zero is the good state here, so it is not coloured as though
-             something were owed. A live difference is, and its direction
-             is already in the sign. */
-          const tone = !sd || even ? 'fig--none'
-            : sd.delta > 0 ? 'tone-owe' : 'tone-asset';
-          const said = !sd ? 'no total stated yet'
-            : even ? 'the stated total and the ledger agree'
-            : `the stated total is ${money(Math.abs(sd.delta))} `
-              + `${sd.delta > 0 ? 'above' : 'below'} the ledger balance`;
+          /* statedPairView is the one place this arithmetic lives; the
+             in-place repaint reads the same call. */
+          const { sd, fig, tone, said } = statedPairView(a.id);
           return `<div class="card__extra">
             <span class="card__xlab" id="tbl-${esc(a.id)}">Total Balance</span>
             <input class="card__xfield" type="text" inputmode="decimal" data-total="${esc(a.id)}"
@@ -8488,9 +8570,15 @@ function renderCards(){
       if (raw && v == null){ toast('That is not an amount'); el.focus(); return; }
       if (v == null) delete state.totalBal[id];
       else state.totalBal[id] = Math.abs(v);
+      save();
+      /* Paint the figure NOW. The rebuild below may be declined and
+         booked as owed, and the household must not be shown a stale
+         em dash next to a number it just typed while that debt waits
+         on a focusout that may never come. */
+      paintStatedPair(id);
       /* The calendar is a different region and safe to redraw now; the
          cards are the ground this handler is standing on. */
-      save(); renderCalendar(); renderCardsSoon();
+      renderCalendar(); renderCardsSoon();
     });
     el.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); el.blur(); } });
   });
@@ -15387,7 +15475,7 @@ function closeDrawer(){
    import or a question is in flight — then it waits for the
    next launch rather than pulling the floor out.
    ============================================================ */
-const BUILD = '2026-08-18a';
+const BUILD = '2026-08-18b';
 let swReg = null, updateReady = false, reloading = false;
 
 function applyUpdateWhenIdle(){
